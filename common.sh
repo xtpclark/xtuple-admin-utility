@@ -35,10 +35,10 @@ latest_version() {
 install_prereqs() {
 case "$DISTRO" in
 	"ubuntu")
-			apt-get -y install axel build-essential git xz-utils whiptail unzip wget curl
+			apt-get -y install axel build-essential git xz-utils whiptail unzip wget curl postgresql-client-9.3
 			;;
 	 "debian")
-			apt-get -y install axel wget curl unzip whiptail git
+			apt-get -y install axel wget curl unzip whiptail git postgresql-client-9.3
 			;;
 	*)
 	echo "Shouldn't reach here! Please report this on GitHub."

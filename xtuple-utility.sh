@@ -31,7 +31,7 @@ case "$_R" in
 esac
 
 # Load the scripts
-source install_postgresql.sh
+source postgresql.sh
 source common.sh
 source database.sh
 
