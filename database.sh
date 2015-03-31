@@ -6,7 +6,7 @@ mkdir -p $XTMP
 
 database_menu() {
     while true; do
-        DBM=$(whiptail --backtitle "xTuple Server v$_REV" --menu "Database Menu" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
+        DBM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Database Menu" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
             "1" "Set database info" \
             "2" "Clear database info" \
             "3" "Backup Database" \
@@ -39,7 +39,7 @@ database_menu() {
 
 download_demo() {
     
-    MENUVER=$(whiptail --backtitle "xTuple Server v$_REV" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+    MENUVER=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
             "1" "PostBooks 4.7.0 Demo" \
             "2" "PostBooks 4.7.0 Empty" \
             "3" "PostBooks 4.8.1 Demo" \
@@ -70,7 +70,7 @@ download_demo() {
             esac || database_menu
         fi
     
-    DEMODEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+    DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return $RET
@@ -91,7 +91,7 @@ download_demo() {
 		do_exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
-            DEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
+            DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
             RET=$?
             if [ $RET -eq 1 ]; then
                 return $RET
@@ -122,7 +122,7 @@ download_latest_demo() {
     fi
     
     if [ -z $DEMODEST ]; then
-        export DEMODEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+        export DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
     fi
         
     DB_URL="http://files.xtuple.org/$VERSION/demo.backup"
@@ -138,7 +138,7 @@ download_latest_demo() {
 		exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
-            DEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
+            DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
             RET=$?
             if [ $RET -eq 1 ]; then
                 return $RET
@@ -170,7 +170,7 @@ backup_database() {
     fi
     
     if [ -z $1 ]; then
-        DEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
+        DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -180,7 +180,7 @@ backup_database() {
     fi
     
     if [ -z $2 ]; then
-        SOURCE=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
+        SOURCE=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -213,7 +213,7 @@ restore_database() {
     fi
     
     if [ -z $2 ]; then
-        DEST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -247,13 +247,13 @@ carve_pilot() {
         return $RET
     fi
     
-    SOURCE=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Source database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    SOURCE=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Source database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return $RET
     fi
     
-    PILOT=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Pilot database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    PILOT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Pilot database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
 
     if [ $RET -eq 1 ]; then
@@ -279,7 +279,7 @@ create_database_from_file() {
         return $RET
     fi
     
-    SOURCE=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
+    SOURCE=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return $RET
@@ -290,7 +290,7 @@ create_database_from_file() {
         return 1
     fi
     
-    PILOT=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    PILOT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
         
     if [ $RET -eq 1 ]; then
@@ -311,7 +311,7 @@ create_database_from_file() {
 
 set_database_info() {
     if [ -z $PGHOST ]; then
-        PGHOST=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Hostname" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGHOST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Hostname" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -320,7 +320,7 @@ set_database_info() {
         fi
     fi
     if [ -z $PGPORT ] ; then
-        PGPORT=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Port" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Port" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -329,7 +329,7 @@ set_database_info() {
         fi
     fi
     if [ -z $PGUSER ] ; then
-        PGUSER=$(whiptail --backtitle "xTuple Server v$_REV" --inputbox "Username" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGUSER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Username" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -338,7 +338,7 @@ set_database_info() {
         fi
     fi
     if [ -z $PGPASSWORD ] ; then
-        PGPASSWORD=$(whiptail --backtitle "xTuple Server v$_REV" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
+        PGPASSWORD=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET

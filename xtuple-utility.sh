@@ -35,5 +35,10 @@ source postgresql.sh
 source common.sh
 source database.sh
 
-# mainmenu should be the last one :)
+# kind of hard to built whiptail menus without whiptail installed
+install_prereqs
+
+# we load mainmenu.sh last since it calls its menu once it builds it
+# and this is the initial interface for the user
 source mainmenu.sh
+

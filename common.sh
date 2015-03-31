@@ -2,7 +2,7 @@
 
 do_exit() {
 	if [ $REBOOT -eq 1 ]; then
-		whiptail --backtitle "xTuple Server v$_REV" --msgbox \
+		whiptail --backtitle "xTuple Utility v$_REV" --msgbox \
 		"You need to reboot your server for the changes to take effect" 0 0
 	fi
 	exit 0
@@ -24,7 +24,7 @@ dlf_fast() {
 
 msgbox() {
 	# $1 is the msg
-	whiptail --backtitle "xTuple Server v$_REV" --msgbox "$1" 0 0 0 
+	whiptail --backtitle "xTuple Utility v$_REV" --msgbox "$1" 0 0 0 
 }
 
 latest_version() {
