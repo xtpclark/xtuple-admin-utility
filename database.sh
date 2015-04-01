@@ -30,7 +30,7 @@ database_menu() {
             "5") create_database_from_file ;;
             "6") download_latest_demo ;;
             "7") download_demo ;;
-            "8") break ;;
+            "8") main_menu ;;
             *) msgbox "Error 002. How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
@@ -44,13 +44,13 @@ download_demo() {
             "2" "PostBooks 4.7.0 Empty" \
             "3" "PostBooks 4.8.1 Demo" \
             "4" "PostBooks 4.8.1 Empty" \
-            "5" "Return to main menu" \
+            "5" "Return to database menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
 
         if [ $RET -eq 1 ]; then
-            database_menu
+            return 0
         elif [ $RET -eq 0 ]; then
             case "$MENUVER" in
             "1") VERSION=4.7.0 
@@ -122,7 +122,13 @@ download_latest_demo() {
     fi
     
     if [ -z $DEMODEST ]; then
-        export DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+        DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return $RET
+        else
+            export DEMODEST
+        fi
     fi
         
     DB_URL="http://files.xtuple.org/$VERSION/demo.backup"
@@ -141,7 +147,7 @@ download_latest_demo() {
             DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
             RET=$?
             if [ $RET -eq 1 ]; then
-                return $RET
+                return 0
             fi
             echo "Creating database $DEST from file $DEMODEST"
             restore_database $DEMODEST $DEST

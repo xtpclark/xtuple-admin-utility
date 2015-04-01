@@ -29,7 +29,7 @@ postgresql_menu() {
             "4") apt-get -y remove postgresql-9.4 postgresql-contrib-9.4 ;;
             "5") prepare_database ;;
             "6") password_menu ;;
-            "7")  break ;;
+            "7") break ;;
             *) msgbox "Error 004. How did you get here?" && exit 0 ;;
             esac || postgresql_menu
         fi
@@ -108,8 +108,7 @@ password_menu() {
             "2") reset_psql postgres ;;
             "3") reset_sudo admin;;
             "4") reset_psql admin ;;
-            "5") postgresql_menu ;;
-            "6")  break ;;
+            "5") break ;;
             *) msgbox "Error 005. How did you get here?" && exit 0 ;;
             esac || postgresql_menu
         fi
