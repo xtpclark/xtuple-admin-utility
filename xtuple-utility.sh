@@ -35,7 +35,7 @@ source postgresql.sh
 source common.sh
 source database.sh
 
-# kind of hard to built whiptail menus without whiptail installed
+# kind of hard to build whiptail menus without whiptail installed
 install_prereqs
 
 # we load mainmenu.sh last since it calls its menu once it builds it

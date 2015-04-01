@@ -64,7 +64,7 @@ prepare_database() {
     check_database_info
     RET=$?
     if [ $RET -eq 1 ]; then
-        return $RET
+        return 0
     fi
     
     echo "Deploying init.sql, creating admin user and xtrole group"
@@ -72,7 +72,7 @@ prepare_database() {
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Error deplying init.sql. Check for errors and try again"
-        return $RET
+        return 0
     fi
     
     echo "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance"
@@ -80,7 +80,7 @@ prepare_database() {
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Error deplying extras.sql. Check for errors and try again"
-        return $RET
+        return 0
     fi
     
     msgbox "Operations completed successfully"
@@ -120,10 +120,10 @@ password_menu() {
 # $1 is user to reset
 reset_sudo() {
 
-    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
-        return $RET
+        return 0
     fi
     
     echo "Resetting PostgreSQL password for user $1 using psql via su - postgres"
@@ -132,7 +132,7 @@ reset_sudo() {
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
-        return $RET
+        return 0
     else
         msgbox "Password for user $1 successfully reset"
         return 0
@@ -143,10 +143,10 @@ reset_sudo() {
 # $1 is user to reset
 reset_psql() {
 
-    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
-        return $RET
+        return 0
     fi
     
     echo "Resetting PostgreSQL password for user $1 using psql directly"
@@ -155,7 +155,7 @@ reset_psql() {
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
-        return $RET
+        return 0
     else
         msgbox "Password for user $1 successfully reset"
         return 0

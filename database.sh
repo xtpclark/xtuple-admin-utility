@@ -311,7 +311,7 @@ create_database_from_file() {
 
 set_database_info() {
     if [ -z $PGHOST ]; then
-        PGHOST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Hostname" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGHOST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -320,7 +320,7 @@ set_database_info() {
         fi
     fi
     if [ -z $PGPORT ] ; then
-        PGPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Port" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
@@ -329,7 +329,7 @@ set_database_info() {
         fi
     fi
     if [ -z $PGUSER ] ; then
-        PGUSER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Username" 8 60 "$CH" 3>&1 1>&2 2>&3)
+        PGUSER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
