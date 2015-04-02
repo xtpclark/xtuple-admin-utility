@@ -26,7 +26,7 @@ provision_menu() {
                                ;;
             "nginx") install_nginx
                         ;;
-            "nodejs") msgbox "NodeJS not implemented yet"
+            "nodejs") apt-get -y install nodejs
                           ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                             ;;
