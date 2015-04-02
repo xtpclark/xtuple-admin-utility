@@ -23,10 +23,10 @@ postgresql_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") apt-get -y install postgresql-9.3 postgresql-client-9.3 postgresql-contrib-9.3;;
-            "2") apt-get -y remove postgresql-9.3 postgresql-contrib-9.3 ;;
-            "3") apt-get -y install postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4;;
-            "4") apt-get -y remove postgresql-9.4 postgresql-contrib-9.4 ;;
+            "1") install_postgresql 9.3 ;;
+            "2") remove_postgresql 9.3 ;;
+            "3") install_postgresql 9.4 ;;
+            "4") remove_postgresql 9.4 ;;
             "5") prepare_database ;;
             "6") password_menu ;;
             "7") break ;;
@@ -37,6 +37,7 @@ postgresql_menu() {
 
 }
 
+# $1 is mode (auto/manual)
 prepare_database() {
     INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
@@ -75,16 +76,18 @@ prepare_database() {
         return 0
     fi
     
-    echo "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance"
+    echo "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
     psql -q -U postgres -d postgres -f $XTPG/extras.sql
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Error deplying extras.sql. Check for errors and try again"
         return 0
     fi
-    
-    msgbox "Operations completed successfully"
-    return 0;
+    if [ -z $1 ] || [ $1 = "manual" ]; then
+        msgbox "Operations completed successfully"
+    else
+        return 0
+    fi
 }
 
 password_menu() {
@@ -109,11 +112,34 @@ password_menu() {
             "3") reset_sudo admin;;
             "4") reset_psql admin ;;
             "5") break ;;
-            *) msgbox "Error 005. How did you get here?" && exit 0 ;;
+            *) msgbox "How did you get here?" && exit 0 ;;
             esac || postgresql_menu
         fi
     done
 
+}
+
+# $1 is pg version (9.3, 9.4, etc)
+install_postgresql() {
+    apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1
+    RET=$?
+    if [ $RET -eq 1 ]; then
+    do_exit
+    elif [ $RET -eq 0 ]; then
+        export PGUSER=postgres
+        export PGPASSWORD=postgres
+        export PGHOST=localhost
+        export PGPORT=5432
+    fi
+    return $RET
+}
+
+# $1 is pg version (9.3, 9.4, etc)
+# we don't remove -client because we still need it for managment tasks
+remove_postgresql() {
+    apt-get -y remove postgresql-$1 postgresql-contrib-$1
+    RET=$?
+    return $RET
 }
 
 # $1 is user to reset
@@ -133,6 +159,8 @@ reset_sudo() {
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
         return 0
     else
+        export PGUSER=$1
+        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
@@ -156,6 +184,8 @@ reset_psql() {
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
         return 0
     else
+        export PGUSER=$1
+        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi

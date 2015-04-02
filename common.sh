@@ -32,14 +32,20 @@ latest_version() {
     echo `curl -s http://files.xtuple.org/latest_$1`
 }
 
+# these are both the same currently, but the structure may change eventually
+# as we add more supported distros
 install_prereqs() {
 case "$DISTRO" in
 	"ubuntu")
-			apt-get update && apt-get -y install axel git xz-utils whiptail unzip wget curl postgresql-client-9.3
+			apt-get update && apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
 			;;
 	 "debian")
-			apt-get update && apt-get -y install axel wget curl unzip whiptail git postgresql-client-9.3
+			apt-get update && apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
 			;;
+     "centos")
+            echo "Maybe one day we will support CentOS..."
+            do_exit
+            ;;
 	*)
 	echo "Shouldn't reach here! Please report this on GitHub."
 	exit 0

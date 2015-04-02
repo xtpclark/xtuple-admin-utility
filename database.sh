@@ -37,8 +37,16 @@ database_menu() {
     done
 }
 
+# $1 is mode, auto (no prompt for demo location, delete when done) 
+# manual, prompt for location, don't delete
 download_demo() {
     
+    if [ -z $1 ]; then
+        MODE="manual"
+    else
+        MODE="auto"
+    fi
+         
     MENUVER=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
             "1" "PostBooks 4.7.0 Demo" \
             "2" "PostBooks 4.7.0 Empty" \
@@ -70,10 +78,14 @@ download_demo() {
             esac || database_menu
         fi
     
-    DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return $RET
+    if [ $MODE = "manual" ]; then
+        DEMODEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return $RET
+        fi
+    elif [ $MODE = "auto" ]; then
+        DEMODEST=$XTMP/$VERSION-$DBTYPE.backup
     fi
         
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
@@ -90,24 +102,36 @@ download_demo() {
 		msgbox "There was an error verifying the downloaded database. Utility will now exit."
 		do_exit
     else
-        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
-            DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -eq 1 ]; then
-                return $RET
+        if [ $MODE = "manual" ]; then
+            if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
+                DEST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
+                RET=$?
+                if [ $RET -eq 1 ]; then
+                    return $RET
+                fi
+                echo "Creating database $DEST from file $DEMODEST"
+                restore_database $DEMODEST $DEST
+                RET=$?
+                if [ $RET -eq 1 ]; then
+                    msgbox "Something has gone wrong. Check output and correct any issues."
+                    do_exit
+                else
+                    msgbox "Database $DEST successfully restored from file $DEMODEST"
+                    return 0
+                fi
+            else
+                echo "Exiting without restoring database."
             fi
-            echo "Creating database $DEST from file $DEMODEST"
+        elif [ $MODE = "auto" ]; then
             restore_database $DEMODEST $DEST
             RET=$?
             if [ $RET -eq 1 ]; then
                 msgbox "Something has gone wrong. Check output and correct any issues."
+                rm $DEMODEST
                 do_exit
             else
-                msgbox "Database $DEST successfully restored from file $DEMODEST"
                 return 0
             fi
-        else
-            echo "Exiting without restoring database."
         fi
 	fi
 }
@@ -227,13 +251,14 @@ restore_database() {
     else
         DEST=$2
     fi
-
+    echo "Creating database $DEST."
     psql postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
         do_exit
     else
+        echo "Restoring database $DEST from file $1 on server $PGHOST:$PGPORT"
         pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DEST" "$1"
         RET=$?
         if [ $RET -eq 1 ]; then
