@@ -7,14 +7,14 @@ mkdir -p $XTPG
 postgresql_menu() {
 
     while true; do
-        PGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "PostgreSQL Menu" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
-            "1" "Install 9.3" \
-            "2" "Remove 9.3" \
-            "3" "Install 9.4" \
-            "4" "Remove 9.4" \
-            "5" "List provisioned clusters" \
-            "6" "Provision database cluster" \
-            "7" "Prepare database for xTuple" \
+        PGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "PostgreSQL Menu" 15 60 9 --cancel-button "Exit" --ok-button "Select" \
+            "1" "Install PostgreSQL 9.3" \
+            "2" "Remove PostgreSQL 9.3" \
+            "3" "Purge PostgreSQL 9.3" \
+            "4" "List provisioned clusters" \
+            "5" "Provision database cluster" \
+            "6" "Drop database cluster" \
+            "7" "Prepare cluster for xTuple" \
             "8" "Reset passwords" \
             "9" "Return to main menu" \
             3>&1 1>&2 2>&3)
@@ -27,14 +27,14 @@ postgresql_menu() {
             case "$PGM" in
             "1") install_postgresql 9.3 ;;
             "2") remove_postgresql 9.3 ;;
-            "3") install_postgresql 9.4 ;;
-            "4") remove_postgresql 9.4 ;;
-            "5") list_clusters ;;
-            "6") provision_cluster ;;
+            "3") purge_postgresql 9.3 ;;
+            "4") list_clusters ;;
+            "5") provision_cluster ;;
+            "6") drop_cluster ;;
             "7") prepare_database ;;
             "8") password_menu ;;
             "9") break ;;
-            *) msgbox "Error 004. How did you get here?" && exit 0 ;;
+            *) msgbox "Error. How did you get here?" && exit 0 ;;
             esac || postgresql_menu
         fi
     done
@@ -87,6 +87,13 @@ prepare_database() {
         msgbox "Error deplying extras.sql. Check for errors and try again"
         return 0
     fi
+    
+    reset_sudo admin
+    if [ $RET -eq 1 ]; then
+        msgbox "Error setting the admin password. Check for errors and try again"
+        return 0
+    fi
+    
     if [ -z $1 ] || [ $1 = "manual" ]; then
         msgbox "Operations completed successfully"
     else
@@ -146,25 +153,39 @@ remove_postgresql() {
     return $RET
 }
 
+# $1 is pg version (9.3, 9.4, etc)
+# we don't remove -client because we still need it for managment tasks
+purge_postgresql() {
+    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" 10 60) then
+        echo "Purging all traces of PostgreSQL $1..."
+    else
+        return 0
+    fi
+    
+    apt-get -y purge postgresql-$1 postgresql-contrib-$1
+    RET=$?
+    return $RET
+}
+
 list_clusters() {
     msgbox "`pg_lsclusters`"
 }
 
 provision_cluster() {
 
-    POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter PostgreSQL Version (make sure it is installed!" 8 60 "9.3" 3>&1 1>&2 2>&3)
+    POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
     
-    POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Cluster Name (make sure it isn't already in use!" 8 60 "xtuple" 3>&1 1>&2 2>&3)
+    POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
     
-    POSTPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Database Port (make sure it isn't already in use!" 8 60 "5432" 3>&1 1>&2 2>&3)
+    POSTPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
@@ -189,7 +210,51 @@ provision_cluster() {
         do_exit
     else
         msgbox "Creation of database cluster $POSTNAME using version $POSTVER created successfully."
+        export PGHOST=localhost
+        export PGUSER=postgres
+        export PGPASSWORD=postgres
         export PGPORT=$POSTPORT
+        reset_sudo postgres
+        if [ $RET -eq 1 ]; then
+            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu. "
+            do_exit
+        fi
+    fi
+    
+}
+# $1 is version
+# $2 is name
+# prompt if not provided
+drop_cluster() {
+
+    if [ -z $1 ]; then
+        POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTVER=$1
+    fi
+
+    if [ -z $2 ]; then
+        POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTNAME=$2
+    fi
+   
+    echo "Dropping database cluster $POSTNAME version $POSTVER"
+    su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
+        do_exit
+    else
+        msgbox "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
     fi
     
 }

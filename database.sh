@@ -173,7 +173,6 @@ download_latest_demo() {
             if [ $RET -eq 1 ]; then
                 return 0
             fi
-            echo "Creating database $DEST from file $DEMODEST"
             restore_database $DEMODEST $DEST
             RET=$?
             if [ $RET -eq 1 ]; then
@@ -239,7 +238,7 @@ restore_database() {
     check_database_info
     RET=$?
     if [ $RET -eq 1 ]; then
-        return $RET
+        return 0
     fi
     
     if [ -z $2 ]; then

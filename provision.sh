@@ -19,10 +19,10 @@ provision_menu() {
                                reset_sudo postgres
                                ;;
             "provisioncluster") provision_cluster 
-                                       reset_sudo postgres
+                                       #reset_sudo postgres
                                        ;;
             "preparext") prepare_database auto
-                               reset_sudo admin
+                               #reset_sudo admin
                                ;;
             "nginx") install_nginx
                         ;;
@@ -39,8 +39,6 @@ provision_menu() {
     
     if [ -n "$ACTIONS" ]; then
         msgbox "The following actions were completed: \n$ACTIONS" 
-    else
-        msgbox "No actions were taken. "
     fi
     return 0;
 }
