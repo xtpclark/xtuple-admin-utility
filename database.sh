@@ -291,7 +291,7 @@ carve_pilot() {
         return $RET
     elif [ $RET -eq 0 ]; then
         echo "Creating pilot database $PILOT from database $SOURCE"
-        psql postgres -q -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin"
+        psql postgres -q -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin"
         RET=$?
         if [ $RET -eq 1 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
