@@ -30,7 +30,7 @@ database_menu() {
             "5") create_database_from_file ;;
             "6") download_latest_demo ;;
             "7") download_demo ;;
-            "8") main_menu ;;
+            "8") break ;;
             *) msgbox "Error 002. How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
@@ -87,7 +87,7 @@ download_demo() {
 	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
 	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
 	if [ "$VALID" != "$CURRENT" ]; then
-		msgbox "There was an verifying the downloaded database. Utility will now exit."
+		msgbox "There was an error verifying the downloaded database. Utility will now exit."
 		do_exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
@@ -118,7 +118,7 @@ download_latest_demo() {
     
     if [ -z $VERSION ]; then
         msgbox "Could not determine latest database version"
-        exit
+        do_exit
     fi
     
     if [ -z $DEMODEST ]; then
