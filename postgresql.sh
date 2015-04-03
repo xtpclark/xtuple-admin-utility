@@ -30,7 +30,7 @@ postgresql_menu() {
             "3") purge_postgresql 9.3 ;;
             "4") list_clusters ;;
             "5") provision_cluster ;;
-            "6") drop_cluster ;;
+            "6") drop_cluster_menu ;;
             "7") prepare_database ;;
             "8") password_menu ;;
             "9") break ;;
@@ -43,6 +43,7 @@ postgresql_menu() {
 
 # $1 is mode (auto/manual)
 prepare_database() {
+
     INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
     
@@ -99,6 +100,7 @@ prepare_database() {
     else
         return 0
     fi
+
 }
 
 password_menu() {
@@ -132,6 +134,7 @@ password_menu() {
 
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
+
     apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -143,19 +146,29 @@ install_postgresql() {
         export PGPORT=5432
     fi
     return $RET
+
 }
 
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
+
+    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." 10 60) then
+        echo "Uninstalling PostgreSQL $1..."
+    else
+        return 0
+    fi
+
     apt-get -y remove postgresql-$1 postgresql-contrib-$1
     RET=$?
     return $RET
+
 }
 
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
+
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" 10 60) then
         echo "Purging all traces of PostgreSQL $1..."
     else
@@ -165,10 +178,24 @@ purge_postgresql() {
     apt-get -y purge postgresql-$1 postgresql-contrib-$1
     RET=$?
     return $RET
+
 }
 
 list_clusters() {
+
+    CLUSTERS=()
+    
+    while read -r line; do 
+        CLUSTERS+=("$line" "$line")
+    done < <( pg_lsclusters | tail -n +2 )
+
+     if [ -z "$CLUSTERS" ]; then
+        msgbox "No database clusters detected on this system"
+        return 0
+    fi
+
     msgbox "`pg_lsclusters`"
+
 }
 
 provision_cluster() {
@@ -222,12 +249,13 @@ provision_cluster() {
     fi
     
 }
+
 # $1 is version
 # $2 is name
 # prompt if not provided
 drop_cluster() {
 
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
@@ -237,7 +265,7 @@ drop_cluster() {
         POSTVER=$1
     fi
 
-    if [ -z $2 ]; then
+    if [ -z "$2" ]; then
         POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
@@ -259,12 +287,48 @@ drop_cluster() {
     
 }
 
+drop_cluster_menu() {
+
+    CLUSTERS=()
+    
+    while read -r line; do 
+        CLUSTERS+=("$line" "$line")
+    done < <( pg_lsclusters | tail -n +2 )
+
+     if [ -z $CLUSTERS ]; then
+        msgbox "No database clusters detected on this system"
+        return 0
+    fi
+    
+    CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        return 0
+    fi
+
+    if [ -z "$CLUSTER" ]; then
+        msgbox "No database clusters detected on this system"
+        return 0
+    fi
+
+    VER=`awk  '{print $1}' <<< "$CLUSTER"`
+    NAME=`awk  '{print $2}' <<< "$CLUSTER"`
+    
+    if [ -z "$VER" ] || [ -z "$NAME" ]; then
+        msgbox "Could not determine database version or name"
+        return 0
+    fi
+    
+    drop_cluster "$VER" "$NAME"
+    
+}
+
 # $1 is user to reset
 reset_sudo() {
 
     check_database_info
 
-    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0

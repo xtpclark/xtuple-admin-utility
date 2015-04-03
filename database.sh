@@ -30,7 +30,7 @@ database_menu() {
             "5") create_database_from_file ;;
             "6") download_latest_demo ;;
             "7") download_demo ;;
-            "8") break ;;
+            "8") main_menu ;;
             *) msgbox "Error 002. How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
@@ -338,42 +338,86 @@ create_database_from_file() {
     fi
     
 }
-
+  
 set_database_info() {
-    if [ -z $PGHOST ]; then
-        PGHOST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
+
+    if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
+        CLUSTERS=()
+        
+        while read -r line; do 
+            CLUSTERS+=("$line" "$line")
+        done < <( pg_lsclusters | tail -n +2 )
+
+         if [ -z "$CLUSTERS" ]; then
+            msgbox "No database clusters detected on this system"
+            return 0
+        fi
+        
+        CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
-            return $RET
-        else
-            export PGHOST
+            return 0
         fi
-    fi
-    if [ -z $PGPORT ] ; then
-        PGPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -eq 1 ]; then
-            return $RET
-        else
-            export PGPORT
+
+        if [ -z "$CLUSTER" ]; then
+            msgbox "No database clusters detected on this system"
+            return 0
         fi
-    fi
-    if [ -z $PGUSER ] ; then
-        PGUSER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -eq 1 ]; then
-            return $RET
-        else
-            export PGUSER
-        fi
-    fi
-    if [ -z $PGPASSWORD ] ; then
-        PGPASSWORD=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
+        
+        export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
+        export PGNAME=`awk  '{print $2}' <<< "$CLUSTER"`
+        export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
+        export PGHOST=localhost
+        export PGUSER=postgres
+        
+        PGPASSWORD=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return $RET
         else
             export PGPASSWORD
+        fi
+        
+        if [ -z "$PGVER" ] || [ -z "$PGNAME" ] || [ -z "$PGPORT" ]; then
+            msgbox "Could not determine database version or name"
+            return 0
+        fi
+    else
+        if [ -z $PGHOST ]; then
+            PGHOST=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -eq 1 ]; then
+                return $RET
+            else
+                export PGHOST
+            fi
+        fi
+        if [ -z $PGPORT ] ; then
+            PGPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -eq 1 ]; then
+                return $RET
+            else
+                export PGPORT
+            fi
+        fi
+        if [ -z $PGUSER ] ; then
+            PGUSER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -eq 1 ]; then
+                return $RET
+            else
+                export PGUSER
+            fi
+        fi
+        if [ -z $PGPASSWORD ] ; then
+            PGPASSWORD=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -eq 1 ]; then
+                return $RET
+            else
+                export PGPASSWORD
+            fi
         fi
     fi
 }
@@ -387,7 +431,6 @@ clear_database_info() {
 
 check_database_info() {
     if [ -z $PGHOST ] || [ -z $PGPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
-		msgbox "Database information incomplete. You will be prompted for missing information now. You can skip this dialog in the future by setting the PGHOST, PGPORT, PGUSER, PGPASSWORD environment variables"
         set_database_info
         RET=$?
         return $RET
@@ -395,5 +438,3 @@ check_database_info() {
 		return 0
 	fi
 }
-
-
