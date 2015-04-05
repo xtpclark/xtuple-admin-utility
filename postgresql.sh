@@ -7,7 +7,7 @@ mkdir -p $XTPG
 postgresql_menu() {
 
     while true; do
-        PGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "PostgreSQL Menu" 15 60 9 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "PostgreSQL Menu" 15 60 9 --cancel-button "Exit" --ok-button "Select" \
             "1" "Install PostgreSQL 9.3" \
             "2" "Remove PostgreSQL 9.3" \
             "3" "Purge PostgreSQL 9.3" \
@@ -106,7 +106,7 @@ prepare_database() {
 password_menu() {
 
     while true; do
-        PGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Reset Password Menu" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "Reset Password Menu" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
             "1" "Reset postgres via sudo postgres" \
             "2" "Reset postgres via psql" \
             "3" "Reset admin via sudo postgres" \
@@ -200,25 +200,25 @@ list_clusters() {
 
 provision_cluster() {
 
-    POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
+    POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
     
-    POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
+    POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
     
-    POSTPORT=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
+    POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
     
-    POSTLOCALE=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter Locale" 8 60 "en_US.UTF-8" 3>&1 1>&2 2>&3)
+    POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "en_US.UTF-8" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
@@ -256,7 +256,7 @@ provision_cluster() {
 drop_cluster() {
 
     if [ -z "$1" ]; then
-        POSTVER=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
+        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return 0
@@ -266,7 +266,7 @@ drop_cluster() {
     fi
 
     if [ -z "$2" ]; then
-        POSTNAME=$(whiptail --backtitle "xTuple Utility v$_REV" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return 0
@@ -274,8 +274,13 @@ drop_cluster() {
     else
         POSTNAME=$2
     fi
-   
-    echo "Dropping database cluster $POSTNAME version $POSTVER"
+	
+	if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" 10 60) then
+        echo "Dropping database cluster $POSTNAME version $POSTVER"
+    else
+        return 0
+    fi
+
     su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -295,7 +300,7 @@ drop_cluster_menu() {
         CLUSTERS+=("$line" "$line")
     done < <( pg_lsclusters | tail -n +2 )
 
-     if [ -z $CLUSTERS ]; then
+     if [ -z "$CLUSTERS" ]; then
         msgbox "No database clusters detected on this system"
         return 0
     fi
@@ -328,7 +333,7 @@ reset_sudo() {
 
     check_database_info
 
-    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
+    NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
@@ -355,7 +360,7 @@ reset_psql() {
 
     check_database_info
 
-    NEWPASS=$(whiptail --backtitle "xTuple Utility v$_REV" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
+    NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0

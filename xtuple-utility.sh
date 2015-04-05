@@ -6,7 +6,7 @@ DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="0.1Alpha"
 
 if [ `whoami` != "root" ]; then
-    echo "You must run the app as root."
+    echo "You must run xtuple-utility as root."
     echo "sudo $0"
     exit 0
 fi

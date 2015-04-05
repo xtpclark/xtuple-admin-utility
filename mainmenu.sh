@@ -3,7 +3,7 @@
 extras_menu() {
 while true; do
 
-	CC=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Extras Menu" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
+	CC=$(whiptail --backtitle "$( window_title )" --menu "Extras Menu" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
         "1" "Install Prerequesites" \
         "2" "Return to main menu" \
         3>&1 1>&2 2>&3)
@@ -25,7 +25,7 @@ done
 main_menu() {
 while true; do
 
-	CC=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "Main Menu" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
+	CC=$(whiptail --backtitle "$( window_title )" --menu "Main Menu" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
         "1" "Provisioning Menu" \
         "2" "PostgreSQL Maintainence" \
         "3" "Database Maintainence" \

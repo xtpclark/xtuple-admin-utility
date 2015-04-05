@@ -2,7 +2,7 @@
 
 do_exit() {
 	if [ $REBOOT -eq 1 ]; then
-		whiptail --backtitle "xTuple Utility v$_REV" --msgbox \
+		whiptail --backtitle "$( window_title )" --msgbox \
 		"You need to reboot your server for the changes to take effect" 0 0
 	fi
 	exit 0
@@ -24,12 +24,22 @@ dlf_fast() {
 
 msgbox() {
 	# $1 is the msg
-	whiptail --backtitle "xTuple Utility v$_REV" --msgbox "$1" 0 0 0 
+	whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0 
 }
 
 latest_version() {
     # $1 is the product
     echo `curl -s http://files.xtuple.org/latest_$1`
+}
+
+window_title() {
+    if [ -z $PGHOST ] && [ -z $PGPORT ] && [ -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+        echo "xTuple Utility v$_REV -=- Current Connection Info: Not Connected"
+	elif [ ! -z $PGHOST ] && [ ! -z $PGPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+        echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
+    else
+		echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
+	fi
 }
 
 # these are both the same currently, but the structure may change eventually

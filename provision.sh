@@ -4,7 +4,7 @@ provision_menu() {
     "Choose individual pieces to install" 15 60 7 \
     "postgresql" "PostgreSQL 9.3" OFF \
     "provisioncluster" "Provision PostgreSQL Cluster" OFF \
-    "preparext" "Add xTuple admin user and role" OFF \
+    "initdb" "Add xTuple admin user and role" OFF \
     "nginx" "Nginx" OFF \
     "nodejs" "NodeJS" OFF \
     "qtclient" "xTuple ERP Client" OFF \
@@ -21,7 +21,7 @@ provision_menu() {
             "provisioncluster") provision_cluster 
                                        #reset_sudo postgres
                                        ;;
-            "preparext") prepare_database auto
+            "initdb") prepare_database auto
                                #reset_sudo admin
                                ;;
             "nginx") install_nginx
