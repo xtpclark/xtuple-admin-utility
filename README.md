@@ -1,2 +1,10 @@
 # xtuple-utility
-hey look at that, you sly devil you, taking a peek at my commit activity. Well, go ahead and clone this, chmod +x xtuple-utility.sh and then go to town. Let me know how much you break. 
+xTuple management utility
+
+Getting Started, Ubuntu or Debian:
+apt-get install git
+
+git clone https://github.com/davidbeauchamp/xtuple-utility.git
+./xtuple-utility.sh
+
+Let me know how you make out!
