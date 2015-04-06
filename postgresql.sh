@@ -120,9 +120,9 @@ password_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") reset_sudo postgres 5432 ;;
+            "1") reset_sudo postgres ;;
             "2") reset_psql postgres ;;
-            "3") reset_sudo admin 5432 ;;
+            "3") reset_sudo admin ;;
             "4") reset_psql admin ;;
             "5") break ;;
             *) msgbox "How did you get here?" && exit 0 ;;
@@ -153,10 +153,10 @@ install_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 
-    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." 10 60) then
-        echo "Uninstalling PostgreSQL $1..."
+    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "No" --no-button "Yes" 10 60) then
+	return 0
     else
-        return 0
+        echo "Uninstalling PostgreSQL "$1"..."
     fi
 
     apt-get -y remove postgresql-$1 postgresql-contrib-$1
@@ -169,12 +169,11 @@ remove_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
 
-    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" 10 60) then
-        echo "Purging all traces of PostgreSQL $1..."
-    else
+    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "No" --no-button "Yes" 10 60) then
         return 0
-    fi
-    
+    else
+        echo "Purging PostgreSQL "$1"..."
+    fi 
     apt-get -y purge postgresql-$1 postgresql-contrib-$1
     RET=$?
     return $RET
@@ -198,30 +197,50 @@ list_clusters() {
 
 }
 
+# $1 is postgresql version
+# $2 is cluster name
+# $3 is port
+# $4 is locale
 provision_cluster() {
 
-    POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return 0
+    if [ -z $1 ]; then
+        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTVER=$1
+    fi
+
+    if [ -z $2 ]; then   
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTNAME=$2
     fi
     
-    POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return 0
+    if [ -z $3 ]; then
+        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTPORT=$3
     fi
     
-    POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return 0
-    fi
-    
-    POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "en_US.UTF-8" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return 0
+    if [ -z $4 ]; then  
+        POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "en_US.UTF-8" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTLOCALE=$4
     fi
     
     if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
@@ -243,7 +262,7 @@ provision_cluster() {
         export PGPORT=$POSTPORT
         reset_sudo postgres
         if [ $RET -eq 1 ]; then
-            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu. "
+            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
             do_exit
         fi
     fi
@@ -252,6 +271,7 @@ provision_cluster() {
 
 # $1 is version
 # $2 is name
+# $3 is mode (auto/manual)
 # prompt if not provided
 drop_cluster() {
 
@@ -275,21 +295,31 @@ drop_cluster() {
         POSTNAME=$2
     fi
 	
-	if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" 10 60) then
-        echo "Dropping database cluster $POSTNAME version $POSTVER"
+    if [ -z $3 ]; then
+        MODE="manual"
     else
-        return 0
+        MODE="auto"
+    fi
+    
+    if [ $MODE = "manual" ]; then
+        if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" --yes-button "No" --no-button "Yes" 10 60) then
+            return 0
+        else
+            echo "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
+        fi
     fi
 
     su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
-    if [ $RET -eq 1 ]; then
-        msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
-        do_exit
-    else
-        msgbox "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
+    if [ $MODE = "manual" ]; then
+        if [ $RET -eq 1 ]; then
+            msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
+            do_exit
+        else
+            msgbox "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
+        fi
     fi
-    
+    return $RET
 }
 
 drop_cluster_menu() {

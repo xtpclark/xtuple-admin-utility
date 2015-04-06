@@ -10,11 +10,14 @@ database_menu() {
             "1" "Set database info" \
             "2" "Clear database info" \
             "3" "Backup Database" \
-            "4" "Create Pilot Database From Existing Database" \
-            "5" "Create Database From File" \
-            "6" "Download Latest Demo Database" \
-            "7" "Download Specific Database" \
-            "8" "Return to main menu" \
+            "4" "List Databases" \
+            "5" "Rename Database" \
+            "6" "Drop Database" \
+            "7" "Carve Pilot From Existing Database" \
+            "8" "Create Database From File" \
+            "9" "Download Latest Demo Database" \
+            "10" "Download Specific Database" \
+            "11" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -26,12 +29,15 @@ database_menu() {
             "1") set_database_info ;;
             "2") clear_database_info ;;
             "3") backup_database ;;
-            "4") carve_pilot ;;
-            "5") create_database_from_file ;;
-            "6") download_latest_demo ;;
-            "7") download_demo ;;
-            "8") main_menu ;;
-            *) msgbox "Error 002. How did you get here?" && exit 0 ;;
+            "4") list_databases ;;
+            "5") rename_database_menu ;;
+            "6") drop_database_menu ;;
+            "7") carve_pilot ;;
+            "8") create_database_from_file ;;
+            "9") download_latest_demo ;;
+            "10") download_demo ;;
+            "11") main_menu ;;
+            *) msgbox "How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
     done
@@ -74,7 +80,7 @@ download_demo() {
                    DBTYPE="empty"
                    ;;
             "5") return 0 ;;
-            *) msgbox "Error 005. How did you get here?" && exit 0 ;;
+            *) msgbox "How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
     
@@ -269,6 +275,9 @@ restore_database() {
     fi
 }
 
+# $1 is source
+# $2 is new pilot
+# prompt if not provided
 carve_pilot() {
 
     check_database_info
@@ -277,27 +286,44 @@ carve_pilot() {
         return $RET
     fi
     
-    SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Source database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        return $RET
-    fi
-    
-    PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Pilot database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
-    RET=$?
+    if [ -z "$1" ]; then
+        DATABASES=()
 
-    if [ $RET -eq 1 ]; then
-        return $RET
-    elif [ $RET -eq 0 ]; then
-        echo "Creating pilot database $PILOT from database $SOURCE"
-        psql postgres -q -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin"
+        while read -r line; do
+            DATABASES+=("$line" "$line")
+         done < <( su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         if [ -z "$DATABASES" ]; then
+            msgbox "No databases detected on this system"
+            return 0
+        fi
+        
+        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
-            msgbox "Something has gone wrong. Check output and correct any issues."
-            do_exit
-        else
-            msgbox "Database "$PILOT" has been created"
+            return 0
         fi
+    else
+        SOURCE="$1"
+    fi
+
+    if [ -z "$2" ]; then
+        PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        PILOT="$2"
+    fi
+
+    echo "Creating pilot database $PILOT from database $SOURCE"
+    su - postgres -c "psql postgres -q -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        msgbox "Something has gone wrong. Check output and correct any issues."
+        do_exit
+    else
+        msgbox "Database "$PILOT" has been created"
     fi
 }
 
@@ -338,7 +364,149 @@ create_database_from_file() {
     fi
     
 }
-  
+
+list_databases() {
+
+    check_database_info
+
+    DATABASES=()
+
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+    #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
+     done < <( su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+
+    #msgbox "`su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'"`"
+
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+}
+
+drop_database_menu() {
+
+    check_database_info
+
+    DATABASES=()
+
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+    #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
+     done < <( su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+    
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        return 0
+    fi
+    
+    drop_database "$DATABASE"
+    
+}
+
+# $1 is name
+# prompt if not provided
+drop_database() {
+
+    check_database_info
+    
+    if [ -z "$1" ]; then
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        POSTNAME="$1"
+    fi
+	
+    if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" --yes-button "No" --no-button "Yes" 10 60) then
+        return 0
+    fi
+
+    su - postgres -c "psql -q -c \"DROP DATABASE $POSTNAME;\""
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
+        do_exit
+    else
+        msgbox "Dropping database $POSTNAME successful"
+    fi
+    
+}
+
+rename_database_menu() {
+
+    check_database_info
+
+    DATABASES=()
+
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+     done < <( su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+    
+    SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        return 0
+    fi
+    
+    DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        return 0
+    fi
+    
+    rename_database "$SOURCE" "$DEST"
+    
+}
+
+# $1 is source
+# $2 is new name
+# prompt if not provided
+rename_database() {
+
+    if [ -z "$1" ]; then
+        SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        SOURCE="$1"
+    fi
+
+    if [ -z "$2" ]; then
+        DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return 0
+        fi
+    else
+        DEST="$2"
+    fi
+
+    su - postgres -c "psql -q -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
+        do_exit
+    else
+        msgbox "Successfully renamed database $SOURCE to $DEST"
+    fi
+    
+}
+
 set_database_info() {
 
     if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then

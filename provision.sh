@@ -16,22 +16,21 @@ provision_menu() {
         for i in $ACTIONS; do   
             case "$i" in
             "postgresql") install_postgresql 9.3
-                               reset_sudo postgres
-                               ;;
-            "provisioncluster") provision_cluster 
-                                       #reset_sudo postgres
-                                       ;;
-            "initdb") prepare_database auto
-                               #reset_sudo admin
-                               ;;
-            "nginx") install_nginx
-                        ;;
-            "nodejs") apt-get -y install nodejs
+                          drop_cluster 9.3 main auto
                           ;;
+            "provisioncluster") provision_cluster 9.3
+                                ;;
+            "initdb") prepare_database auto
+                      #reset_sudo admin
+                      ;;
+            "nginx") install_nginx
+                     ;;
+            "nodejs") apt-get -y install nodejs
+                      ;;
             "qt-client") msgbox "Qt Client not implemented yet"
-                            ;;
+                         ;;
             "demodb") download_demo auto
-                            ;;
+                      ;;
              *) ;;
          esac || main_menu
         done
