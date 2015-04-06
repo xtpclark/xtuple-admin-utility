@@ -42,7 +42,7 @@ source provision.sh
 source nginx.sh
 
 # kind of hard to build whiptail menus without whiptail installed
-#install_prereqs
+install_prereqs
 
 # we load mainmenu.sh last since it calls its menu once it builds it
 # and this is the initial interface for the user
