@@ -37,7 +37,7 @@ database_menu() {
             "9") download_latest_demo ;;
             "10") download_demo ;;
             "11") main_menu ;;
-            *) msgbox "How did you get here?" && exit 0 ;;
+            *) msgbox "How did you get here?" && do_exit ;;
             esac || database_menu
         fi
     done

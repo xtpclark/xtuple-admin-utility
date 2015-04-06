@@ -34,7 +34,7 @@ postgresql_menu() {
             "7") prepare_database ;;
             "8") password_menu ;;
             "9") break ;;
-            *) msgbox "Error. How did you get here?" && exit 0 ;;
+            *) msgbox "Error. How did you get here?" && do_exit ;;
             esac || postgresql_menu
         fi
     done

@@ -4,7 +4,7 @@ extras_menu() {
 while true; do
 
 	CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
-        "1" "Install Prerequesites" \
+        "1" "Install Prerequisites" \
         "2" "Return to main menu" \
         3>&1 1>&2 2>&3)
 	
@@ -16,7 +16,7 @@ while true; do
         case "$CC" in
         "1") install_prereqs ;;
         "2") break ;;
-        *) msgbox "Error 001. Please report on GitHub" && exit 0 ;;
+        *) msgbox "Error 001. Please report on GitHub" && do_exit ;;
 		esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
 	fi
 done
@@ -44,7 +44,7 @@ while true; do
         "3") database_menu ;;
         "4") nginx_menu ;;
         "5") extras_menu ;;
-        *) msgbox "Error 001. Please report on GitHub" && exit 0 ;;
+        *) msgbox "Error 001. Please report on GitHub" && do_exit ;;
 		esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
 	fi
 done
