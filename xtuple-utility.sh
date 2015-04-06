@@ -26,8 +26,8 @@ case "$_R" in
         do_exit
         ;;
     *)
-        echo "I couldn't identify your distribution."
-        echo "Please report this error on GitHub"
+        echo "We do not currently support your distribution."
+        echo "Currently Supported: Ubuntu or Debian"
         echo "distro info: "
         lsb_release -a
         exit 0
