@@ -33,13 +33,19 @@ latest_version() {
 }
 
 window_title() {
+
     if [ -z $PGHOST ] && [ -z $PGPORT ] && [ -z $PGUSER ] && [ -z $PGPASSWORD ]; then
         echo "xTuple Utility v$_REV -=- Current Connection Info: Not Connected"
-	elif [ ! -z $PGHOST ] && [ ! -z $PGPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+    elif [ ! -z $PGHOST ] && [ ! -z $PGPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
         echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
     else
-		echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
-	fi
+        echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
+    fi
+}
+# $1 is text to display
+menu_title() {
+    cat xtuple.asc
+    echo "$1"
 }
 
 # these are both the same currently, but the structure may change eventually

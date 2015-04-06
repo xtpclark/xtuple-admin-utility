@@ -1,8 +1,8 @@
 #!/bin/bash
 provision_menu() {
-    ACTIONS=$(whiptail --separate-output --title "Select Software to Install" --checklist --cancel-button "Exit" \
-    "Choose individual pieces to install" 15 60 7 \
-    "postgresql" "PostgreSQL 9.3" OFF \
+    ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Exit" \
+    "Please choose the actions you would like to take" 15 60 7 \
+    "installpg93" "Install PostgreSQL 9.3" OFF \
     "provisioncluster" "Provision PostgreSQL Cluster" OFF \
     "initdb" "Add xTuple admin user and role" OFF \
     "nginx" "Nginx" OFF \
@@ -15,7 +15,7 @@ provision_menu() {
     if [ $RET = 0 ]; then
         for i in $ACTIONS; do   
             case "$i" in
-            "postgresql") install_postgresql 9.3
+            "installpg93") install_postgresql 9.3
                           drop_cluster 9.3 main auto
                           ;;
             "provisioncluster") provision_cluster 9.3

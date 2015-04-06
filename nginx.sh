@@ -3,7 +3,7 @@
 nginx_menu() {
 
     while true; do
-        NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "nginx Menu" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+        NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 4 --cancel-button "Exit" --ok-button "Select" \
             "1" "Install nginx" \
             "2" "Remove nginx" \
             "3" "Return to main menu" \
@@ -18,7 +18,7 @@ nginx_menu() {
             "1") install_nginx ;;
             "2") remove_nginx ;;
             "3") break ;;
-            *) msgbox "Error 004. How did you get here?" && exit 0 ;;
+            *) msgbox "How did you get here?" && exit 0 ;;
             esac || nginx_menu
         fi
     done

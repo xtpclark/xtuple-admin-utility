@@ -7,7 +7,7 @@ mkdir -p $XTPG
 postgresql_menu() {
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "PostgreSQL Menu" 15 60 9 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Exit" --ok-button "Select" \
             "1" "Install PostgreSQL 9.3" \
             "2" "Remove PostgreSQL 9.3" \
             "3" "Purge PostgreSQL 9.3" \
@@ -106,7 +106,7 @@ prepare_database() {
 password_menu() {
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "Reset Password Menu" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 7 --cancel-button "Exit" --ok-button "Select" \
             "1" "Reset postgres via sudo postgres" \
             "2" "Reset postgres via psql" \
             "3" "Reset admin via sudo postgres" \

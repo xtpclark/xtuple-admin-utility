@@ -6,7 +6,7 @@ mkdir -p $XTMP
 
 database_menu() {
     while true; do
-        DBM=$(whiptail --backtitle "$( window_title )" --menu "Database Menu" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
+        DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
             "1" "Set database info" \
             "2" "Clear database info" \
             "3" "Backup Database" \
