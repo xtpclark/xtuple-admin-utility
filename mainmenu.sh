@@ -5,7 +5,7 @@ while true; do
 
 	CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
         "1" "Install Prerequisites" \
-        "2" "Return to main menu" \
+        "2" "Return to Main Menu" \
         3>&1 1>&2 2>&3)
 	
 	RET=$?
@@ -27,9 +27,9 @@ while true; do
 
 	CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Main\ Menu)" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
         "1" "Provisioning Menu" \
-        "2" "PostgreSQL Maintainence" \
-        "3" "Database Maintainence" \
-        "4" "nginx Maintainence" \
+        "2" "PostgreSQL Maintenance" \
+        "3" "Database Maintenance" \
+        "4" "nginx Maintenance" \
         "5" "Extras Menu" \
         3>&1 1>&2 2>&3)
 	
