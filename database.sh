@@ -170,7 +170,7 @@ download_latest_demo() {
 	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
 	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
 	if [ "$VALID" != "$CURRENT" ]; then
-		msgbox "There was an verifying the downloaded database. Utility will now exit."
+		msgbox "There was an error verifying the downloaded database. Utility will now exit."
 		exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
