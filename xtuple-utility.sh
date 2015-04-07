@@ -6,8 +6,8 @@ DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="0.1Alpha"
 
 if [ `whoami` != "root" ]; then
-    echo "You must run xtuple-utility as root."
-    echo "sudo $0"
+    log "You must run xtuple-utility as root."
+    log "sudo $0"
     exit 0
 fi
 
@@ -20,7 +20,7 @@ case "$_DISTRO" in
         case "$_CODENAME" in
             "trusty") ;;
             "utopic") ;;
-            *) echo "We currently only support Ubuntu 14.04 LTS and 14.10. Current release: `lsb_release -r -s`" 
+            *) log "We currently only support Ubuntu 14.04 LTS and 14.10. Current release: `lsb_release -r -s`" 
                exit 0
                ;;
         esac
@@ -29,13 +29,13 @@ case "$_DISTRO" in
         export DISTRO="debian"
         ;;
     "CentOS")
-        echo "Maybe one day we will support CentOS..."
+        log "Maybe one day we will support CentOS..."
         exit 0
         ;;
     *)
-        echo "We do not currently support your distribution."
-        echo "Currently Supported: Ubuntu or Debian"
-        echo "distro info: "
+        log "We do not currently support your distribution."
+        log "Currently Supported: Ubuntu or Debian"
+        log "distro info: "
         lsb_release -a
         exit 0
         ;;
@@ -48,6 +48,8 @@ source database.sh
 source provision.sh
 source nginx.sh
 source logging.sh
+
+log "Starting xTuple Utility..."
 
 # kind of hard to build whiptail menus without whiptail installed
 install_prereqs

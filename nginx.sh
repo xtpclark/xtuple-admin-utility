@@ -2,6 +2,8 @@
 
 nginx_menu() {
 
+    log "Opened nginx menu"
+
     while true; do
         NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 4 --cancel-button "Exit" --ok-button "Select" \
             "1" "Install nginx" \
@@ -26,13 +28,13 @@ nginx_menu() {
 }
 
 install_nginx() {
-    apt-get -y install nginx
+    log_exec apt-get -y install nginx
     RET=$?
     return $RET
 }
 
 remove_nginx() {
-    apt-get -y remove nginx
+    log_exec apt-get -y remove nginx
     RET=$?
     return $RET
 }

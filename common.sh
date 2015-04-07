@@ -12,6 +12,7 @@ do_exit() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf() {
+    log "Downloading $1 to file $3 using wget"
 	wget "$1" 2>&1 -O $3  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --gauge "$2" 0 0 100
 }
 
@@ -19,17 +20,23 @@ dlf() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf_fast() {
+    log "Downloading $1 to file $3 using axel"
     axel -n 5 "$1" -o $3 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "xTuple Server v$_REV" --gauge "$2" 0 0 100
+    
 }
 
 # $1 is the msg
 msgbox() {
+    log "MessageBox >> ""$1"
     whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0 
+    
 }
 
 # $1 is the product
 latest_version() {
-    echo `curl -s http://files.xtuple.org/latest_$1`
+    VER=`curl -s http://files.xtuple.org/latest_$1`
+    log "Determined $VER is the latest version of $1 thanks to http://files.xtuple.org/latest_$1"
+    echo $VER
 }
 
 window_title() {
@@ -69,11 +76,11 @@ case "$DISTRO" in
             fi
             ;;
      "centos")
-            echo "Maybe one day we will support CentOS..."
+            log "Maybe one day we will support CentOS..."
             do_exit
             ;;
     *)
-    echo "Shouldn't reach here! Please report this on GitHub."
+    log "Shouldn't reach here! Please report this on GitHub."
     exit 0
     ;;
 esac

@@ -5,6 +5,9 @@ rm -rf $XTMP
 mkdir -p $XTMP
 
 database_menu() {
+
+    log "Opened database menu"
+
     while true; do
         DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
             "1" "Set database info" \
@@ -100,7 +103,7 @@ download_demo() {
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
 	dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
     
-    echo "Saving "$DB_URL" as "$DEMODEST"."
+    log "Saving "$DB_URL" as "$DEMODEST"."
     
 	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
 	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
@@ -109,13 +112,13 @@ download_demo() {
 		do_exit
     else
         if [ $MODE = "manual" ]; then
-            if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
+            if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
                 DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
                 RET=$?
                 if [ $RET -eq 1 ]; then
                     return $RET
                 fi
-                echo "Creating database $DEST from file $DEMODEST"
+                log "Creating database $DEST from file $DEMODEST"
                 restore_database $DEMODEST $DEST
                 RET=$?
                 if [ $RET -eq 1 ]; then
@@ -126,7 +129,7 @@ download_demo() {
                     return 0
                 fi
             else
-                echo "Exiting without restoring database."
+                log "Exiting without restoring database."
             fi
         elif [ $MODE = "auto" ]; then
             restore_database $DEMODEST $DEST
@@ -173,7 +176,7 @@ download_latest_demo() {
 		msgbox "There was an error verifying the downloaded database. Utility will now exit."
 		exit
     else
-        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
+        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
             DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
             RET=$?
             if [ $RET -eq 1 ]; then
@@ -189,7 +192,7 @@ download_latest_demo() {
                 return 0
             fi
         else
-            echo "Exiting without restoring database."
+            log "Exiting without restoring database."
         fi
 	fi
 }
@@ -224,7 +227,7 @@ backup_database() {
         SOURCE=$2
     fi
     
-    echo "Backing up database "$SOURCE" to file "$DEST"."
+    log "Backing up database "$SOURCE" to file "$DEST"."
     
     pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$DEST" "$SOURCE"
     RET=$?
@@ -256,15 +259,15 @@ restore_database() {
     else
         DEST=$2
     fi
-    echo "Creating database $DEST."
-    psql postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
+    log "Creating database $DEST."
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
         do_exit
     else
-        echo "Restoring database $DEST from file $1 on server $PGHOST:$PGPORT"
-        pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DEST" "$1"
+        log "Restoring database $DEST from file $1 on server $PGHOST:$PGPORT"
+        log_exec pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DEST" "$1"
         RET=$?
         if [ $RET -eq 1 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
@@ -316,7 +319,7 @@ carve_pilot() {
         PILOT="$2"
     fi
 
-    echo "Creating pilot database $PILOT from database $SOURCE"
+    log "Creating pilot database $PILOT from database $SOURCE"
     su - postgres -c "psql postgres -q -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -352,7 +355,7 @@ create_database_from_file() {
     if [ $RET -eq 1 ]; then
         return $RET
     elif [ $RET -eq 0 ]; then
-        echo "Creating database $PILOT from file $SOURCE"
+        log "Creating database $PILOT from file $SOURCE"
         restore_database $SOURCE $PILOT
         RET=$?
         if [ $RET -eq 1 ]; then

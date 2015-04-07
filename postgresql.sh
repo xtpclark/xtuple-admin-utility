@@ -6,6 +6,8 @@ mkdir -p $XTPG
 
 postgresql_menu() {
 
+    log "Opened PostgreSQL menu"
+
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Exit" --ok-button "Select" \
             "1" "Install PostgreSQL 9.3" \
@@ -79,16 +81,16 @@ prepare_database() {
         return 0
     fi
     
-    echo "Deploying init.sql, creating admin user and xtrole group"
-    psql -q -U postgres -d postgres -p $PGPORT -f $XTPG/init.sql
+    log "Deploying init.sql, creating admin user and xtrole group"
+    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $XTPG/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deplying init.sql. Check for errors and try again"
         do_exit
     fi
     
-    echo "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
-    psql -q -U postgres -d postgres -p $PGPORT -f $XTPG/extras.sql
+    log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
+    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $XTPG/extras.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deplying extras.sql. Check for errors and try again"
@@ -110,6 +112,8 @@ prepare_database() {
 }
 
 password_menu() {
+
+    log "Opened password menu"
 
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 7 --cancel-button "Exit" --ok-button "Select" \
@@ -141,7 +145,7 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8
+    log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8
     RET=$?
     if [ $RET -eq 1 ]; then
     do_exit
@@ -162,10 +166,10 @@ remove_postgresql() {
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "No" --no-button "Yes" 10 60) then
 	return 0
     else
-        echo "Uninstalling PostgreSQL "$1"..."
+        log "Uninstalling PostgreSQL "$1"..."
     fi
 
-    apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8
+    log_exec apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8
     RET=$?
     return $RET
 
@@ -178,9 +182,9 @@ purge_postgresql() {
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "No" --no-button "Yes" 10 60) then
         return 0
     else
-        echo "Purging PostgreSQL "$1"..."
+        log "Purging PostgreSQL "$1"..."
     fi 
-    apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
+    log_exec apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
     RET=$?
     return $RET
 
@@ -254,8 +258,8 @@ provision_cluster() {
     else
         POSTSTART=""
     fi
-    echo "Creating database cluster $POSTNAME using version $POSTVER"
-    su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
+    log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
+    log_exec su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
@@ -311,11 +315,11 @@ drop_cluster() {
         if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" --yes-button "No" --no-button "Yes" 10 60) then
             return 0
         else
-            echo "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
+            log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
         fi
     fi
-
-    su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+    log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
+    log_exec su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
     if [ $MODE = "manual" ]; then
         if [ $RET -eq 1 ]; then
@@ -375,9 +379,9 @@ reset_sudo() {
         return 0
     fi
     
-    echo "Resetting PostgreSQL password for user $1 using psql via su - postgres"
+    log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
     
-    su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
+    log_exec su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
@@ -402,9 +406,9 @@ reset_psql() {
         return 0
     fi
     
-    echo "Resetting PostgreSQL password for user $1 using psql directly"
+    log "Resetting PostgreSQL password for user $1 using psql directly"
     
-    psql -q -U postgres -d postgres  -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\"
+    log_exec psql -q -U postgres -d postgres  -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\"
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
