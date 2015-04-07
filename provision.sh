@@ -1,10 +1,10 @@
 #!/bin/bash
 provision_menu() {
-    ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Exit" \
+    ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Return" \
     "Please choose the actions you would like to take" 15 60 7 \
-    "installpg93" "Install PostgreSQL 9.3" OFF \
-    "provisioncluster" "Provision PostgreSQL Cluster" OFF \
-    "initdb" "Add xTuple admin user and role" OFF \
+    "installpg93" "Install PostgreSQL 9.3" ON \
+    "provisioncluster" "Provision PostgreSQL Cluster" ON \
+    "initdb" "Add xTuple admin user and role" ON \
     "nginx" "Nginx" OFF \
     "nodejs" "NodeJS" OFF \
     "qtclient" "xTuple ERP Client" OFF \
@@ -13,15 +13,19 @@ provision_menu() {
 
     RET=$?
     if [ $RET = 0 ]; then
+    if [[ $ACTIONS =~ .*installpg93.* ]] && [[ ! $ACTIONS =~ .*provision_cluster.* ]]
+    then
+        msgbox "You are about to install PostgreSQL but not provision to any clusters. \nYou will need to create a cluster manually before you can initialize \nit for xTuple. If you have chosen to initialize the database or install a demo \nthose actions will be skipped."
+        SKIP=1
+    fi
         for i in $ACTIONS; do   
             case "$i" in
             "installpg93") install_postgresql 9.3
                           drop_cluster 9.3 main auto
                           ;;
-            "provisioncluster") provision_cluster 9.3
+            "provisioncluster") [[ $SKIP -ne 1 ]] && provision_cluster 9.3
                                 ;;
-            "initdb") prepare_database auto
-                      #reset_sudo admin
+            "initdb") [[ $SKIP -ne 1 ]] && prepare_database auto
                       ;;
             "nginx") install_nginx
                      ;;
@@ -29,7 +33,7 @@ provision_menu() {
                       ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                          ;;
-            "demodb") download_demo auto
+            "demodb") [[ $SKIP -ne 1 ]] && download_demo auto
                       ;;
              *) ;;
          esac || main_menu

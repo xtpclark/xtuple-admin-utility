@@ -170,7 +170,7 @@ download_latest_demo() {
 	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
 	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
 	if [ "$VALID" != "$CURRENT" ]; then
-		msgbox "There was an error verifying the downloaded database. Utility will now exit."
+		msgbox "There was an verifying the downloaded database. Utility will now exit."
 		exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?." 10 60) then
@@ -518,18 +518,18 @@ set_database_info() {
 
          if [ -z "$CLUSTERS" ]; then
             msgbox "No database clusters detected on this system"
-            return 0
+            return 1
         fi
         
         CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
-            return 0
+            return $RET
         fi
 
         if [ -z "$CLUSTER" ]; then
             msgbox "No database clusters detected on this system"
-            return 0
+            return 1
         fi
         
         export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`

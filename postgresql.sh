@@ -44,6 +44,12 @@ postgresql_menu() {
 # $1 is mode (auto/manual)
 prepare_database() {
 
+    check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
     INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
     
@@ -69,28 +75,28 @@ prepare_database() {
     
     check_database_info
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
     
     echo "Deploying init.sql, creating admin user and xtrole group"
     psql -q -U postgres -d postgres -p $PGPORT -f $XTPG/init.sql
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Error deplying init.sql. Check for errors and try again"
-        return 0
+        do_exit
     fi
     
     echo "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
     psql -q -U postgres -d postgres -p $PGPORT -f $XTPG/extras.sql
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Error deplying extras.sql. Check for errors and try again"
         return 0
     fi
     
     reset_sudo admin
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Error setting the admin password. Check for errors and try again"
         return 0
     fi
@@ -234,7 +240,7 @@ provision_cluster() {
     fi
     
     if [ -z $4 ]; then  
-        POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "en_US.UTF-8" 3>&1 1>&2 2>&3)
+        POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
             return 0
