@@ -12,18 +12,25 @@ if [ `whoami` != "root" ]; then
 fi
 
 # check what distro we are running.
-_R=`lsb_release -i -s`
-
-case "$_R" in
+_DISTRO=`lsb_release -i -s`
+_CODENAME=`lsb_release -c -s`
+case "$_DISTRO" in
     "Ubuntu")
         export DISTRO="ubuntu"
+        case "$_CODENAME" in
+            "trusty") ;;
+            "utopic") ;;
+            *) echo "We currently only support Ubuntu 14.04 LTS and 14.10. Current release: `lsb_release -r -s`" 
+               exit 0
+               ;;
+        esac
         ;;
     "Debian")
         export DISTRO="debian"
         ;;
     "CentOS")
         echo "Maybe one day we will support CentOS..."
-        do_exit
+        exit 0
         ;;
     *)
         echo "We do not currently support your distribution."
@@ -40,6 +47,7 @@ source postgresql.sh
 source database.sh
 source provision.sh
 source nginx.sh
+source logging.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 install_prereqs
