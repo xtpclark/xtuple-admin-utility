@@ -145,7 +145,7 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8
+    log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     if [ $RET -eq 1 ]; then
     do_exit
@@ -169,7 +169,7 @@ remove_postgresql() {
         log "Uninstalling PostgreSQL "$1"..."
     fi
 
-    log_exec apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8
+    log_exec apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     return $RET
 
@@ -265,6 +265,40 @@ provision_cluster() {
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     else
+        PGDIR=/etc/postgresql/$POSTVER/$POSTNAME/postgresql.conf
+        
+        log "Setting cluster to listen on all interfaces"
+        log_exec sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
+        log_exec sudo sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            msgbox "Configuring cluster network failed. Check log file and try again. "
+            do_exit
+        fi
+
+        log "Setting custom variable class to include plv8"
+        log_exec sudo echo "custom_variable_classes = 'plv8'" >> $PGDIR/postgresql.conf
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            msgbox "Setting custom variable class failed. Check log file and try again. "
+            do_exit
+        fi
+        
+        log "Opening pg_hba.conf for local trust"
+        log_exec sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
+        log_exec sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            msgbox "Opening pg_hba.conf failed. Check log file and try again. "
+            do_exit
+        fi
+        
+        sudo chown postgres $PGDIR/postgresql.conf
+        sudo chown postgres $PGDIR/pg_hba.conf
+        
+        log "Restarting PostgreSQL"
+        log_exec sudo service postgresql restart
+        
         msgbox "Creation of database cluster $POSTNAME using version $POSTVER created successfully."
         export PGHOST=localhost
         export PGUSER=postgres

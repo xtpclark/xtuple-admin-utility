@@ -1,15 +1,31 @@
 #!/bin/bash
 
-# Some variables.
 REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="0.1Alpha"
 
-if [ `whoami` != "root" ]; then
-    log "You must run xtuple-utility as root."
-    log "sudo $0"
-    exit 0
+# import supporting scripts
+source logging.sh
+source common.sh
+
+#if [ `whoami` != "root" ]; then
+#    log "You must run xtuple-utility as root."
+#    log "sudo $0"
+#    exit 0
+#fi
+
+log "Starting xTuple Admin Utility..."
+
+log "Checking for sudo..."
+if ! which sudo > /dev/null;
+then
+  log "Please install sudo and grant yourself access to sudo:"
+  log "   # apt-get install sudo"
+  log "   # addgroup $USER sudo"
+  exit 1
 fi
+
+#alias sudo='sudo env PATH=$PATH $@'
 
 # check what distro we are running.
 _DISTRO=`lsb_release -i -s`
@@ -21,35 +37,90 @@ case "$_DISTRO" in
             "trusty") ;;
             "utopic") ;;
             *) log "We currently only support Ubuntu 14.04 LTS and 14.10. Current release: `lsb_release -r -s`" 
-               exit 0
+               do_exit
                ;;
         esac
         ;;
     "Debian")
         export DISTRO="debian"
+        case "$_CODENAME" in
+            *) log "We currently don't support Debian (not quite yet!) Current release: `lsb_release -r -s`" 
+               do_exit
+               ;;
+        esac
         ;;
     "CentOS")
         log "Maybe one day we will support CentOS..."
-        exit 0
+        do_exit
         ;;
     *)
         log "We do not currently support your distribution."
         log "Currently Supported: Ubuntu or Debian"
         log "distro info: "
         lsb_release -a
-        exit 0
+        do_exit
         ;;
 esac
 
-# Load the scripts
-source common.sh
+# process command line arguments
+while getopts ":d:ipnhmx-:" opt; do
+  case $opt in
+    d)
+        PG_VERSION=$OPTARG
+        log "PostgreSQL Version set to $PG_VERSION via command line argument"
+        ;;
+    i)
+        # Install packages
+        RUNALL=
+        INSTALL=true
+        ;;
+    p)
+        # Configure postgress
+        RUNALL=
+        POSTGRES=true
+        ;;
+    n)
+        # iNitialize the databases and stuff
+        RUNALL=
+        INIT=true
+        ;;
+    m)
+        RUNALL=
+        NPM_INSTALL=true
+        ;;
+    x)
+        # Checkout a specific version of the xTuple repo
+        XT_VERSION=$OPTARG
+        log "xTuple MWC Version set to $XT_VERSION via command line argument"
+        ;;
+    node)
+        # select the version to use for nodejs
+        NODE_VERSION=$OPTARG
+        log "NodeJS Version set to $NODE_VERSION via command line argument"
+        ;;
+    h)
+        echo "Usage: xtuple-utility [OPTION]"
+        echo "$( menu_title )"
+        echo "To get an interactive menu run xtuple-utility.sh with no arguments"
+        echo ""
+        echo -e "  -h\tshow this message"
+        echo -e "  -i\tinstall packages"
+        echo -e "  -p\tinstall PostgreSQL"
+        echo -e "  -n\tinit database"
+        echo -e "  -m\tnpm install"
+        echo -e "  -x\tspecify xTuple version"
+        echo -e "  -d\tspecify PostgreSQL version"
+        exit 0;
+      ;;
+  esac
+done
+
+# Load the rest of the scripts
 source postgresql.sh
 source database.sh
 source provision.sh
 source nginx.sh
-source logging.sh
-
-log "Starting xTuple Utility..."
+source mobileclient.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 install_prereqs

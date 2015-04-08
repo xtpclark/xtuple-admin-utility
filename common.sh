@@ -1,11 +1,12 @@
 #!/bin/bash
 
 do_exit() {
-	if [ $REBOOT -eq 1 ]; then
-		whiptail --backtitle "$( window_title )" --msgbox \
-		"You need to reboot your server for the changes to take effect" 0 0
-	fi
-	exit 0
+    if [ $REBOOT -eq 1 ]; then
+        whiptail --backtitle "$( window_title )" --msgbox \
+        "You need to reboot your server for the changes to take effect" 0 0
+    fi
+    log "Exiting xTuple Admin Utility"
+    exit 0
 }
 
 # $1 is the URL
@@ -13,7 +14,7 @@ do_exit() {
 # $3 is the output file name
 dlf() {
     log "Downloading $1 to file $3 using wget"
-	wget "$1" 2>&1 -O $3  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --gauge "$2" 0 0 100
+    wget "$1" 2>&1 -O $3  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
 }
 
 # $1 is the URL
@@ -21,15 +22,13 @@ dlf() {
 # $3 is the output file name
 dlf_fast() {
     log "Downloading $1 to file $3 using axel"
-    axel -n 5 "$1" -o $3 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "xTuple Server v$_REV" --gauge "$2" 0 0 100
-    
+    axel -n 5 "$1" -o $3 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
 }
 
 # $1 is the msg
 msgbox() {
     log "MessageBox >> ""$1"
     whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0 
-    
 }
 
 # $1 is the product
@@ -41,11 +40,11 @@ latest_version() {
 
 window_title() {
     if [ -z $PGHOST ] && [ -z $PGPORT ] && [ -z $PGUSER ] && [ -z $PGPASSWORD ]; then
-        echo "xTuple Utility v$_REV -=- Current Connection Info: Not Connected"
+        echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
     elif [ ! -z $PGHOST ] && [ ! -z $PGPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
-        echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
     else
-        echo "xTuple Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
     fi
 }
 
@@ -60,7 +59,7 @@ menu_title() {
 install_prereqs() {
 case "$DISTRO" in
     "ubuntu")
-            apt-get update && apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
+            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
             RET=$?
             if [ $RET -eq 1 ]; then
                 msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
@@ -68,7 +67,7 @@ case "$DISTRO" in
             fi
             ;;
     "debian")
-            apt-get update && apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
+            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
             RET=$?
             if [ $RET -eq 1 ]; then
                 msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "

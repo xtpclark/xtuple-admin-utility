@@ -18,7 +18,7 @@ extras_menu() {
             case "$CC" in
             "1") install_prereqs ;;
             "2") break ;;
-            *) msgbox "Error 001. Please report on GitHub" && do_exit ;;
+            *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu" && do_exit ;;
             esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
         fi
     done
@@ -26,16 +26,17 @@ extras_menu() {
 
 main_menu() {
 
-    log "opened main menu"
+    log "Opened main menu"
 
     while true; do
 
         CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Main\ Menu)" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
             "1" "Provisioning Menu" \
-            "2" "PostgreSQL Maintainence" \
-            "3" "Database Maintainence" \
-            "4" "nginx Maintainence" \
-            "5" "Extras Menu" \
+            "2" "PostgreSQL Maintenance" \
+            "3" "Database Maintenance" \
+            "4" "nginx Maintenance" \
+            "5" "Web Client Maintenance" \
+            "6" "Extras Menu" \
             3>&1 1>&2 2>&3)
         
         RET=$?
@@ -48,8 +49,9 @@ main_menu() {
             "2") postgresql_menu ;;
             "3") database_menu ;;
             "4") nginx_menu ;;
-            "5") extras_menu ;;
-            *) msgbox "Error 001. Please report on GitHub" && do_exit ;;
+            "5") mwc_menu ;;
+            "6") extras_menu ;;
+            *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
         fi
     done
