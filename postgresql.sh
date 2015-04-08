@@ -1,8 +1,8 @@
 #!/bin/bash
 
 XTPG="/tmp/xtpg"
-rm -rf $XTPG
-mkdir -p $XTPG
+sudo rm -rf $XTPG
+sudo mkdir -p $XTPG
 
 postgresql_menu() {
 

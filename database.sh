@@ -1,8 +1,8 @@
 #!/bin/bash
 XTMP="/tmp/xtdb"
 
-rm -rf $XTMP
-mkdir -p $XTMP
+sudo rm -rf $XTMP
+sudo mkdir -p $XTMP
 
 database_menu() {
 

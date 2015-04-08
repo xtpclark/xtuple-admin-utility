@@ -3,8 +3,8 @@
 NODE_VERSION=0.10.31
 
 XTMWC="/tmp/xtmwc"
-rm -rf $XTMWC
-mkdir -p $XTMWC
+sudo rm -rf $XTMWC
+sudo mkdir -p $XTMWC
 
 mwc_menu() {
 
