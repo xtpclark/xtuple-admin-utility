@@ -269,6 +269,8 @@ provision_cluster() {
         
         log "Setting cluster to listen on all interfaces"
         log_exec sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
+        log_exec sudo chown postgres.postgres $PGDIR/postgresql.conf
+        log_exec sudo chown postgres.postgres $PGDIR/postgresql.conf.default
         log_exec sudo sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -278,6 +280,8 @@ provision_cluster() {
     
         log "Opening pg_hba.conf for local trust"
         log_exec sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
+        log_exec udo chown postgres $PGDIR/pg_hba.conf
+        log_exec udo chown postgres $PGDIR/pg_hba.conf.default
         log_exec sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -292,9 +296,6 @@ provision_cluster() {
             msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
             do_exit
         fi
-        
-        sudo chown postgres $PGDIR/postgresql.conf
-        sudo chown postgres $PGDIR/pg_hba.conf
         
         log "Restarting PostgreSQL"
         log_exec sudo service postgresql restart
