@@ -145,7 +145,7 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
+    log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     if [ $RET -ne 0 ]; then
     do_exit
@@ -169,7 +169,7 @@ remove_postgresql() {
         log "Uninstalling PostgreSQL "$1"..."
     fi
 
-    log_exec apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
+    log_exec sudo apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     return $RET
 
@@ -184,7 +184,7 @@ purge_postgresql() {
     else
         log "Purging PostgreSQL "$1"..."
     fi 
-    log_exec apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
+    log_exec sudo apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
     RET=$?
     return $RET
 
