@@ -259,7 +259,7 @@ provision_cluster() {
         POSTSTART=""
     fi
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
-    log_exec su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
+    log_exec sudo su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
@@ -353,7 +353,7 @@ drop_cluster() {
         fi
     fi
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
-    log_exec su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+    log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
     if [ $MODE = "manual" ]; then
         if [ $RET -ne 0 ]; then
@@ -415,7 +415,7 @@ reset_sudo() {
     
     log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
     
-    log_exec su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
+    log_exec sudo su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
