@@ -265,7 +265,7 @@ provision_cluster() {
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     else
-        PGDIR=/etc/postgresql/$POSTVER/$POSTNAME/postgresql.conf
+        PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
         
         log "Setting cluster to listen on all interfaces"
         log_exec sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
@@ -275,21 +275,21 @@ provision_cluster() {
             msgbox "Configuring cluster network failed. Check log file and try again. "
             do_exit
         fi
-
-        log "Setting custom variable class to include plv8"
-        log_exec sudo echo "custom_variable_classes = 'plv8'" >> $PGDIR/postgresql.conf
-        RET=$?
-        if [ $RET -eq 1 ]; then
-            msgbox "Setting custom variable class failed. Check log file and try again. "
-            do_exit
-        fi
-        
+    
         log "Opening pg_hba.conf for local trust"
         log_exec sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
         log_exec sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
         RET=$?
         if [ $RET -eq 1 ]; then
             msgbox "Opening pg_hba.conf failed. Check log file and try again. "
+            do_exit
+        fi
+        
+        log "Opening pg_hba.conf for internet access with passwords"
+        log_exec sudo echo  "host    all             all             0.0.0.0/0                 md5" >> $PGDIR/pg_hba.conf
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
             do_exit
         fi
         
