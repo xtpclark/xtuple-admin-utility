@@ -50,7 +50,7 @@ window_title() {
 
 # $1 is text to display
 menu_title() {
-    cat xtuple.asc
+    cat "$WORKDIR"/xtuple.asc
     echo "$1"
 }
 

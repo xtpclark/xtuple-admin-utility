@@ -23,7 +23,7 @@ postgresql_menu() {
 
         RET=$?
 
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
@@ -126,7 +126,7 @@ password_menu() {
 
         RET=$?
 
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
@@ -147,7 +147,7 @@ install_postgresql() {
 
     log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
     do_exit
     elif [ $RET -eq 0 ]; then
         export PGUSER=postgres
@@ -216,7 +216,7 @@ provision_cluster() {
     if [ -z $1 ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -226,7 +226,7 @@ provision_cluster() {
     if [ -z $2 ]; then   
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -236,7 +236,7 @@ provision_cluster() {
     if [ -z $3 ]; then
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -246,7 +246,7 @@ provision_cluster() {
     if [ -z $4 ]; then  
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -261,7 +261,7 @@ provision_cluster() {
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
     log_exec su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     else
@@ -271,7 +271,7 @@ provision_cluster() {
         log_exec sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
         log_exec sudo sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Configuring cluster network failed. Check log file and try again. "
             do_exit
         fi
@@ -280,7 +280,7 @@ provision_cluster() {
         log_exec sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
         log_exec sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Opening pg_hba.conf failed. Check log file and try again. "
             do_exit
         fi
@@ -288,7 +288,7 @@ provision_cluster() {
         log "Opening pg_hba.conf for internet access with passwords"
         log_exec sudo echo  "host    all             all             0.0.0.0/0                 md5" >> $PGDIR/pg_hba.conf
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
             do_exit
         fi
@@ -305,7 +305,7 @@ provision_cluster() {
         export PGPASSWORD=postgres
         export PGPORT=$POSTPORT
         reset_sudo postgres
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
             do_exit
         fi
@@ -322,7 +322,7 @@ drop_cluster() {
     if [ -z "$1" ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -332,7 +332,7 @@ drop_cluster() {
     if [ -z "$2" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -356,7 +356,7 @@ drop_cluster() {
     log_exec su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
     if [ $MODE = "manual" ]; then
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
             do_exit
         else
@@ -381,7 +381,7 @@ drop_cluster_menu() {
     
     CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
@@ -409,7 +409,7 @@ reset_sudo() {
 
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
     
@@ -417,7 +417,7 @@ reset_sudo() {
     
     log_exec su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
         return 0
     else
@@ -436,7 +436,7 @@ reset_psql() {
 
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
     
@@ -444,7 +444,7 @@ reset_psql() {
     
     log_exec psql -q -U postgres -d postgres  -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\"
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
         return 0
     else

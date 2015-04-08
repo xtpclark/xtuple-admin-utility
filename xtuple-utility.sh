@@ -3,6 +3,7 @@
 REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="0.1Alpha"
+export WORKDIR=`pwd`
 
 # import supporting scripts
 source logging.sh
@@ -123,6 +124,7 @@ source nginx.sh
 source mobileclient.sh
 
 # kind of hard to build whiptail menus without whiptail installed
+log "Installing pre-requisite packages..."
 install_prereqs
 
 # we load mainmenu.sh last since it calls its menu once it builds it
