@@ -14,7 +14,7 @@ do_exit() {
 # $3 is the output file name
 dlf() {
     log "Downloading $1 to file $3 using wget"
-    wget "$1" 2>&1 -O $3  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
+    sudo wget "$1" 2>&1 -O $3  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
 }
 
 # $1 is the URL
@@ -22,7 +22,7 @@ dlf() {
 # $3 is the output file name
 dlf_fast() {
     log "Downloading $1 to file $3 using axel"
-    axel -n 5 "$1" -o $3 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
+    sudo axel -n 5 "$1" -o $3 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
 }
 
 # $1 is the msg

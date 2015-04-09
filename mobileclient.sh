@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NODE_VERSION=0.10.31
+NODE_VERSION=0.10.32
 
 XTMWC="/tmp/xtmwc"
 sudo rm -rf $XTMWC
@@ -65,10 +65,10 @@ install_mwc_prereqs() {
     log_exec sudo apt-get -q -y install build-essential libssl-dev
 
     log "Cloning xTuple Web Client Source Code to ~/xtuple"
-    rm -rf ~/xtuple
-    mkdir ~/xtuple && cd ~/xtuple
+    #rm -rf ~/xtuple
+    #mkdir ~/xtuple && cd ~/xtuple
     
-	git clone git://github.com/xtuple/xtuple.git
+	#git clone git://github.com/xtuple/xtuple.git
     
     # this has always looked odd to me
     cd ~/xtuple/xtuple
@@ -127,7 +127,7 @@ init_everythings() {
   cat sample_login_data.js | sed "s/org: \'dev\'/org: \'$DATABASE\'/" > login_data.js
 	log "Created testing login_data.js"
 
-	cdir $XT_DIR
+	cd $XT_DIR
 	npm run-script test-build 2>&1 | tee -a $LOG_FILE
 
 	log "You can login to the database and mobile client with:"

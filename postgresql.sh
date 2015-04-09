@@ -196,14 +196,14 @@ list_clusters() {
     
     while read -r line; do 
         CLUSTERS+=("$line" "$line")
-    done < <( pg_lsclusters | tail -n +2 )
+    done < <( sudo pg_lsclusters | tail -n +2 )
 
      if [ -z "$CLUSTERS" ]; then
         msgbox "No database clusters detected on this system"
         return 0
     fi
 
-    msgbox "`pg_lsclusters`"
+    msgbox "`sudo pg_lsclusters`"
 
 }
 
@@ -259,7 +259,7 @@ provision_cluster() {
         POSTSTART=""
     fi
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
-    log_exec sudo su - postgres -c "pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME"
+    log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
@@ -268,10 +268,8 @@ provision_cluster() {
         PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
         
         log "Setting cluster to listen on all interfaces"
-        log_exec sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
-        log_exec sudo chown postgres.postgres $PGDIR/postgresql.conf
-        log_exec sudo chown postgres.postgres $PGDIR/postgresql.conf.default
-        log_exec sudo sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf
+        sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
+        sudo bash -c "sed \"s/#listen_addresses = \S*/listen_addresses = \'*\'/\"  $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf > /dev/null"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Configuring cluster network failed. Check log file and try again. "
@@ -279,10 +277,8 @@ provision_cluster() {
         fi
     
         log "Opening pg_hba.conf for local trust"
-        log_exec sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
-        log_exec udo chown postgres $PGDIR/pg_hba.conf
-        log_exec udo chown postgres $PGDIR/pg_hba.conf.default
-        log_exec sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
+        sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
+        sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Opening pg_hba.conf failed. Check log file and try again. "
@@ -290,7 +286,7 @@ provision_cluster() {
         fi
         
         log "Opening pg_hba.conf for internet access with passwords"
-        log_exec sudo echo  "host    all             all             0.0.0.0/0                 md5" >> $PGDIR/pg_hba.conf
+        sudo bash -c "echo  "host    all             all             0.0.0.0/0                 md5" >> $PGDIR/pg_hba.conf"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
@@ -349,8 +345,6 @@ drop_cluster() {
     if [ $MODE = "manual" ]; then
         if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" --yes-button "No" --no-button "Yes" 10 60) then
             return 0
-        else
-            log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
         fi
     fi
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
@@ -373,7 +367,7 @@ drop_cluster_menu() {
     
     while read -r line; do 
         CLUSTERS+=("$line" "$line")
-    done < <( pg_lsclusters | tail -n +2 )
+    done < <( sudo pg_lsclusters | tail -n +2 )
 
      if [ -z "$CLUSTERS" ]; then
         msgbox "No database clusters detected on this system"
