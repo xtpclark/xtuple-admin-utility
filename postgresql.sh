@@ -269,7 +269,7 @@ provision_cluster() {
         
         log "Setting cluster to listen on all interfaces"
         sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
-        sudo bash -c "sed \"s/#listen_addresses = \S*/listen_addresses = \'*\'/\"  $PGDIR/postgresql.conf.default > $PGDIR/postgresql.conf > /dev/null"
+        sudo cat $PGDIR/postgresql.conf.default | sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" | sudo tee $PGDIR/postgresql.conf > /dev/null
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Configuring cluster network failed. Check log file and try again. "
@@ -286,7 +286,7 @@ provision_cluster() {
         fi
         
         log "Opening pg_hba.conf for internet access with passwords"
-        sudo bash -c "echo  "host    all             all             0.0.0.0/0                 md5" >> $PGDIR/pg_hba.conf"
+        sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "

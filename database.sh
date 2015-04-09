@@ -149,7 +149,7 @@ download_latest_demo() {
     
     VERSION=$(latest_version db)
     
-    if [ -z $VERSION ]; then
+    if [ -z "$VERSION" ]; then
         msgbox "Could not determine latest database version"
         do_exit
     fi
