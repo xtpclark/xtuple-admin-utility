@@ -1,9 +1,5 @@
 #!/bin/bash
 
-XTPG="/tmp/xtpg"
-sudo rm -rf $XTPG
-sudo mkdir -p $XTPG
-
 postgresql_menu() {
 
     log "Opened PostgreSQL menu"
@@ -55,22 +51,22 @@ prepare_database() {
     INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
     
-    dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $XTPG/init.sql
-    dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $XTPG/init.sql.md5sum
+    dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
+    dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
     
-	VALID=`cat $XTPG/init.sql.md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum $XTPG/init.sql | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ]; then
+	VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
+	CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
+	if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
 		msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
 		do_exit
 	fi
     
-    dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $XTPG/extras.sql
-    dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $XTPG/extras.sql.md5sum
+    dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
+    dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
     
-	VALID=`cat $XTPG/extras.sql.md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum $XTPG/extras.sql | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ]; then
+	VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
+	CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
+	if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
 		msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
 		do_exit
 	fi
@@ -82,7 +78,7 @@ prepare_database() {
     fi
     
     log "Deploying init.sql, creating admin user and xtrole group"
-    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $XTPG/init.sql
+    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deplying init.sql. Check for errors and try again"
@@ -90,7 +86,7 @@ prepare_database() {
     fi
     
     log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
-    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $XTPG/extras.sql
+    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/extras.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deplying extras.sql. Check for errors and try again"
@@ -102,6 +98,12 @@ prepare_database() {
         msgbox "Error setting the admin password. Check for errors and try again"
         return 0
     fi
+    
+    log "Removing downloaded init scripts..."
+    rm $WORKDIR/init.sql
+    rm $WORKDIR/init.sql.md5sum
+    rm $WORKDIR/extras.sql
+    rm $WORKDIR/extras.sql.md5sum
     
     if [ -z $1 ] || [ $1 = "manual" ]; then
         msgbox "Operations completed successfully"
@@ -259,31 +261,13 @@ provision_cluster() {
         POSTSTART=""
     fi
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
-    log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME\""
+    log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     else
         PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
-        
-        log "Setting cluster to listen on all interfaces"
-        sudo cp $PGDIR/postgresql.conf $PGDIR/postgresql.conf.default
-        sudo cat $PGDIR/postgresql.conf.default | sed "s/#listen_addresses = \S*/listen_addresses = \'*\'/" | sudo tee $PGDIR/postgresql.conf > /dev/null
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Configuring cluster network failed. Check log file and try again. "
-            do_exit
-        fi
-    
-        log "Opening pg_hba.conf for local trust"
-        sudo cp $PGDIR/pg_hba.conf $PGDIR/pg_hba.conf.default
-        sudo cat $PGDIR/pg_hba.conf.default | sed "s/local\s*all\s*postgres.*/local\tall\tpostgres\ttrust/" | sed "s/local\s*all\s*all.*/local\tall\tall\ttrust/" | sed "s#host\s*all\s*all\s*127\.0\.0\.1.*#host\tall\tall\t127.0.0.1/32\ttrust#" | sudo tee $PGDIR/pg_hba.conf > /dev/null
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Opening pg_hba.conf failed. Check log file and try again. "
-            do_exit
-        fi
         
         log "Opening pg_hba.conf for internet access with passwords"
         sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"

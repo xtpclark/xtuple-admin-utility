@@ -23,7 +23,7 @@ mwc_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") install_mwc_prereqs ;;
+            "1") install_mwc ;;
             "2") remove_mwc ;;
             "3") break ;;
             *) msgbox "Error. How did you get here? >> postgresql_menu" && do_exit ;;
@@ -33,73 +33,160 @@ mwc_menu() {
 
 }
 
-# $1 is xTuple version (4.8.0, 4.9.0, etc)
+
+# $1 is xtuple version
 install_mwc() {
 
-    log_exec apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8
+    log "installing web client"
+
+    if [ -z $1 ]; then
+        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+            "1" "4.7.0" \
+            "2" "4.8.0" \
+            "3" "4.8.1" \
+            "4" "Return to main menu" \
+            3>&1 1>&2 2>&3)
+
+        RET=$?
+
+        if [ $RET -eq 1 ]; then
+            return 0
+        elif [ $RET -eq 0 ]; then
+            case "$MENUVER" in
+            "1") MWCVERSION=4.7.0 
+                   ;;
+            "2") MWCVERSION=4.8.0 
+                   ;;
+            "3") MWCVERSION=4.8.1
+                  ;;
+            "4") return 0 ;;
+            *) msgbox "How did you get here?" && do_exit ;;
+            esac || main_menu
+        fi
+    else 
+        MWCVERSION=$1
+    fi
+    
+    export MWCVERSION
+    
+    
+    log "Creating xtuple user..."
+    sudo useradd xtuple -m -s /bin/bash
+    
+    log "Installing n..."
+    cd $WORKDIR    
+    wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
+    chmod +x n
+    sudo mv n /usr/bin/n
+    # use it to set node to 0.10
+    log "Installing node 0.10..."
+    sudo n 0.10
+
+    # need to install npm of course...
+    sudo npm install -g npm@1.4.28
+
+    # cleanup existing folder
+    sudo rm -rf /opt/xtuple/$MWCVERSION
+    
+    log "Cloning xTuple Web Client Source Code to /opt/xtuple/$MWCVERSION/xtuple"
+    log "Using version $MWCVERSION"
+    sudo mkdir -p /opt/xtuple/$MWCVERSION
+    sudo chown -R xtuple.xtuple /opt/xtuple
+    
+    # main code
+    sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/xtuple && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install bower && npm install"
+    # main extensions
+    sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/xtuple-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
+    # private extensions
+    #sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/private-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
+    
+    if [ ! -f /opt/xtuple/$MWCVERSION/xtuple/node-datasource/sample_config.js ]; then
+        msgbox "Hrm, sample_config.js doesn't exist.. something went wrong. check the output/log and try again"
+        do_exit
+    fi
+    
+    export XTDIR=/opt/xtuple/$MWCVERSION/xtuple
+    
+    sudo rm -rf /etc/xtuple/$MWCVERSION
+    sudo mkdir -p /etc/xtuple/$MWCVERSION/private
+    
+    # setup encryption details
+    sudo touch /etc/xtuple/$MWCVERSION/private/salt.txt
+    sudo touch /etc/xtuple/$MWCVERSION/private/encryption_key.txt
+    sudo chown -R xtuple.xtuple /etc/xtuple/$MWCVERSION
+    # temporarily so we can cat to them since bash is being a bitch about quoting the trim string below
+    sudo chmod 777 /etc/xtuple/$MWCVERSION/private/encryption_key.txt
+    sudo chmod 777 /etc/xtuple/$MWCVERSION/private/salt.txt
+    
+    cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > /etc/xtuple/$MWCVERSION/private/salt.txt
+    cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > /etc/xtuple/$MWCVERSION/private/encryption_key.txt
+    
+    sudo chmod 660 /etc/xtuple/$MWCVERSION/private/encryption_key.txt
+    sudo chmod 660 /etc/xtuple/$MWCVERSION/private/salt.txt
+    
+    sudo openssl genrsa -des3 -out /etc/xtuple/$MWCVERSION/private/server.key -passout pass:xtuple 1024
+    sudo openssl rsa -in /etc/xtuple/$MWCVERSION/private/server.key -passin pass:xtuple -out /etc/xtuple/$MWCVERSION/private/key.pem -passout pass:xtuple
+    sudo openssl req -batch -new -key /etc/xtuple/$MWCVERSION/private/key.pem -out /etc/xtuple/$MWCVERSION/private/server.csr -subj '/CN='$(hostname)
+    sudo openssl x509 -req -days 365 -in /etc/xtuple/$MWCVERSION/private/server.csr -signkey /etc/xtuple/$MWCVERSION/private/key.pem -out /etc/xtuple/$MWCVERSION/private/server.crt
+    
+    sudo cp /opt/xtuple/$MWCVERSION/xtuple/node-datasource/sample_config.js /etc/xtuple/$MWCVERSION/config.js
+    
+    sudo sed -i  "/encryptionKeyFile/c\      encryptionKeyFile: \"/etc/xtuple/$MWCVERSION/private/encryption_key.txt\"," /etc/xtuple/$MWCVERSION/config.js
+    sudo sed -i  "/keyFile/c\      keyFile: \"/etc/xtuple/$MWCVERSION/private/key.pem\"," /etc/xtuple/$MWCVERSION/config.js
+    sudo sed -i  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/private/server.crt\"," /etc/xtuple/$MWCVERSION/config.js
+    sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/private/salt.txt\"," /etc/xtuple/$MWCVERSION/config.js
+    
+    # prompt user to choose database
+    check_database_info
+
+    DATABASES=()
+
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
-    do_exit
-    elif [ $RET -eq 0 ]; then
-        export PGUSER=postgres
-        export PGPASSWORD=postgres
-        export PGHOST=localhost
-        export PGPORT=5432
+    if [ $RET -ne 0 ]; then
+        msgbox "Installing the mobile client was interrupted. Please make sure you have an xTuple database already deployed before trying again."
+        main_menu
     fi
-    return $RET
+    
+    sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/config.js
+    
+    sudo chown -R xtuple.xtuple /etc/xtuple
+
+    sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/config.js"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "buildapp failed to run. Check output and try again"
+        do_exit
+    fi
+    
+    # create the upstart script
+    sudo bash -c "echo $'description     \"xTuple Node Server\"' > /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"start on filesystem or runlevel [2345]\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"stop on runlevel [!2345]\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"console output\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"respawn\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"chdir /opt/xtuple/$MWCVERSION/xtuple/node-datasource\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"exec n use 0.10\" >> /etc/init/xtuple.conf"
+    sudo bash -c "sudo echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/config.js > /var/log/node-datasource-$MWCVERSION.log 2>&1\" >> /etc/init/xtuple.conf"
+    
+    # now that we have the script, start the server!
+    sudo service xtuple start
+    
+    msgbox "All set! You should now be able to log on to this server at <addy>"
+
 
 }
 
-install_mwc_prereqs() {
-    log "installing web client prerequisite packages..."
-
-    if [ "$DISTRO" = "debian" ];
-    then
-    # for Debian wheezy (7.x) we need some things from the wheezy-backports
-    sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
-    fi
-
-    #sudo add-apt-repository -y "deb http://apt.postgresql.org/pub/repos/apt/ ${DEBDIST}-pgdg main"
-    #sudo wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-    log_exec sudo apt-get -qq update
-    log_exec sudo apt-get -q -y install build-essential libssl-dev
-
-    log "Cloning xTuple Web Client Source Code to ~/xtuple"
-    #rm -rf ~/xtuple
-    #mkdir ~/xtuple && cd ~/xtuple
-    
-	#git clone git://github.com/xtuple/xtuple.git
-    
-    # this has always looked odd to me
-    cd ~/xtuple/xtuple
-    export XT_DIR=~/xtuple/xtuple
-    
-    if [ ! -d "/usr/local/nvm" ]; then
-        log_exec sudo rm -f /usr/local/bin/nvm
-        log_exec sudo mkdir /usr/local/nvm
-        log_exec sudo git clone https://github.com/xtuple/nvm.git /usr/local/nvm
-        log_exec sudo ln -s /usr/local/nvm/nvm_bin.sh /usr/local/bin/nvm
-        log_exec sudo chmod +x /usr/local/bin/nvm
-    fi
-    log_exec sudo nvm install $NODE_VERSION
-    log_exec sudo nvm use $NODE_VERSION
-    log_exec sudo nvm alias default $NODE_VERSION
-    log_exec sudo nvm alias xtuple $NODE_VERSION
-
-    # use latest npm
-    log_exec sudo npm install -fg npm@1.4.25
-    # npm no longer supports its self-signed certificates
-    log "telling npm to use known registrars..."
-    log_exec npm config set ca ""
-
-    log_exec log "installing npm modules..."
-    log_exec sudo npm install -g bower
-    log_exec sudo chown -R $USER $HOME/.npm
-    log_exec npm install --unsafe-perm
-}
 
 init_everythings() {
-	log "Setting properties of admin user"
 
 	cd $XT_DIR/node-datasource
 

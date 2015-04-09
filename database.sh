@@ -384,8 +384,6 @@ list_databases() {
         return 0
     fi
 
-    #msgbox "`su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'"`"
-
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
 }
 

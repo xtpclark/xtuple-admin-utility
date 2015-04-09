@@ -58,7 +58,7 @@ menu_title() {
 install_prereqs() {
 case "$DISTRO" in
     "ubuntu")
-            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
+            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
             RET=$?
             if [ $RET -eq 1 ]; then
                 msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
@@ -66,7 +66,8 @@ case "$DISTRO" in
             fi
             ;;
     "debian")
-            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl postgresql-client-9.3
+            sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
+            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
             RET=$?
             if [ $RET -eq 1 ]; then
                 msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
