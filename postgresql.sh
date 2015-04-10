@@ -54,22 +54,22 @@ prepare_database() {
     dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
     dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
     
-	VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-		msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-		do_exit
-	fi
+    VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
+    CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
+    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
+        msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        do_exit
+    fi
     
     dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
     dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
     
-	VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-		msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-		do_exit
-	fi
+    VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
+    CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
+    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
+        msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
+        do_exit
+    fi
     
     check_database_info
     RET=$?
@@ -144,8 +144,16 @@ password_menu() {
 
 }
 
+
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
+
+    # check to make sure the PostgreSQL repo is already added on the system
+    if ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
+        sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
+        sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        sudo apt-get update
+    fi
 
     log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
@@ -166,7 +174,7 @@ install_postgresql() {
 remove_postgresql() {
 
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "No" --no-button "Yes" 10 60) then
-	return 0
+    return 0
     else
         log "Uninstalling PostgreSQL "$1"..."
     fi
@@ -319,13 +327,13 @@ drop_cluster() {
     else
         POSTNAME=$2
     fi
-	
+
     if [ -z $3 ]; then
         MODE="manual"
     else
         MODE="auto"
     fi
-    
+
     if [ $MODE = "manual" ]; then
         if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $2 - $1?" --yes-button "No" --no-button "Yes" 10 60) then
             return 0
@@ -348,7 +356,7 @@ drop_cluster() {
 drop_cluster_menu() {
 
     CLUSTERS=()
-    
+
     while read -r line; do 
         CLUSTERS+=("$line" "$line")
     done < <( sudo pg_lsclusters | tail -n +2 )
@@ -357,7 +365,7 @@ drop_cluster_menu() {
         msgbox "No database clusters detected on this system"
         return 0
     fi
-    
+
     CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -371,14 +379,14 @@ drop_cluster_menu() {
 
     VER=`awk  '{print $1}' <<< "$CLUSTER"`
     NAME=`awk  '{print $2}' <<< "$CLUSTER"`
-    
+
     if [ -z "$VER" ] || [ -z "$NAME" ]; then
         msgbox "Could not determine database version or name"
         return 0
     fi
-    
+
     drop_cluster "$VER" "$NAME"
-    
+
 }
 
 # $1 is user to reset
@@ -391,9 +399,9 @@ reset_sudo() {
     if [ $RET -ne 0 ]; then
         return 0
     fi
-    
+
     log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
-    
+
     log_exec sudo su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -405,7 +413,7 @@ reset_sudo() {
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
-    
+
 }
 
 # $1 is user to reset

@@ -94,7 +94,7 @@ install_mwc() {
     # main extensions
     sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/xtuple-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
     # private extensions
-    #sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/private-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
+    sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/private-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
     
     if [ ! -f /opt/xtuple/$MWCVERSION/xtuple/node-datasource/sample_config.js ]; then
         msgbox "Hrm, sample_config.js doesn't exist.. something went wrong. check the output/log and try again"
@@ -169,6 +169,8 @@ install_mwc() {
     sudo bash -c "sudo echo \"stop on runlevel [!2345]\" >> /etc/init/xtuple.conf"
     sudo bash -c "sudo echo \"console output\" >> /etc/init/xtuple.conf"
     sudo bash -c "sudo echo \"respawn\" >> /etc/init/xtuple.conf"
+    #sudo bash -c "sudo echo \"setuid xtuple\" >> /etc/init/xtuple.conf"
+    #sudo bash -c "sudo echo \"setgid xtuple\" >> /etc/init/xtuple.conf"
     sudo bash -c "sudo echo \"chdir /opt/xtuple/$MWCVERSION/xtuple/node-datasource\" >> /etc/init/xtuple.conf"
     sudo bash -c "sudo echo \"exec n use 0.10\" >> /etc/init/xtuple.conf"
     sudo bash -c "sudo echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/config.js > /var/log/node-datasource-$MWCVERSION.log 2>&1\" >> /etc/init/xtuple.conf"

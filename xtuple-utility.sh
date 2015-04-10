@@ -34,6 +34,7 @@ _CODENAME=`lsb_release -c -s`
 case "$_DISTRO" in
     "Ubuntu")
         export DISTRO="ubuntu"
+        export CODENAME=$_CODENAME
         case "$_CODENAME" in
             "trusty") ;;
             "utopic") ;;
