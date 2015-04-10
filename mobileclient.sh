@@ -180,54 +180,8 @@ install_mwc() {
     # now that we have the script, start the server!
     sudo service xtuple start
     
-    msgbox "All set! You should now be able to log on to this server at <addy>"
+    # assuming etho for now... hostname -I will give any non-local address if we wanted
+    IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
+    msgbox "All set! You should now be able to log on to this server at https://$IP:8443"
 
-
-}
-
-
-init_everythings() {
-
-	cd $XT_DIR/node-datasource
-
-	cat sample_config.js | sed "s/testDatabase: \"\"/testDatabase: '$DATABASE'/" > config.js
-	log "Configured node-datasource"
-	log "The database is now set up..."
-
-	mkdir -p $XT_DIR/node-datasource/lib/private
-	cd $XT_DIR/node-datasource/lib/private
-	cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > salt.txt
-	log "Created salt"
-	cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > encryption_key.txt
-	log "Created encryption key"
-	openssl genrsa -des3 -out server.key -passout pass:xtuple 1024 2>&1 | tee -a $LOG_FILE
-	openssl rsa -in server.key -passin pass:xtuple -out key.pem -passout pass:xtuple 2>&1 | tee -a $LOG_FILE
-	openssl req -batch -new -key key.pem -out server.csr -subj '/CN='$(hostname) 2>&1 | tee -a $LOG_FILE
-	openssl x509 -req -days 365 -in server.csr -signkey key.pem -out server.crt 2>&1 | tee -a $LOG_FILE
-	if [ $? -ne 0 ]
-	then
-		log "Failed to generate server certificate in $XT_DIR/node-datasource/lib/private"
-		return 3
-	fi
-
-	cd $XT_DIR/test/lib
-  cat sample_login_data.js | sed "s/org: \'dev\'/org: \'$DATABASE\'/" > login_data.js
-	log "Created testing login_data.js"
-
-	cd $XT_DIR
-	npm run-script test-build 2>&1 | tee -a $LOG_FILE
-
-	log "You can login to the database and mobile client with:"
-	log "  username: admin"
-	log "  password: admin"
-	log "Installation now finished."
-	log "Run the following commands to start the datasource:"
-	if [ $USERNAME ]
-	then
-		log "cd node-datasource"
-		log "node main.js"
-	else
-		log "cd /usr/local/src/xtuple/node-datasource/"
-		log "node main.js"
-	fi
 }
