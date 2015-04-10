@@ -2,10 +2,6 @@
 
 NODE_VERSION=0.10.32
 
-XTMWC="/tmp/xtmwc"
-sudo rm -rf $XTMWC
-sudo mkdir -p $XTMWC
-
 mwc_menu() {
 
     log "Opened Web Client menu"
@@ -26,7 +22,7 @@ mwc_menu() {
             "1") install_mwc ;;
             "2") remove_mwc ;;
             "3") break ;;
-            *) msgbox "Error. How did you get here? >> postgresql_menu" && do_exit ;;
+            *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && do_exit ;;
             esac || postgresql_menu
         fi
     done

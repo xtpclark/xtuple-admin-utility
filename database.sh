@@ -1,8 +1,4 @@
 #!/bin/bash
-XTMP="/tmp/xtdb"
-
-sudo rm -rf $XTMP
-sudo mkdir -p $XTMP
 
 database_menu() {
 
@@ -94,7 +90,7 @@ download_demo() {
             return $RET
         fi
     elif [ $MODE = "auto" ]; then
-        DEMODEST=$XTMP/$VERSION-$DBTYPE.backup
+        DEMODEST=$WORKDIR/$VERSION-$DBTYPE.backup
     fi
         
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"

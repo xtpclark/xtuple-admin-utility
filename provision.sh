@@ -8,10 +8,10 @@ provision_menu() {
     "installpg93" "Install PostgreSQL 9.3" ON \
     "provisioncluster" "Provision PostgreSQL Cluster" ON \
     "initdb" "Add xTuple admin user and role" ON \
-    "nginx" "Nginx" OFF \
-    "nodejs" "NodeJS" OFF \
-    "qtclient" "xTuple ERP Client" OFF \
     "demodb" "Load xTuple Database" OFF \
+    "qtclient" "xTuple ERP Client" OFF \
+    "webclient" "Load xTuple Web Client" OFF \
+    "nginx" "Nginx" OFF \
     3>&1 1>&2 2>&3)
 
     RET=$?
@@ -36,11 +36,11 @@ provision_menu() {
                       ;;
             "nginx") install_nginx
                      ;;
-            "nodejs") apt-get -y install nodejs
-                      ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                          ;;
             "demodb") download_demo auto
+                      ;;
+            "webclient") install_mwc 4.8.1
                       ;;
              *) ;;
          esac || main_menu
