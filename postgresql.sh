@@ -148,13 +148,6 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    # check to make sure the PostgreSQL repo is already added on the system
-    if ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
-        sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
-        sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        sudo apt-get update
-    fi
-
     log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     if [ $RET -ne 0 ]; then

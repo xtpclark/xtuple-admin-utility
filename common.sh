@@ -56,31 +56,43 @@ menu_title() {
 # these are both the same currently, but the structure may change eventually
 # as we add more supported distros
 install_prereqs() {
-case "$DISTRO" in
-    "ubuntu")
-            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3  cups python-software-properties openssl apt-show-versions libnet-ssleay-perl  libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
-            RET=$?
-            if [ $RET -eq 1 ]; then
-                msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
+
+    case "$DISTRO" in
+        "ubuntu")
+                install_pg_repo
+                sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 cups python-software-properties openssl apt-show-versions libnet-ssleay-perl  libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
+                RET=$?
+                if [ $RET -eq 1 ]; then
+                    msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
+                    do_exit
+                fi
+                ;;
+        "debian")
+                sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
+                sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
+                RET=$?
+                if [ $RET -eq 1 ]; then
+                    msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
+                    do_exit
+                fi
+                ;;
+         "centos")
+                log "Maybe one day we will support CentOS..."
                 do_exit
-            fi
-            ;;
-    "debian")
-            sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
-            sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
-            RET=$?
-            if [ $RET -eq 1 ]; then
-                msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
-                do_exit
-            fi
-            ;;
-     "centos")
-            log "Maybe one day we will support CentOS..."
-            do_exit
-            ;;
-    *)
-    log "Shouldn't reach here! Please report this on GitHub."
-    exit 0
-    ;;
-esac
+                ;;
+        *)
+        log "Shouldn't reach here! Please report this on GitHub."
+        exit 0
+        ;;
+    esac
+
+}
+
+install_pg_repo() {
+    # check to make sure the PostgreSQL repo is already added on the system
+    if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
+        sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
+        sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        sudo apt-get update
+    fi
 }

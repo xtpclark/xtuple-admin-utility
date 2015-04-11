@@ -9,11 +9,10 @@ export WORKDIR=`pwd`
 source logging.sh
 source common.sh
 
-#if [ `whoami` != "root" ]; then
-#    log "You must run xtuple-utility as root."
-#    log "sudo $0"
-#    exit 0
-#fi
+if [ `uname -i` != "x86_64" ]; then
+    log "You must run this on a 64bit server only"
+    do_exit
+fi
 
 log "Starting xTuple Admin Utility..."
 
@@ -131,4 +130,3 @@ install_prereqs
 # we load mainmenu.sh last since it calls its menu once it builds it
 # and this is the initial interface for the user
 source mainmenu.sh
-

@@ -97,15 +97,15 @@ download_demo() {
     MD5_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup.md5sum"
     
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-	dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
+    dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
     
     log "Saving "$DB_URL" as "$DEMODEST"."
     
-	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ]; then
-		msgbox "There was an error verifying the downloaded database. Utility will now exit."
-		do_exit
+    VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
+    CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
+    if [ "$VALID" != "$CURRENT" ]; then
+        msgbox "There was an error verifying the downloaded database. Utility will now exit."
+        do_exit
     else
         if [ $MODE = "manual" ]; then
             if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
