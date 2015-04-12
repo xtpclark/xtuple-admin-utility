@@ -9,8 +9,16 @@ log_exec() {
 }
 
 log() {
-    echo "xtuple >> $@"
-    echo "xtuple >> $@" >> $LOG_FILE
+    echo "$( timestamp ) xtuple >> $@"
+    echo "$( timestamp ) xtuple >> $@" >> $LOG_FILE
+}
+
+timestamp() {
+  date +"%T"
+}
+
+datetime() {
+  date +"%D %T"
 }
 
 log "Logging initialized. Current session will be logged to $LOG_FILE"

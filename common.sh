@@ -96,3 +96,11 @@ install_pg_repo() {
         sudo apt-get update
     fi
 }
+
+# $1 is the port
+# $2 is protocol
+is_port_open() {
+
+    (echo >/dev/$2/localhost/$1) &>/dev/null && return 0 || return 1
+
+}
