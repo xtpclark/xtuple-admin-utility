@@ -53,30 +53,30 @@ prepare_database() {
     
     dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
     dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
-    
+
     VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
         msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
         do_exit
     fi
-    
+
     dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
     dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
-    
+
     VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
         msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
         do_exit
     fi
-    
+
     check_database_info
     RET=$?
     if [ $RET -ne 0 ]; then
         return 0
     fi
-    
+
     log "Deploying init.sql, creating admin user and xtrole group"
     psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
     RET=$?
@@ -84,7 +84,7 @@ prepare_database() {
         msgbox "Error deplying init.sql. Check for errors and try again"
         do_exit
     fi
-    
+
     log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
     psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/extras.sql
     RET=$?
@@ -92,19 +92,17 @@ prepare_database() {
         msgbox "Error deplying extras.sql. Check for errors and try again"
         return 0
     fi
-    
+
     reset_sudo admin
     if [ $RET -ne 0 ]; then
         msgbox "Error setting the admin password. Check for errors and try again"
         return 0
     fi
-    
+
     log "Removing downloaded init scripts..."
-    rm $WORKDIR/init.sql
-    rm $WORKDIR/init.sql.md5sum
-    rm $WORKDIR/extras.sql
-    rm $WORKDIR/extras.sql.md5sum
-    
+    rm $WORKDIR/init.sql{,.md5sum}
+    rm $WORKDIR/extras.sql{,.md5sum}
+
     if [ -z $1 ] || [ $1 = "manual" ]; then
         msgbox "Operations completed successfully"
     else
