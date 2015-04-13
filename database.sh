@@ -12,11 +12,12 @@ database_menu() {
             "4" "List Databases" \
             "5" "Rename Database" \
             "6" "Drop Database" \
-            "7" "Carve Pilot From Existing Database" \
-            "8" "Create Database From File" \
-            "9" "Download Latest Demo Database" \
-            "10" "Download Specific Database" \
-            "11" "Return to main menu" \
+            "7" "Inspect Database" \
+            "8" "Carve Pilot From Existing Database" \
+            "9" "Create Database From File" \
+            "10" "Download Latest Demo Database" \
+            "11" "Download Specific Database" \
+            "12" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -31,11 +32,12 @@ database_menu() {
             "4") list_databases ;;
             "5") rename_database_menu ;;
             "6") drop_database_menu ;;
-            "7") carve_pilot ;;
-            "8") create_database_from_file ;;
-            "9") download_latest_demo ;;
-            "10") download_demo ;;
-            "11") main_menu ;;
+            "7") inspect_database_menu ;;
+            "8") carve_pilot ;;
+            "9") create_database_from_file ;;
+            "10") download_latest_demo ;;
+            "11") download_demo ;;
+            "12") main_menu ;;
             *) msgbox "How did you get here?" && do_exit ;;
             esac || database_menu
         fi
@@ -45,13 +47,13 @@ database_menu() {
 # $1 is mode, auto (no prompt for demo location, delete when done) 
 # manual, prompt for location, don't delete
 download_demo() {
-    
+
     if [ -z $1 ]; then
         MODE="manual"
     else
         MODE="auto"
     fi
-         
+
     MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
             "1" "PostBooks 4.7.0 Demo" \
             "2" "PostBooks 4.7.0 Empty" \
@@ -82,7 +84,7 @@ download_demo() {
             *) msgbox "How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
-    
+
     if [ $MODE = "manual" ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -92,15 +94,15 @@ download_demo() {
     elif [ $MODE = "auto" ]; then
         DEMODEST=$WORKDIR/$VERSION-$DBTYPE.backup
     fi
-        
+
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup.md5sum"
-    
+
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
     dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
-    
+
     log "Saving "$DB_URL" as "$DEMODEST"."
-    
+
     VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
     CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ]; then
@@ -138,19 +140,19 @@ download_demo() {
                 return 0
             fi
         fi
-	fi
+    fi
 }
 
 download_latest_demo() {
-    
+
     VERSION="$( latest_version db )" 
     log "Determined latest database version to be $VERSION"
-    
+
     if [ -z "$VERSION" ]; then
         msgbox "Could not determine latest database version"
         do_exit
     fi
-    
+
     if [ -z $DEMODEST ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database version $VERSION" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -160,18 +162,18 @@ download_latest_demo() {
             export DEMODEST
         fi
     fi
-        
+
     DB_URL="http://files.xtuple.org/$VERSION/demo.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/demo.backup.md5sum"
     
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-	dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
-    
-	VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
-	CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
-	if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-		msgbox "There was an error verifying the downloaded database. Utility will now exit."
-		exit
+    dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
+
+    VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
+    CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
+    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
+        msgbox "There was an error verifying the downloaded database. Utility will now exit."
+        exit
     else
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
             DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
@@ -191,7 +193,7 @@ download_latest_demo() {
         else
             log "Exiting without restoring database."
         fi
-	fi
+    fi
 }
 
 #  $1 is database file to backup to
@@ -203,7 +205,7 @@ backup_database() {
     if [ $RET -eq 1 ]; then
         return $RET
     fi
-    
+
     if [ -z $1 ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -213,7 +215,7 @@ backup_database() {
     else
         DEST=$1
     fi
-    
+
     if [ -z $2 ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -223,9 +225,9 @@ backup_database() {
     else
         SOURCE=$2
     fi
-    
+
     log "Backing up database "$SOURCE" to file "$DEST"."
-    
+
     pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$DEST" "$SOURCE"
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -246,7 +248,7 @@ restore_database() {
     if [ $RET -eq 1 ]; then
         return 0
     fi
-    
+
     if [ -z $2 ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
@@ -285,7 +287,7 @@ carve_pilot() {
     if [ $RET -eq 1 ]; then
         return $RET
     fi
-    
+
     if [ -z "$1" ]; then
         DATABASES=()
 
@@ -296,7 +298,7 @@ carve_pilot() {
             msgbox "No databases detected on this system"
             return 0
         fi
-        
+
         SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
@@ -334,21 +336,21 @@ create_database_from_file() {
     if [ $RET -eq 1 ]; then
         return $RET
     fi
-    
+
     SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return $RET
     fi
-    
+
     if [ ! -f $SOURCE ]; then
         msgbox "File "$SOURCE" not found!"
         return 1
     fi
-    
+
     PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
-        
+
     if [ $RET -eq 1 ]; then
         return $RET
     elif [ $RET -eq 0 ]; then
@@ -397,15 +399,15 @@ drop_database_menu() {
         msgbox "No databases detected on this system"
         return 0
     fi
-    
+
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
-    
+
     drop_database "$DATABASE"
-    
+
 }
 
 # $1 is name
@@ -413,7 +415,7 @@ drop_database_menu() {
 drop_database() {
 
     check_database_info
-    
+
     if [ -z "$1" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
@@ -423,7 +425,7 @@ drop_database() {
     else
         POSTNAME="$1"
     fi
-	
+
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" --yes-button "No" --no-button "Yes" 10 60) then
         return 0
     fi
@@ -436,7 +438,7 @@ drop_database() {
     else
         msgbox "Dropping database $POSTNAME successful"
     fi
-    
+
 }
 
 rename_database_menu() {
@@ -452,21 +454,21 @@ rename_database_menu() {
         msgbox "No databases detected on this system"
         return 0
     fi
-    
+
     SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
-    
+
     DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
         return 0
     fi
-    
+
     rename_database "$SOURCE" "$DEST"
-    
+
 }
 
 # $1 is source
@@ -502,14 +504,53 @@ rename_database() {
     else
         msgbox "Successfully renamed database $SOURCE to $DEST"
     fi
-    
+
+}
+
+inspect_database_menu() {
+
+    check_database_info
+
+    DATABASES=()
+
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to inspect" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        return 0
+    fi
+
+    inspect_database "$DATABASE"
+
+}
+
+# $1 is database name to inspect
+inspect_database() {
+
+    VAL=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $1 -c \"SELECT data FROM ( \
+        SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
+        UNION \
+        SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
+        UNION \
+        SELECT 3,'Pk: '||pkghead_name||' v'||pkghead_version \
+        FROM pkghead) as dummy ORDER BY 1;\""`
+
+    msgbox "${VAL}"
+
 }
 
 set_database_info() {
 
     if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
         CLUSTERS=()
-        
+
         while read -r line; do 
             CLUSTERS+=("$line" "$line")
         done < <( sudo pg_lsclusters | tail -n +2 )
@@ -518,7 +559,7 @@ set_database_info() {
             msgbox "No database clusters detected on this system"
             return 1
         fi
-        
+
         CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
@@ -529,13 +570,13 @@ set_database_info() {
             msgbox "No database clusters detected on this system"
             return 1
         fi
-        
+
         export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
         export PGNAME=`awk  '{print $2}' <<< "$CLUSTER"`
         export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
         export PGHOST=localhost
         export PGUSER=postgres
-        
+
         PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -eq 1 ]; then
@@ -543,7 +584,7 @@ set_database_info() {
         else
             export PGPASSWORD
         fi
-        
+
         if [ -z "$PGVER" ] || [ -z "$PGNAME" ] || [ -z "$PGPORT" ]; then
             msgbox "Could not determine database version or name"
             return 0
@@ -601,6 +642,6 @@ check_database_info() {
         RET=$?
         return $RET
     else
-		return 0
-	fi
+        return 0
+    fi
 }
