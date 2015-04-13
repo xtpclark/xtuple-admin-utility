@@ -4,3 +4,78 @@ pg_lsclusters -h | sed "s/^ *//;s/ *$//;s/ \{1,\}/ /g" | grep '$CLUSTERNAME' | c
 
 pg_lsclusters -h | sed "s/^ *//;s/ *$//;s/ \{1,\}/ /g" | grep '$PGPORT' | cut -d ' ' -f3
 
+
+#
+Need to sed/awk PGPORT into config.js, or set it up differently. I am a fan of
+cat << EOF >> /path/to/config.js
+
+#!/bin/bash
+PGPORT="5432"
+DBNAME="my481"
+REDIRECT="8901"
+ENCKEY="/etc/xtuple/${MWCVERSION}/${MWCNAME}/private/encryption_key.txt"
+KEYFILE="/etc/xtuple/${MWCVERSION}/${MWCNAME}/private/encryption_key.txt"
+CERTFILE="/etc/xtuple/${MWCVERSION}/${MWCNAME}/private/server.crt"
+SALTFILE="/etc/xtuple/${MWCVERSION}/${MWCNAME}/private/salt.txt"
+
+
+
+
+module.exports = {
+  "processName": "xt-web-wsgbrand",
+  "allowMultipleInstances": true,
+  "client": {
+    "freeDemo": false,
+    "encoding": "rjson"
+  },
+  "datasource": {
+    "debugging": false,
+    "capture": false,
+    "debugDatabase": false,
+    "enhancedAuthKey": "xTuple",
+    "sessionTimeout": 60,
+    "requireCache": true,
+    "pgPoolSize": 15,
+    "pgWorker": false,
+    "bindAddress": "127.0.0.1",
+    "redirectPort": 8900,
+    "proxyPort": null,
+    "port": 8455,
+    "encryptionKeyFile": "/usr/local/wsgbrand/.xtuple/pilot/key256.txt",
+    "keyFile": "/etc/xtuple/wsgbrand-481-pilot/ssl/server.key",
+    "certFile": "/etc/xtuple/wsgbrand-481-pilot/ssl/server.crt",
+    "caFile": null,
+    "saltFile": "/usr/local/wsgbrand/.xtuple/pilot/rand64.txt",
+    "xTupleDbDir": "/usr/local/xtuple/databases",
+    "psqlPath": "psql",
+    "nodePath": "node",
+    "smtpHost": "",
+    "smtpPort": 587,
+    "smtpUser": "",
+    "smtpPassword": "",
+    "printer": "",
+    "name": "${FQDN}",
+    "description": "$",
+    "hostname": "${FQDN}",
+    "location": "NA",
+    "databases": [
+      "${DBNAME}"
+    ]
+  },
+  "integration": {},
+  "extensionRoutes": [],
+  "databaseServer": {
+    "hostname": "/var/run/postgresql",
+    "port": ${PGPORT},
+    "user": "admin"
+  },
+  "biServer": {
+    "bihttphost": "localhost",
+    "bihttpport": 8080,
+    "bihttpshost": "localhost",
+    "bihttpsport": 8443,
+    "catalog": "xTuple",
+    "tenantname": "default",
+    "restkeyfile": "/etc/xtuple/lib/rest-keys"
+  }
+};
