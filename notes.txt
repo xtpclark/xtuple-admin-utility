@@ -1,0 +1,6 @@
+# Check if exists - Also useful to figure out what port it spun up based on clustername.
+
+pg_lsclusters -h | sed "s/^ *//;s/ *$//;s/ \{1,\}/ /g" | grep '$CLUSTERNAME' | cut -d ' ' -f2
+
+pg_lsclusters -h | sed "s/^ *//;s/ *$//;s/ \{1,\}/ /g" | grep '$PGPORT' | cut -d ' ' -f3
+
