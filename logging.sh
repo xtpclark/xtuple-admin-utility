@@ -4,7 +4,7 @@ LOG_FILE=$(pwd)/install-$DATE.log
 
 log_exec() {
    "$@" | tee -a $LOG_FILE 2>&1
-   RET=$?
+   RET=${PIPESTATUS[0]}
    return $RET
 }
 
