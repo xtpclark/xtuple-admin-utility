@@ -1,9 +1,65 @@
 #!/bin/bash
 
+# process command line arguments
+while getopts ":ad:ip:n:hx-:" opt; do
+  case $opt in
+    a)
+        INSTALLALL=true
+        ;;
+    d)
+        PGDATABASE=$OPTARG
+        log "Database name set to $PGDATABASE via command line argument -d"
+        ;;
+    i)
+        # Install pre-requisite packages
+        PREREQS=true
+        ;;
+    p)
+        PGVERSION=$OPTARG
+        log "PostgreSQL Version set to $PGVERSION via command line argument -p"
+        ;;
+    n)
+        # Name this instance
+        INSTANCE=$OPTARG
+        log "Instance name set to $INSTANCE via command line argument -n"
+        ;;
+    x)
+        # Use a specific version of xTuple (applies to web client and db)
+        XTVERSION=$OPTARG
+        log "xTuple MWC Version set to $XTVERSION via command line argument -x"
+        ;;
+    e)
+        # select the version to use for nodejs
+        NODEVERSION=$OPTARG
+        log "NodeJS Version set to $NODE_VERSION via command line argument"
+        ;;
+    h)
+        echo "Usage: xtuple-utility [OPTION]"
+        echo "$( menu_title )"
+        echo "To get an interactive menu run xtuple-utility.sh with no arguments"
+        echo ""
+        echo -e "  -a\tinstall all (PostgreSQL, demo database (currently 4.8.1) and web client)"
+        echo -e "  -h\tshow this message"
+        echo -e "  -i\tinstall packages"
+        echo -e "  -p\tinstall PostgreSQL"
+        echo -e "  -n\tinit database"
+        echo -e "  -x\tspecify xTuple version (applies to web client and database)"
+        echo -e "  -d\tspecify PostgreSQL version"
+        exit 0;
+      ;;
+  esac
+done
+
 REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="0.1Alpha"
 export WORKDIR=`pwd`
+
+#set some defaults
+PGVERSION=9.3
+XTVERSION=4.8.1
+INSTANCE=xtuple
+DBTYPE=demo
 
 # import supporting scripts
 source logging.sh
@@ -24,8 +80,6 @@ then
   log "   # addgroup $USER sudo"
   exit 1
 fi
-
-#alias sudo='sudo env PATH=$PATH $@'
 
 # check what distro we are running.
 _DISTRO=`lsb_release -i -s`
@@ -63,59 +117,6 @@ case "$_DISTRO" in
         ;;
 esac
 
-# process command line arguments
-while getopts ":d:ipnhmx-:" opt; do
-  case $opt in
-    d)
-        PG_VERSION=$OPTARG
-        log "PostgreSQL Version set to $PG_VERSION via command line argument"
-        ;;
-    i)
-        # Install packages
-        RUNALL=
-        INSTALL=true
-        ;;
-    p)
-        # Configure postgress
-        RUNALL=
-        POSTGRES=true
-        ;;
-    n)
-        # iNitialize the databases and stuff
-        RUNALL=
-        INIT=true
-        ;;
-    m)
-        RUNALL=
-        NPM_INSTALL=true
-        ;;
-    x)
-        # Checkout a specific version of the xTuple repo
-        XT_VERSION=$OPTARG
-        log "xTuple MWC Version set to $XT_VERSION via command line argument"
-        ;;
-    node)
-        # select the version to use for nodejs
-        NODE_VERSION=$OPTARG
-        log "NodeJS Version set to $NODE_VERSION via command line argument"
-        ;;
-    h)
-        echo "Usage: xtuple-utility [OPTION]"
-        echo "$( menu_title )"
-        echo "To get an interactive menu run xtuple-utility.sh with no arguments"
-        echo ""
-        echo -e "  -h\tshow this message"
-        echo -e "  -i\tinstall packages"
-        echo -e "  -p\tinstall PostgreSQL"
-        echo -e "  -n\tinit database"
-        echo -e "  -m\tnpm install"
-        echo -e "  -x\tspecify xTuple version"
-        echo -e "  -d\tspecify PostgreSQL version"
-        exit 0;
-      ;;
-  esac
-done
-
 # Load the rest of the scripts
 source postgresql.sh
 source database.sh
@@ -126,6 +127,20 @@ source mobileclient.sh
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
 install_prereqs
+
+# if we were given command line options for installation process them now
+if [ $INSTALLALL ]; then
+    log "Executing full provision..."
+    install_postgresql $PGVERSION
+    drop_cluster $PGVERSION main auto
+    provision_cluster $PGVERSION $INSTANCE 5432 "$LANG" true auto
+    prepare_database auto 
+    download_demo auto $WORKDIR/tmp.backup $XTVERSION $DBTYPE
+    restore_database $WORKDIR/tmp.backup $PGDATABASE
+    install_mwc $XTVERSION $INSTANCE false $PGDATABASE
+    do_exit
+fi
+
 
 # we load mainmenu.sh last since it calls its menu once it builds it
 # and this is the initial interface for the user

@@ -48,67 +48,96 @@ prepare_database() {
         return $RET
     fi
 
+    if [ -z $1 ]; then
+        MODE="manual"
+    else
+        MODE="auto"
+    fi
+
     INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
-    
-    dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
-    dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
+
+    if [ $MODE = "auto" ]; then
+        dlf_fast_console $INIT_URL $WORKDIR/init.sql
+        dlf_fast_console $INIT_URL.md5sum $WORKDIR/init.sql.md5sum
+    else
+        dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
+        dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
+    fi
 
     VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        if [ -z $1 ] || [ $1 = "manual" ]; then
+            msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        else
+            log "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        fi
         do_exit
     fi
 
-    dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
-    dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
+    if [ $MODE = "auto" ]; then
+        dlf_fast_console $EXTRAS_URL $WORKDIR/extras.sql
+        dlf_fast_console $EXTRAS_URL.md5sum $WORKDIR/extras.sql.md5sum
+    else
+        dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
+        dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
+    fi
+
 
     VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
+        if [ $MODE = "manual" ]; then
+            msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
+        else
+            log "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
+        fi
         do_exit
-    fi
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
     fi
 
     log "Deploying init.sql, creating admin user and xtrole group"
     psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Error deplying init.sql. Check for errors and try again"
+        if [ $MODE = "manual" ]; then
+            msgbox "Error deploying init.sql. Check for errors and try again"
+        else
+            log "Error deploying init.sql. Check for errors and try again"
+        fi
         do_exit
     fi
 
     log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
     psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/extras.sql
-    RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Error deplying extras.sql. Check for errors and try again"
-        return 0
+        if [ $MODE = "manual" ]; then
+            msgbox "Error deplying extras.sql. Check for errors and try again"
+        else
+            log "Error deploying extras.sql. Check for errors and try again"
+        fi
+        do_exit
     fi
 
-    reset_sudo admin
-    if [ $RET -ne 0 ]; then
-        msgbox "Error setting the admin password. Check for errors and try again"
-        return 0
+    if [ $MODE = "manual" ]; then
+        reset_sudo admin
+        if [ $RET -ne 0 ]; then
+            msgbox "Error setting the admin password. Check for errors and try again"
+            return 0
+        fi
     fi
 
     log "Removing downloaded init scripts..."
     rm $WORKDIR/init.sql{,.md5sum}
     rm $WORKDIR/extras.sql{,.md5sum}
 
-    if [ -z $1 ] || [ $1 = "manual" ]; then
-        msgbox "Operations completed successfully"
+    if [ $MODE = "manual" ]; then
+        msgbox "Initializing database successful."
     else
-        return 0
+        log "Initializing database successful."
     fi
 
+    return 0
 }
 
 password_menu() {
@@ -212,6 +241,8 @@ list_clusters() {
 # $2 is cluster name
 # $3 is port
 # $4 is locale
+# $5 if exists, start at boot
+# $6 is mode (auto/manual) manual if not specified
 provision_cluster() {
 
     if [ -z $1 ]; then
@@ -254,43 +285,62 @@ provision_cluster() {
         POSTLOCALE=$4
     fi
     
-    if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
-        POSTSTART="--start-conf=auto"
+    if [ -z $5 ]; then
+        if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
+            POSTSTART="--start-conf=auto"
+        else
+            POSTSTART=""
+        fi
     else
-        POSTSTART=""
+        POSTSTART="--start-conf=auto"
     fi
+    
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
     log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
+        if [ -z $6 ] || [ $6 = "manual" ]; then
+            msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
+        else
+            log "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
+        fi
         do_exit
-    else
-        PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
-        
-        log "Opening pg_hba.conf for internet access with passwords"
-        sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
-            do_exit
-        fi
-        
-        log "Restarting PostgreSQL"
-        log_exec sudo service postgresql restart
-        
-        msgbox "Creation of database cluster $POSTNAME using version $POSTVER created successfully."
-        export PGHOST=localhost
-        export PGUSER=postgres
-        export PGPASSWORD=postgres
-        export PGPORT=$POSTPORT
-        reset_sudo postgres
-        if [ $RET -ne 0 ]; then
-            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
-            do_exit
-        fi
     fi
     
+    PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
+    
+    log "Opening pg_hba.conf for internet access with passwords"
+    sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
+        do_exit
+    fi
+    
+    log "Restarting PostgreSQL"
+    log_exec sudo service postgresql restart
+    
+    export PGHOST=localhost
+    export PGUSER=postgres
+    export PGPASSWORD=postgres
+    export PGPORT=$POSTPORT
+    
+    if [ -z $6 ] || [ $6 = "manual" ]; then
+        msgbox "Creation of database cluster $POSTNAME using version $POSTVER was successful. You will now be asked to set a postgresql password"
+        reset_sudo postgres
+        if [ $RET -ne 0 ]; then
+            if [ -z $6 ] || [ $6 = "manual" ]; then
+                msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
+            else
+                log "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
+            fi
+            do_exit
+        fi
+    else
+        log "Creation of database cluster $POSTNAME using version $POSTVER was successful."
+    fi
+    return 0
+
 }
 
 # $1 is version

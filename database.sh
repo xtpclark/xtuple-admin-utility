@@ -46,21 +46,35 @@ database_menu() {
 
 # $1 is mode, auto (no prompt for demo location, delete when done) 
 # manual, prompt for location, don't delete
+# $2 where to save database to
+# $3 is version to grab
+# $4 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
 download_demo() {
 
-    if [ -z $1 ]; then
+    if [ $1 = "manual" ]; then
         MODE="manual"
     else
         MODE="auto"
     fi
+    
+    if [ -z $2 ]; then
+        DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            return $RET
+        fi
+    else
+        DEMODEST=$2
+    fi
 
-    MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-            "1" "PostBooks 4.7.0 Demo" \
-            "2" "PostBooks 4.7.0 Empty" \
-            "3" "PostBooks 4.8.1 Demo" \
-            "4" "PostBooks 4.8.1 Empty" \
-            "5" "Return to database menu" \
-            3>&1 1>&2 2>&3)
+    if [ -z $3 ]; then
+        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+                "1" "PostBooks 4.7.0 Demo" \
+                "2" "PostBooks 4.7.0 Empty" \
+                "3" "PostBooks 4.8.1 Demo" \
+                "4" "PostBooks 4.8.1 Empty" \
+                "5" "Return to database menu" \
+                3>&1 1>&2 2>&3)
 
         RET=$?
 
@@ -84,63 +98,58 @@ download_demo() {
             *) msgbox "How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
-
-    if [ $MODE = "manual" ]; then
-        DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -eq 1 ]; then
-            return $RET
-        fi
-    elif [ $MODE = "auto" ]; then
-        DEMODEST=$WORKDIR/$VERSION-$DBTYPE.backup
+    else
+        VERSION=$3
+    fi
+    
+    if [ -z $4 ] && [ -z "$DBTYPE" ]; then
+        DBTYPE="demo"
+    else
+        DBTYPE=$4
     fi
 
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup.md5sum"
 
-    dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-    dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
-
     log "Saving "$DB_URL" as "$DEMODEST"."
+    if [ $MODE = "auto" ]; then
+        dlf_fast_console $DB_URL "$DEMODEST"
+        dlf_fast_console $MD5_URL "$DEMODEST".md5sum
+    else
+        dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
+        dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
+    fi
 
     VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
     CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ]; then
         msgbox "There was an error verifying the downloaded database. Utility will now exit."
         do_exit
-    else
-        if [ $MODE = "manual" ]; then
-            if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
-                DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-                RET=$?
-                if [ $RET -eq 1 ]; then
-                    return $RET
-                fi
-                log "Creating database $DEST from file $DEMODEST"
-                restore_database $DEMODEST $DEST
-                RET=$?
-                if [ $RET -eq 1 ]; then
-                    msgbox "Something has gone wrong. Check output and correct any issues."
-                    do_exit
-                else
-                    msgbox "Database $DEST successfully restored from file $DEMODEST"
-                    return 0
-                fi
-            else
-                log "Exiting without restoring database."
+    fi
+
+    if [ $MODE = "manual" ]; then
+        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
+            DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -ne 0 ]; then
+                return $RET
             fi
-        elif [ $MODE = "auto" ]; then
+            export PGDATABASE=$DEST
+            log "Creating database $DEST from file $DEMODEST"
             restore_database $DEMODEST $DEST
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 msgbox "Something has gone wrong. Check output and correct any issues."
-                rm $DEMODEST
                 do_exit
             else
+                msgbox "Database $DEST successfully restored from file $DEMODEST"
                 return 0
             fi
+        else
+            log "Exiting without restoring database."
         fi
     fi
+
 }
 
 download_latest_demo() {
@@ -245,14 +254,14 @@ restore_database() {
 
     check_database_info
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
     if [ -z $2 ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         fi
     else
@@ -261,14 +270,14 @@ restore_database() {
     log "Creating database $DEST."
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
         do_exit
     else
         log "Restoring database $DEST from file $1 on server $PGHOST:$PGPORT"
         log_exec pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DEST" "$1"
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
             do_exit
         else

@@ -38,9 +38,9 @@ provision_menu() {
                      ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                          ;;
-            "demodb") download_demo auto
+            "demodb") download_demo manual $WORKDIR/tmp.backup
                       ;;
-            "webclient") install_mwc 4.8.1
+            "webclient") install_mwc_menu
                       ;;
              *) ;;
          esac || main_menu

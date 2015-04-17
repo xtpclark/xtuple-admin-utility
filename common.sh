@@ -25,6 +25,13 @@ dlf_fast() {
     axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
 }
 
+# $1 is the URL
+# $3 is the output file name
+dlf_fast_console() {
+    log "Downloading $1 to file $2 using axel console output only"
+    axel -n 5 "$1" -o "$2" > /dev/null
+}
+
 # $1 is the msg
 msgbox() {
     log "MessageBox >> ""$1"
@@ -93,7 +100,6 @@ install_pg_repo() {
     if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
         sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
         sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        sudo apt-get update
     fi
 }
 
