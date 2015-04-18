@@ -8,9 +8,10 @@ export WORKDIR=`pwd`
 #set some defaults
 PGVERSION=9.3
 XTVERSION=4.8.1
+_XTVERSION=${XTVERSION//./}
 INSTANCE=xtuple
 DBTYPE=demo
-
+PGDATABASE="$DBTYPE""$_XTVERSION"
 # import supporting scripts
 source common.sh
 source logging.sh
@@ -80,6 +81,13 @@ then
   exit 1
 fi
 
+test_connection
+RET=$?
+if [ $RET -eq 1 ]; then
+    log "I can't seem to tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
+    do_exit
+fi
+
 # check what distro we are running.
 _DISTRO=`lsb_release -i -s`
 _CODENAME=`lsb_release -c -s`
@@ -138,6 +146,7 @@ if [ $INSTALLALL ]; then
     prepare_database auto 
     download_demo auto $WORKDIR/tmp.backup $XTVERSION $DBTYPE
     restore_database $WORKDIR/tmp.backup $PGDATABASE
+    rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION $INSTANCE false $PGDATABASE
     do_exit
 fi

@@ -19,7 +19,7 @@ mwc_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") install_mwc ;;
+            "1") install_mwc_menu ;;
             "2") remove_mwc ;;
             "3") break ;;
             *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && do_exit ;;
@@ -106,10 +106,10 @@ install_mwc() {
 
     log "installing web client"
 
-    MWCVERSION=$1
-    MWCNAME="$2"
+    export MWCVERSION=$1
+    export MWCNAME="$2"
 
-    if [ -z "$3" ] || [ ! "$3" = "true" ]; then
+    if [ -z "$3" ] || [ "$3" = "false" ]; then
         PRIVATEEXT=false
     else
         PRIVATEEXT=true
