@@ -1,7 +1,22 @@
 #!/bin/bash
 
+REBOOT=0
+DATE=`date +%Y.%m.%d-%H.%M`
+export _REV="0.1Alpha"
+export WORKDIR=`pwd`
+
+#set some defaults
+PGVERSION=9.3
+XTVERSION=4.8.1
+INSTANCE=xtuple
+DBTYPE=demo
+
+# import supporting scripts
+source common.sh
+source logging.sh
+
 # process command line arguments
-while getopts ":ad:ip:n:hx-:" opt; do
+while getopts ":ad:ip:n:hx:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
@@ -9,10 +24,6 @@ while getopts ":ad:ip:n:hx-:" opt; do
     d)
         PGDATABASE=$OPTARG
         log "Database name set to $PGDATABASE via command line argument -d"
-        ;;
-    i)
-        # Install pre-requisite packages
-        PREREQS=true
         ;;
     p)
         PGVERSION=$OPTARG
@@ -28,42 +39,30 @@ while getopts ":ad:ip:n:hx-:" opt; do
         XTVERSION=$OPTARG
         log "xTuple MWC Version set to $XTVERSION via command line argument -x"
         ;;
-    e)
-        # select the version to use for nodejs
-        NODEVERSION=$OPTARG
-        log "NodeJS Version set to $NODE_VERSION via command line argument"
+    t)
+        # Specify the type of database to grab (demo/quickstart/empty)
+        DBTYPE=$OPTARG
+        log "xTuple Database Type set to $DBTYPE via command line argument -x"
         ;;
     h)
         echo "Usage: xtuple-utility [OPTION]"
         echo "$( menu_title )"
         echo "To get an interactive menu run xtuple-utility.sh with no arguments"
         echo ""
-        echo -e "  -a\tinstall all (PostgreSQL, demo database (currently 4.8.1) and web client)"
-        echo -e "  -h\tshow this message"
-        echo -e "  -i\tinstall packages"
-        echo -e "  -p\tinstall PostgreSQL"
-        echo -e "  -n\tinit database"
-        echo -e "  -x\tspecify xTuple version (applies to web client and database)"
-        echo -e "  -d\tspecify PostgreSQL version"
+        echo -e "  -h\tShow this message"
+        echo -e "  -a\tInstall all (PostgreSQL (currently $( latest_version pg )), demo database (currently $( latest_version db )) and web client (currently $( latest_version db )))"
+        echo -e "  -d\tSpecify database name to create"
+        echo -e "  -p\tOverride PostgreSQL version"
+        echo -e "  -n\tOverride instance name"
+        echo -e "  -x\tOverride xTuple version (applies to web client and database)"
+        echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
         exit 0;
-      ;;
+        ;;
+    \?)
+        log "Invalid option: -$OPTARG"
+        ;;
   esac
 done
-
-REBOOT=0
-DATE=`date +%Y.%m.%d-%H.%M`
-export _REV="0.1Alpha"
-export WORKDIR=`pwd`
-
-#set some defaults
-PGVERSION=9.3
-XTVERSION=4.8.1
-INSTANCE=xtuple
-DBTYPE=demo
-
-# import supporting scripts
-source logging.sh
-source common.sh
 
 if [ `uname -m` != "x86_64" ]; then
     log "You must run this on a 64bit server only"

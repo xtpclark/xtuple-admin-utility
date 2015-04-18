@@ -1,0 +1,9 @@
+description "xTuple Node Server"
+start on filesystem or runlevel [2345]
+stop on runlevel [!2345]
+console output
+respawn
+#setuid xtuple
+#setgid xtuple
+chdir /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource
+exec ./main.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js > /var/log/node-datasource-$MWCVERSION-"$MWCNAME".log 2>&1

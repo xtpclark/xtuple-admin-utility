@@ -9,6 +9,13 @@ do_exit() {
     exit 0
 }
 
+# catch user hitting control-c during operation, exit gracefully. 
+trap ctrlc INT
+ctrlc() {
+  log "Breaking due to user CTRL-C"
+  do_exit
+}
+
 # $1 is the URL
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
@@ -58,6 +65,18 @@ window_title() {
 menu_title() {
     cat "$WORKDIR"/xtuple.asc
     echo "$1"
+}
+
+# used whenever a command needs elevated privileges as we can't always rely on sudo
+runasroot() {
+  if [[ $UID -eq 0 ]]; then
+    "$@"
+  elif sudo -v &>/dev/null && sudo -l "$@" &>/dev/null; then
+    sudo -E "$@"
+  else
+    echo -n "root "
+    su -c "$(printf '%q ' "$@")"
+  fi
 }
 
 # these are both the same currently, but the structure may change eventually
