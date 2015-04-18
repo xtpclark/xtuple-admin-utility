@@ -106,10 +106,10 @@ install_mwc() {
 
     log "installing web client"
 
-    export MWCVERSION=$1
-    export MWCNAME="$2"
+    MWCVERSION=$1
+    MWCNAME="$2"
 
-    if [ -z "$3" ] || [ "$3" = "false" ]; then
+    if [ -z "$3" ] || [ ! "$3" = "true" ]; then
         PRIVATEEXT=false
     else
         PRIVATEEXT=true
