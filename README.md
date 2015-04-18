@@ -14,7 +14,7 @@ If you are installing from scratch, choose privisioning from the main menu. To i
 For an unattended install on a clean machine, try: ./xtuple-utility.sh -a -d demo481 -p 9.3 -x 4.8.1
 
 Help Output:
-
+```
 To get an interactive menu run xtuple-utility.sh with no arguments
 
   -h    Show this message
@@ -24,4 +24,4 @@ To get an interactive menu run xtuple-utility.sh with no arguments
   -n    Override instance name
   -x    Override xTuple version (applies to web client and database)
   -t    Specify the type of database to grab (demo/quickstart/empty)
-
+```
