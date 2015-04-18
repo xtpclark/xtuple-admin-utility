@@ -193,25 +193,6 @@ install_mwc() {
     log_exec sudo sed -i  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    # prompt user to choose database
-    check_database_info
-
-    #DATABASES=()
-
-    #while read -r line; do
-    #    DATABASES+=("$line" "$line")
-    # done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-    # if [ -z "$DATABASES" ]; then
-    #    log "No databases detected on this system"
-    #    return 0
-    #fi
-
-    #DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    #RET=$?
-    #if [ $RET -ne 0 ]; then
-    #    msgbox "Installing the mobile client was interrupted. Please make sure you have an xTuple database already deployed before trying again."
-    #    main_menu
-    #fi
     log "Using database $PGDATABASE"
     log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
@@ -220,28 +201,36 @@ install_mwc() {
     log_exec sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js"
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "buildapp failed to run. Check output and try again"
+        log "buildapp failed to run. Check output and try again"
         do_exit
     fi
 
-    log "Creating upstart script using filename /etc/init/xtuple-"$MWCNAME".conf"
-    # create the upstart script
-    sudo bash -c "echo $'description     \"xTuple Node Server\"' > /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"start on filesystem or runlevel [2345]\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"stop on runlevel [!2345]\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"console output\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"respawn\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    #sudo bash -c "sudo echo \"setuid xtuple\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    #sudo bash -c "sudo echo \"setgid xtuple\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"chdir /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"exec n use 0.10\" >> /etc/init/xtuple-"$MWCNAME".conf"
-    sudo bash -c "sudo echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js > /var/log/node-datasource-$MWCVERSION-"$MWCNAME".log 2>&1\" >> /etc/init/xtuple-"$MWCNAME".conf"
-
+    # bring on systemd please.. but until then
+    if [ $DISTRO = "ubuntu" ]; then
+        log "Creating upstart script using filename /etc/init/xtuple-"$MWCNAME".conf"
+        # create the upstart script
+        sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
+        log_exec sudo sed -i  "/chdir /opt/xtuple/c\chdir /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource" /etc/init/xtuple-"$MWCNAME".conf
+        log_exec sudo sed -i  "/exec/c\exec ./main.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js > /var/log/node-datasource-$MWCVERSION-"$MWCNAME".log 2>&1" /etc/init/xtuple-"$MWCNAME".conf
+    elif [ $DISTRO = "debian" ]; then
+        log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
+        # create the weird debian sysvinit style script
+        sudo cp $WORKDIR/templates/debian-init /etc/init.d/xtuple-"$MWCNAME"
+        log_exec sudo sed -i  "/APP_DIR=/c\APP_DIR=\"/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\"" /etc/init.d/xtuple-"$MWCNAME"
+        log_exec sudo sed -i  "/CONFIG_FILE=/c\CONFIG_FILE=\"/etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js\"" /etc/init.d/xtuple-"$MWCNAME"
+        # should be +x from git but just in case...
+        sudo chmod +x /etc/init.d/xtuple-"$MWCNAME"
+    else
+        log "Seriously? We made it all the way to where I need to write out the init script and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+        log "well, in the node-datasource dir, type node main.js -c /etc/init/xtuple-\"$MWCNAME\".conf and cross your fingers."
+        do_exit
+    fi
+    
     # now that we have the script, start the server!
     log_exec sudo service xtuple-"$MWCNAME" start
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
     IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
-    log "All set! You should now be able to log on to this server at https://$IP:8443"
+    log "All set! You should now be able to log on to this server at https://$IP:8443 with username admin and password admin. Make sure you change your password!"
 
 }

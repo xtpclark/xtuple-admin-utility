@@ -65,7 +65,7 @@ DBTYPE=demo
 source logging.sh
 source common.sh
 
-if [ `uname -i` != "x86_64" ]; then
+if [ `uname -m` != "x86_64" ]; then
     log "You must run this on a 64bit server only"
     do_exit
 fi
@@ -98,7 +98,9 @@ case "$_DISTRO" in
         ;;
     "Debian")
         export DISTRO="debian"
+        export CODENAME=$_CODENAME
         case "$_CODENAME" in
+            "wheezy") ;;
             *) log "We currently don't support Debian (not quite yet!) Current release: `lsb_release -r -s`" 
                do_exit
                ;;

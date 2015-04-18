@@ -75,6 +75,8 @@ install_prereqs() {
                 fi
                 ;;
         "debian")
+                install_pg_repo
+                sudo apt-get update && sudo apt-get -y install python-software-properties software-properties-common
                 sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
                 sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
                 RET=$?
