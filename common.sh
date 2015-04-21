@@ -147,3 +147,15 @@ test_connection() {
         sleep 5
     done
 }
+# define some colors if the tty supports it
+if [[ -t 1 && ! $COLOR = "NO" ]]; then
+  COLOR1='\e[1;39m'
+  COLOR2='\e[1;32m'
+  COLOR3='\e[1;35m'
+  COLOR4='\e[1;36m'
+  COLOR5='\e[1;34m'
+  COLOR6='\e[1;33m'
+  COLOR7='\e[1;31m'
+  ENDCOLOR='\e[0m' 
+  S='\\'
+fi
