@@ -17,7 +17,8 @@ database_menu() {
             "9" "Create Database From File" \
             "10" "Download Latest Demo Database" \
             "11" "Download Specific Database" \
-            "12" "Return to main menu" \
+            "12" "Upgrade xTuple Database" \
+            "13" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -37,7 +38,8 @@ database_menu() {
             "9") create_database_from_file ;;
             "10") download_latest_demo ;;
             "11") download_demo ;;
-            "12") main_menu ;;
+            "12") upgrade_database ;;
+            "13") main_menu ;;
             *) msgbox "How did you get here?" && do_exit ;;
             esac || database_menu
         fi
@@ -652,5 +654,71 @@ check_database_info() {
         return $RET
     else
         return 0
+    fi
+}
+
+#upgrade_database_menu() {
+#
+#}
+
+# $1 is database
+# $2 is version to upgrade to
+upgrade_database() {
+DATABASE=demo481
+    APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('Application') AS application;\""`
+    log "Detected application $APP"
+    VER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
+    log "Detected server version $VER"
+    UPS=`curl -s http://api.xtuple.org/upgradepath.php\?package=$APP\&fromver=3.7.0\&tover=4.8.1`
+    log "Detected upgrades $UPS"
+    
+    return 0; # for now
+
+    if [ -z "$1" ]; then
+        DATABASES=()
+
+        while read -r line; do
+            DATABASES+=("$line" "$line")
+         done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         if [ -z "$DATABASES" ]; then
+            msgbox "No databases detected on this system"
+            return 0
+        fi
+
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
+        fi
+    else
+        DATABASE="$1"
+    fi
+
+    if [ -z "$2" ]; then
+        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+                "1" "PostBooks 4.7.0" \
+                "2" "PostBooks 4.8.0" \
+                "3" "PostBooks 4.8.1" \
+                "4" "Return to database menu" \
+                3>&1 1>&2 2>&3)
+
+        RET=$?
+
+        if [ $RET -ne 0 ]; then
+            return 0
+        else
+            case "$MENUVER" in
+            "1") VERSION=4.7.0 
+                   ;;
+            "2") VERSION=4.8.0 
+                   ;;
+            "3") VERSION=4.8.1 
+                   ;;
+            "4") return 0 ;;
+            *) msgbox "How did you get here?" && exit 0 ;;
+            esac || database_menu
+        fi
+    else
+        VERSION="$2"
     fi
 }
