@@ -36,7 +36,8 @@ main_menu() {
             "3" "Database Maintenance" \
             "4" "nginx Maintenance" \
             "5" "Web Client Maintenance" \
-            "6" "Extras Menu" \
+            "6" "OpenRPT Menu (web printing)" \
+            "7" "Extras Menu" \
             3>&1 1>&2 2>&3)
         
         RET=$?
@@ -50,7 +51,8 @@ main_menu() {
             "3") database_menu ;;
             "4") nginx_menu ;;
             "5") mwc_menu ;;
-            "6") extras_menu ;;
+            "6") openrpt_menu ;;
+            "7") extras_menu ;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
         fi

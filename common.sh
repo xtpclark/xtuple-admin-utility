@@ -9,6 +9,12 @@ do_exit() {
     exit 0
 }
 
+die() {
+  TRAPMSG="$@"
+  log $@
+  exit 1
+}
+
 # catch user hitting control-c during operation, exit gracefully. 
 trap ctrlc INT
 ctrlc() {

@@ -132,6 +132,7 @@ source database.sh
 source provision.sh
 source nginx.sh
 source mobileclient.sh
+source openrpt.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
