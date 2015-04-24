@@ -80,8 +80,8 @@ prepare_database() {
         dlf_fast_console $EXTRAS_URL $WORKDIR/extras.sql
         dlf_fast_console $EXTRAS_URL.md5sum $WORKDIR/extras.sql.md5sum
     else
-        dlf_fast $EXTRAS_URL "Downloading init.sql. Please Wait." $WORKDIR/extras.sql
-        dlf_fast $EXTRAS_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
+        dlf_fast $EXTRAS_URL "Downloading extras.sql. Please Wait." $WORKDIR/extras.sql
+        dlf_fast $EXTRAS_URL.md5sum "Downloading extras.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
     fi
 
 
