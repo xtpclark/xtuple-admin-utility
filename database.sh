@@ -304,7 +304,7 @@ carve_pilot() {
 
         while read -r line; do
             DATABASES+=("$line" "$line")
-         done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 0
@@ -330,7 +330,7 @@ carve_pilot() {
     fi
 
     log "Creating pilot database $PILOT from database $SOURCE"
-    sudo su - postgres -c "psql postgres -q -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
+    sudo su - postgres -c "psql postgres -q -h $PGHOST -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
@@ -387,7 +387,7 @@ list_databases() {
     while read -r line; do
         DATABASES+=("$line" "$line")
     #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
-     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -405,7 +405,7 @@ drop_database_menu() {
     while read -r line; do
         DATABASES+=("$line" "$line")
     #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
-     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -441,7 +441,7 @@ drop_database() {
         return 0
     fi
 
-    sudo su - postgres -c "psql -q -c \"DROP DATABASE $POSTNAME;\""
+    sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
@@ -460,7 +460,7 @@ rename_database_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -507,7 +507,7 @@ rename_database() {
         DEST="$2"
     fi
 
-    sudo su - postgres -c "psql -q -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
+    sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
@@ -526,7 +526,7 @@ inspect_database_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -679,7 +679,7 @@ DATABASE=demo481
 
         while read -r line; do
             DATABASES+=("$line" "$line")
-         done < <( sudo su - postgres -c "psql --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 0
