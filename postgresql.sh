@@ -443,7 +443,7 @@ reset_sudo() {
 
     log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
 
-    log_exec sudo su - postgres -c "psql -q -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
+    log_exec sudo su - postgres -c "psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
@@ -470,7 +470,7 @@ reset_psql() {
     
     log "Resetting PostgreSQL password for user $1 using psql directly"
     
-    log_exec psql -q -U postgres -d postgres  -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\"
+    log_exec psql -q -h $PGHOST -U postgres -d postgres  -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
