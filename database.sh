@@ -37,7 +37,7 @@ database_menu() {
             "8") carve_pilot ;;
             "9") create_database_from_file ;;
             "10") download_latest_demo ;;
-            "11") download_demo ;;
+            "11") download_demo manual ;;
             "12") upgrade_database ;;
             "13") main_menu ;;
             *) msgbox "How did you get here?" && do_exit ;;
@@ -69,6 +69,12 @@ download_demo() {
         DEMODEST=$2
     fi
 
+    if [ -z $4 ] && [ -z "$DBTYPE" ]; then
+        DBTYPE="demo"
+    else
+        DBTYPE=$4
+    fi
+    
     if [ -z $3 ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
                 "1" "PostBooks 4.7.0 Demo" \
@@ -104,11 +110,7 @@ download_demo() {
         VERSION=$3
     fi
     
-    if [ -z $4 ] && [ -z "$DBTYPE" ]; then
-        DBTYPE="demo"
-    else
-        DBTYPE=$4
-    fi
+
 
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup.md5sum"

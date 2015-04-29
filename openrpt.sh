@@ -80,7 +80,7 @@ remove_xvfb() {
     if (whiptail --title "Are you sure?" --yesno "Uninstall xvfb?" --yes-button "No" --no-button "Yes" 10 60) then
       return 0
     else
-        log "Uninstalling xvfb..."
+      log "Uninstalling xvfb..."
     fi
 
     log_exec sudo apt-get -y remove xvfb
