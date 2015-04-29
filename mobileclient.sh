@@ -210,8 +210,8 @@ install_mwc() {
         log "Creating upstart script using filename /etc/init/xtuple-"$MWCNAME".conf"
         # create the upstart script
         sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
-        log_exec sudo sed -i  "/chdir /opt/xtuple/c\chdir /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource" /etc/init/xtuple-"$MWCNAME".conf
-        log_exec sudo sed -i  "/exec/c\exec ./main.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js > /var/log/node-datasource-$MWCVERSION-"$MWCNAME".log 2>&1" /etc/init/xtuple-"$MWCNAME".conf
+        log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+        log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
     elif [ $DISTRO = "debian" ]; then
         log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
         # create the weird debian sysvinit style script
