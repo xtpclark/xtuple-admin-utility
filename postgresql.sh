@@ -14,7 +14,9 @@ postgresql_menu() {
             "6" "Drop database cluster" \
             "7" "Prepare cluster for xTuple" \
             "8" "Reset passwords" \
-            "9" "Return to main menu" \
+            "9" "Backup Globals" \
+            "10" "Restore Globals" \
+            "11" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -31,7 +33,9 @@ postgresql_menu() {
             "6") drop_cluster_menu ;;
             "7") prepare_database ;;
             "8") password_menu ;;
-            "9") break ;;
+            "9") backup_globals ;;
+            "10") restore_globals ;;
+            "11") break ;;
             *) msgbox "Error. How did you get here?" && do_exit ;;
             esac || postgresql_menu
         fi
@@ -482,4 +486,66 @@ reset_psql() {
         return 0
     fi
     
+}
+
+#  $1 is globals file to backup to
+backup_globals() {
+
+    check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    if [ -z $1 ]; then
+        DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save globals to" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+    else
+        DEST=$1
+    fi
+
+    log "Backing up globals to file "$DEST"."
+
+    log_exec pg_dumpall --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Something has gone wrong. Check output and correct any issues."
+        do_exit
+    else
+        msgbox "Globals successfully backed up to $DEST"
+        return 0
+    fi
+}
+
+#  $1 is globals file to restore
+restore_globals() {
+
+    check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return 0
+    fi
+    
+    if [ -z $1 ]; then
+        SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to globals file" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+    else
+        SOURCE=$1
+    fi
+
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -f "$SOURCE"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Something has gone wrong. Check output and correct any issues."
+        do_exit
+    else
+        msgbox "Globals successfully restored."
+        return 0
+    fi
 }
