@@ -195,15 +195,9 @@ install_mwc() {
 
     log "Using database $PGDATABASE"
     log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 5432/c\      port: \"$PGPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
-
-    log_exec sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        log "buildapp failed to run. Check output and try again"
-        do_exit
-    fi
 
     # bring on systemd please.. but until then
     if [ $DISTRO = "ubuntu" ]; then
@@ -225,7 +219,14 @@ install_mwc() {
         log "well, in the node-datasource dir, type node main.js -c /etc/init/xtuple-\"$MWCNAME\".conf and cross your fingers."
         do_exit
     fi
-    
+
+    log_exec sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        log "buildapp failed to run. Check output and try again"
+        do_exit
+    fi
+
     # now that we have the script, start the server!
     log_exec sudo service xtuple-"$MWCNAME" start
 
