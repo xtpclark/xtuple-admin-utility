@@ -314,13 +314,21 @@ provision_cluster() {
     PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
     
     log "Opening pg_hba.conf for internet access with passwords"
-    sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
+    log_exec sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
         do_exit
     fi
     
+    log "Adding plv8.start_proc='xt.js_init' to postgresql.conf"
+    log_exec sudo bash -c "echo  \"plv8.start_proc='xt.js_init'\" >> $PGDIR/postgresql.conf"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Adding plv8.start_proc to postgresql.conf failed. Check the log file for any issues.\nSee https://github.com/xtuple/xtuple/wiki/Installing-PLv8 for more information."
+        do_exit
+    fi
+
     log "Restarting PostgreSQL"
     log_exec sudo service postgresql restart
     
@@ -528,7 +536,7 @@ restore_globals() {
     if [ $RET -ne 0 ]; then
         return 0
     fi
-    
+
     if [ -z $1 ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to globals file" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -538,6 +546,8 @@ restore_globals() {
     else
         SOURCE=$1
     fi
+
+    log "Restoring globals from file $SOURCE"
 
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -f "$SOURCE"
     RET=$?
