@@ -31,11 +31,13 @@ mwc_menu() {
 
 install_mwc_menu() {
 
+    VERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | tail -10 | cut -d '/' -f 3 | cut -d v -f2 | sort -r)
+
     MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-        "1" "4.7.0" \
-        "2" "4.8.0" \
-        "3" "4.8.1" \
-        "4" "Return to main menu" \
+        $(paste -d '\n' \
+	   <(seq 0 9) \
+	   <(echo $VERSIONS | tr ' ' '\n')) \
+        "11" "Return to main menu" \
         3>&1 1>&2 2>&3)
 
     RET=$?
@@ -43,16 +45,11 @@ install_mwc_menu() {
     if [ $RET -eq 1 ]; then
         return 0
     elif [ $RET -eq 0 ]; then
-        case "$MENUVER" in
-        "1") MWCVERSION=4.7.0 
-               ;;
-        "2") MWCVERSION=4.8.0 
-               ;;
-        "3") MWCVERSION=4.8.1
-              ;;
-        "4") return 0 ;;
-        *) msgbox "How did you get here?" && do_exit ;;
-        esac || main_menu
+        if [ $MENUVER -eq 11 ]; then
+	       return 0;
+	   fi
+	   read -a versionarray <<< $VERSIONS
+	   MWCVERSION=${versionarray[$MENUVER]}
     fi
     
     log "Chose version $MWCVERSION"
