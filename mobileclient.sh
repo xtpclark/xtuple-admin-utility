@@ -31,25 +31,35 @@ mwc_menu() {
 
 install_mwc_menu() {
 
-    VERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | tail -10 | cut -d '/' -f 3 | cut -d v -f2 | sort -r)
+    TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | tail -10 | cut -d '/' -f 3 | cut -d v -f2 | sort -r)
+    HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | tail -5)
 
     MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
         $(paste -d '\n' \
 	   <(seq 0 9) \
-	   <(echo $VERSIONS | tr ' ' '\n')) \
-        "11" "Return to main menu" \
+	   <(echo $TAGVERSIONS | tr ' ' '\n')) \
+	   $(paste -d '\n' \
+	   <(seq 10 14) \
+	   <(echo $HEADVERSIONS | tr ' ' '\n')) \
+        "15" "Return to main menu" \
         3>&1 1>&2 2>&3)
 
     RET=$?
 
-    if [ $RET -eq 1 ]; then
-        return 0
-    elif [ $RET -eq 0 ]; then
-        if [ $MENUVER -eq 11 ]; then
+    if [ $RET -eq 0 ]; then
+        if [ $MENUVER -eq 16 ]; then
 	       return 0;
+	   elif [ $MENUVER -lt 10 ]; then
+	       read -a tagversionarray <<< $TAGVERSIONS
+	       MWCVERSION=${tagversionarray[$MENUVER]}
+		  MWCSTRING=v$MWCVERSION
+	   else
+	       read -a headversionarray <<< $HEADVERSIONS
+	       MWCVERSION=${headversionarray[(($MENUVER-10))]}
+		  MWCSTRING=$MWCVERSION
 	   fi
-	   read -a versionarray <<< $VERSIONS
-	   MWCVERSION=${versionarray[$MENUVER]}
+    else
+        return $RET
     fi
     
     log "Chose version $MWCVERSION"
@@ -143,13 +153,13 @@ install_mwc() {
     log_exec sudo chown -R xtuple.xtuple /opt/xtuple
 
     # main code
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install bower && npm install"
+    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCSTRING && git submodule update --init --recursive && npm install bower && npm install"
     # main extensions
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
+    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"
-        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout v$MWCVERSION && git submodule update --init --recursive && npm install"
+        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
     else
         log "Not installing the commercial extensions"
     fi
