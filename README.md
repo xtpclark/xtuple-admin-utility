@@ -5,7 +5,7 @@ Getting Started, Ubuntu 14.04 or 14.10, Debian 7.x 64bit only
 
 apt-get install git
 
-git clone https://github.com/davidbeauchamp/xtuple-utility.git
+git clone https://github.com/xtuple/xtuple-admin-utility.git
 
 cd xtuple-utility && ./xtuple-utility.sh
 
