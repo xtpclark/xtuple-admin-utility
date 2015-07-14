@@ -27,20 +27,20 @@ provision_menu() {
     fi
         for i in $ACTIONS; do   
             case "$i" in
-            "installpg93") install_postgresql 9.3
-                           drop_cluster 9.3 main auto
+            "installpg93") log_choice install_postgresql 9.3
+                           log_choice drop_cluster 9.3 main auto
                            ;;
-            "provisioncluster") provision_cluster 9.3
+            "provisioncluster") log_choice provision_cluster 9.3
                                 ;;
-            "initdb") prepare_database auto
+            "initdb") log_choice prepare_database auto
                       ;;
             "nginx") nginx_prompt
                      ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                          ;;
-            "demodb") download_demo manual $WORKDIR/tmp.backup
+            "demodb") log_choice download_demo manual $WORKDIR/tmp.backup
                       ;;
-            "webclient") install_mwc_menu
+            "webclient") log_choice install_mwc_menu
                       ;;
              *) ;;
          esac || main_menu

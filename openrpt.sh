@@ -19,10 +19,10 @@ openrpt_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$CC" in
-            "1") install_openrpt ;;
-            "2") build_openrpt ;;
-            "3") install_xvfb ;;
-            "4") remove_xvfb ;;
+            "1") log_choice install_openrpt ;;
+            "2") log_choice build_openrpt ;;
+            "3") log_choice install_xvfb ;;
+            "4") log_choice remove_xvfb ;;
             "5") break ;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu" && do_exit ;;
             esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
@@ -32,6 +32,7 @@ openrpt_menu() {
 
 install_openrpt() {
 
+    log_arg
     log "Installing OpenRPT from apt..."
     log_exec sudo apt-get -y -qq install openrpt
     RET=$?
@@ -44,6 +45,7 @@ install_openrpt() {
 
 build_openrpt() {
 
+    log_arg
     cd $WORKDIR || die "Couldn't cd $WORKDIR"
 
     log "preparing to build OpenRPT from source"
@@ -65,6 +67,7 @@ build_openrpt() {
 
 install_xvfb() {
 
+    log_arg
     log "Installing xvfb..."
     log_exec sudo apt-get -y install xvfb
     RET=$?
@@ -77,6 +80,7 @@ install_xvfb() {
 
 remove_xvfb() {
 
+    log_arg
     if (whiptail --title "Are you sure?" --yesno "Uninstall xvfb?" --yes-button "No" --no-button "Yes" 10 60) then
       return 0
     else

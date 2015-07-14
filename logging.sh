@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LOG_FILE=$(pwd)/install-$DATE.log
+CHOICE_FILE=$(pwd)/choice-$DATE.log
 
 log_exec() {
    "$@" | tee -a $LOG_FILE 2>&1
@@ -11,6 +12,15 @@ log_exec() {
 log() {
     echo "$( timestamp ) xtuple >> $@"
     echo "$( timestamp ) xtuple >> $@" >> $LOG_FILE
+}
+
+log_choice() {
+    echo -n "$1 " >> $CHOICE_FILE
+    "$@"
+}
+
+log_arg() {
+	echo "$@" >> $CHOICE_FILE
 }
 
 timestamp() {
