@@ -18,7 +18,7 @@ nginx_menu() {
         elif [ $RET -eq 0 ]; then
             case "$NGM" in
             "1") nginx_prompt ;;
-            "2") remove_nginx ;;
+            "2") log_choice remove_nginx ;;
             "3") break ;;
             *) msgbox "How did you get here?" && exit 0 ;;
             esac || nginx_menu
@@ -52,7 +52,7 @@ nginx_prompt() {
         fi
     fi
     
-    install_nginx $NGINXHOSTNAME $DOMAIN
+    log_choice install_nginx $NGINXHOSTNAME $DOMAIN
 }
 
 # $1 is hostname for nginx
@@ -63,6 +63,8 @@ install_nginx() {
 
     export NGINXHOSTNAME=$1
     export DOMAIN=$2
+
+    log_arg $NGINXHOSTNAME $DOMAIN
 
     log_exec sudo apt-get -y install nginx
     RET=$?
@@ -102,7 +104,7 @@ install_nginx() {
 }
 
 remove_nginx() {
-
+    log_arg
     log_exec apt-get -y remove nginx
     RET=$?
     return $RET
