@@ -509,13 +509,18 @@ rename_database() {
         DEST="$2"
     fi
 
-    MWCCONFIG=$(grep -Rl databases.*"$SOURCE" /etc/xtuple/ 2>/dev/null)
-    if [ -z "$MWCCONFIG" ]; then
-        if (whiptail --title "No config.js found" --yesno "No mobile client configuration was found for this database.  If this is unexpected (mobile client is installed for this database), then select no, and file a bug report." 10 60) then
-	       log "config.js not found, continuing."
-	   else
-	       log "config.js not found, quitting without renaming the database."
-		  return 0
+    UPDATE_CONFIG=false
+    MWCCONFIG=$(grep -Rl databases.*"$SOURCE" /etc/xtuple/ 2>/dev/null | head -1)
+    if (whiptail --title "Update config.js" --yesno "Would you like to update config.js?" 10 60) then
+        if [ -z "$MWCCONFIG" ]; then
+            if (whiptail --title "No config.js found" --yesno "No mobile client configuration was found for this database.  If this is unexpected (this database is mobilized), then select no, and file a bug report." 10 60) then
+                log "config.js not found, continuing."
+            else
+                log "config.js not found, quitting without renaming the database."
+                return 0
+            fi
+        else
+	       UPDATE_CONFIG=true
 	   fi
     fi
 
@@ -531,7 +536,9 @@ rename_database() {
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
         do_exit
     else
-        log_exec sudo sed -i  's/\["'$SOURCE'"\]/\["'$DEST'"\]/g' $MWCCONFIG
+        if $UPDATE_CONFIG ; then
+	       log_exec sudo sed -i  's/\["'$SOURCE'"\]/\["'$DEST'"\]/g' $MWCCONFIG
+	   fi
         msgbox "Successfully renamed database $SOURCE to $DEST"
     fi
 
