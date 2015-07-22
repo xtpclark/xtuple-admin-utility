@@ -332,13 +332,21 @@ carve_pilot() {
     fi
 
     log "Creating pilot database $PILOT from database $SOURCE"
-    sudo su - postgres -c "psql postgres -q -h $PGHOST -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
-    RET=$?
-    if [ $RET -eq 1 ]; then
-        msgbox "Something has gone wrong. Check output and correct any issues."
-        do_exit
-    else
-        msgbox "Database "$PILOT" has been created"
+    if (whiptail --title "Warning" --yesno "This will kill all active connections to the database, if any.  Continue?" 10 60) then
+        remove_connect_priv $SOURCE
+        kill_database_connections $SOURCE
+
+        sudo su - postgres -c "psql postgres -q -h $PGHOST -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
+        RET=$?
+        if [ $RET -eq 1 ]; then
+            msgbox "Something has gone wrong. Check output and correct any issues."
+            restore_connect_priv $SOURCE
+            do_exit
+        else
+            restore_connect_priv $SOURCE
+            restore_connect_priv $PILOT
+            msgbox "Database "$PILOT" has been created"
+        fi
     fi
 }
 
@@ -542,6 +550,30 @@ inspect_database_menu() {
 
     inspect_database "$DATABASE"
 
+}
+
+# $1 is database name
+remove_connect_priv() {
+
+    check_database_info
+
+    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
+}
+
+# $1 is database name
+kill_database_connections() {
+
+    check_database_info
+
+    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
+}
+
+# $1 is database name
+restore_connect_priv() {
+
+    check_database_info
+
+    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
 
 # $1 is database name to inspect
