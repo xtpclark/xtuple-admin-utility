@@ -58,27 +58,7 @@ prepare_database() {
         MODE="auto"
     fi
 
-    INIT_URL="http://files.xtuple.org/common/init.sql"
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
-
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $INIT_URL $WORKDIR/init.sql
-        dlf_fast_console $INIT_URL.md5sum $WORKDIR/init.sql.md5sum
-    else
-        dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
-        dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
-    fi
-
-    VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        if [ -z $1 ] || [ $1 = "manual" ]; then
-            msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        else
-            log "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        fi
-        do_exit
-    fi
 
     if [ $MODE = "auto" ]; then
         dlf_fast_console $EXTRAS_URL $WORKDIR/extras.sql
@@ -96,18 +76,6 @@ prepare_database() {
             msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
         else
             log "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-        fi
-        do_exit
-    fi
-
-    log "Deploying init.sql, creating admin user and xtrole group"
-    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "Error deploying init.sql. Check for errors and try again"
-        else
-            log "Error deploying init.sql. Check for errors and try again"
         fi
         do_exit
     fi
@@ -132,7 +100,6 @@ prepare_database() {
     fi
 
     log "Removing downloaded init scripts..."
-    rm $WORKDIR/init.sql{,.md5sum}
     rm $WORKDIR/extras.sql{,.md5sum}
 
     if [ $MODE = "manual" ]; then
@@ -351,6 +318,49 @@ provision_cluster() {
     else
         log "Creation of database cluster $POSTNAME using version $POSTVER was successful."
     fi
+
+    INIT_URL="http://files.xtuple.org/common/init.sql"
+
+    if [ $MODE = "auto" ]; then
+        dlf_fast_console $INIT_URL $WORKDIR/init.sql
+        dlf_fast_console $INIT_URL.md5sum $WORKDIR/init.sql.md5sum
+    else
+        dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
+        dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
+    fi
+
+    VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
+    CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
+    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
+        if [ -z $1 ] || [ $1 = "manual" ]; then
+            msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        else
+            log "There was an error verifying the init.sql that was downloaded. Utility will now exit."
+        fi
+        do_exit
+    fi
+
+    log "Deploying init.sql, creating admin user and xtrole group"
+    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        if [ $MODE = "manual" ]; then
+            msgbox "Error deploying init.sql. Check for errors and try again"
+        else
+            log "Error deploying init.sql. Check for errors and try again"
+        fi
+        do_exit
+    fi
+
+    log "Removing downloaded init scripts..."
+    rm $WORKDIR/init.sql{,.md5sum}
+
+    if [ $MODE = "manual" ]; then
+        msgbox "Initializing cluster successful."
+    else
+        log "Initializing cluster successful."
+    fi
+
     return 0
 
 }
