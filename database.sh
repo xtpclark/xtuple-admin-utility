@@ -336,7 +336,7 @@ carve_pilot() {
         remove_connect_priv $SOURCE
         kill_database_connections $SOURCE
 
-        sudo su - postgres -c "psql postgres -q -h $PGHOST -p $PGPORT -c \"CREATE DATABASE \"$PILOT\" TEMPLATE \"$SOURCE\" OWNER admin;\""
+        log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
         RET=$?
         if [ $RET -eq 1 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
