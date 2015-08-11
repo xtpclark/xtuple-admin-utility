@@ -526,15 +526,43 @@ rename_database() {
     fi
     log_arg $SOURCE $DEST
 
+    UPDATE_CONFIG=false
+    MWCCONFIG=$(grep -Rl databases.*"$SOURCE" /etc/xtuple/ 2>/dev/null | head -1)
+    if (whiptail --title "Update config.js" --yesno "Would you like to update config.js?" 10 60) then
+        if [ -z "$MWCCONFIG" ]; then
+            if (whiptail --title "No config.js found" --yesno "No mobile client configuration was found for this database.  If this is unexpected (this database is mobilized), then select no, and file a bug report." 10 60) then
+                log "config.js not found, continuing."
+            else
+                log "config.js not found, quitting without renaming the database."
+                return 0
+            fi
+        else
+	       UPDATE_CONFIG=true
+	   fi
+    fi
+
+    MWCVERSION=$(echo "$MWCCONFIG" | cut -d / -f 5)
+    if [ -n "$MWCVERSION" ]; then
+        log "Stopping node server $MWCVERSION"
+        log_exec sudo service xtuple-$MWCVERSION stop
+    fi
+
     sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
     RET=$?
     if [ $RET -eq 1 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
         do_exit
     else
+        if $UPDATE_CONFIG ; then
+	       log_exec sudo sed -i  's/\["'$SOURCE'"\]/\["'$DEST'"\]/g' $MWCCONFIG
+	   fi
         msgbox "Successfully renamed database $SOURCE to $DEST"
     fi
 
+    if [ -n "$MWCVERSION" ]; then
+        log "Starting node server $MWCVERSION"
+        log_exec sudo service xtuple-$MWCVERSION start
+    fi
 }
 
 inspect_database_menu() {
