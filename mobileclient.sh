@@ -20,7 +20,7 @@ mwc_menu() {
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
             "1") install_mwc_menu ;;
-            "2") remove_mwc ;;
+            "2") log_choice remove_mwc ;;
             "3") break ;;
             *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && do_exit ;;
             esac || postgresql_menu
@@ -101,7 +101,7 @@ install_mwc_menu() {
         PRIVATEEXT=false
     fi
 
-    install_mwc $MWCVERSION $MWCNAME $PRIVATEEXT $DATABASE
+    log_choice install_mwc $MWCVERSION $MWCNAME $PRIVATEEXT $DATABASE
 }
 
 
@@ -128,6 +128,7 @@ install_mwc() {
     else
         PGDATABASE=$4
     fi
+    log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
 
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash

@@ -27,18 +27,18 @@ database_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$DBM" in
-            "1") set_database_info ;;
-            "2") clear_database_info ;;
-            "3") backup_database ;;
-            "4") list_databases ;;
+            "1") log_choice set_database_info ;;
+            "2") log_choice clear_database_info ;;
+            "3") log_choice backup_database ;;
+            "4") log_choice list_databases ;;
             "5") rename_database_menu ;;
             "6") drop_database_menu ;;
             "7") inspect_database_menu ;;
-            "8") carve_pilot ;;
-            "9") create_database_from_file ;;
-            "10") download_latest_demo ;;
-            "11") download_demo manual ;;
-            "12") upgrade_database ;;
+            "8") log_choice carve_pilot ;;
+            "9") log_choice create_database_from_file ;;
+            "10") log_choice download_latest_demo ;;
+            "11") log_choice download_demo manual ;;
+            "12") log_choice upgrade_database ;;
             "13") main_menu ;;
             *) msgbox "How did you get here?" && do_exit ;;
             esac || database_menu
@@ -110,6 +110,7 @@ download_demo() {
         VERSION=$3
     fi
     
+    log_arg $MODE $DEMODEST $VERSION $DBTYPE
 
 
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
@@ -158,6 +159,7 @@ download_demo() {
 
 download_latest_demo() {
 
+    log_arg
     VERSION="$( latest_version db )" 
     log "Determined latest database version to be $VERSION"
 
@@ -238,6 +240,7 @@ backup_database() {
     else
         SOURCE=$2
     fi
+    log_arg $DEST $SOURCE
 
     log "Backing up database "$SOURCE" to file "$DEST"."
 
@@ -271,6 +274,7 @@ restore_database() {
     else
         DEST=$2
     fi
+    
     log "Creating database $DEST."
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
@@ -330,6 +334,7 @@ carve_pilot() {
     else
         PILOT="$2"
     fi
+    log_arg $SOURCE $PILOT
 
     log "Creating pilot database $PILOT from database $SOURCE"
     if (whiptail --title "Warning" --yesno "This will kill all active connections to the database, if any.  Continue?" 10 60) then
@@ -352,6 +357,7 @@ carve_pilot() {
 
 create_database_from_file() {
 
+    log_arg
     check_database_info
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -390,6 +396,7 @@ create_database_from_file() {
 
 list_databases() {
 
+    log_arg
     check_database_info
 
     DATABASES=()
@@ -446,6 +453,7 @@ drop_database() {
     else
         POSTNAME="$1"
     fi
+    log_arg $POSTNAME
 
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" --yes-button "No" --no-button "Yes" 10 60) then
         return 0
@@ -516,6 +524,7 @@ rename_database() {
     else
         DEST="$2"
     fi
+    log_arg $SOURCE $DEST
 
     sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
     RET=$?
@@ -588,6 +597,7 @@ inspect_database() {
         FROM pkghead) as dummy ORDER BY 1;\""`
 
     msgbox "${VAL}"
+    log_arg $1
 
 }
 
@@ -698,7 +708,7 @@ check_database_info() {
 # $1 is database
 # $2 is version to upgrade to
 upgrade_database() {
-DATABASE=demo481
+    DATABASE=demo481
     APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('Application') AS application;\""`
     log "Detected application $APP"
     VER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
@@ -755,4 +765,5 @@ DATABASE=demo481
     else
         VERSION="$2"
     fi
+    log_arg $DATABASE $VERSION
 }

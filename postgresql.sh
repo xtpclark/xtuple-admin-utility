@@ -25,16 +25,16 @@ postgresql_menu() {
             do_exit
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") install_postgresql 9.3 ;;
-            "2") remove_postgresql 9.3 ;;
-            "3") purge_postgresql 9.3 ;;
-            "4") list_clusters ;;
-            "5") provision_cluster ;;
+            "1") log_choice install_postgresql 9.3 ;;
+            "2") log_choice remove_postgresql 9.3 ;;
+            "3") log_choice purge_postgresql 9.3 ;;
+            "4") log_choice list_clusters ;;
+            "5") log_choice provision_cluster ;;
             "6") drop_cluster_menu ;;
-            "7") prepare_database ;;
+            "7") log_choice prepare_database ;;
             "8") password_menu ;;
-            "9") backup_globals ;;
-            "10") restore_globals ;;
+            "9") log_choice backup_globals ;;
+            "10") log_choice restore_globals ;;
             "11") break ;;
             *) msgbox "Error. How did you get here?" && do_exit ;;
             esac || postgresql_menu
@@ -57,6 +57,7 @@ prepare_database() {
     else
         MODE="auto"
     fi
+    log_arg $MODE
 
     EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
 
@@ -113,6 +114,7 @@ prepare_database() {
 
 password_menu() {
 
+    log_arg
     log "Opened password menu"
 
     while true; do
@@ -146,6 +148,7 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
+    log_arg $1
     log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -164,6 +167,7 @@ install_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 
+    log_arg $1
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "No" --no-button "Yes" 10 60) then
     return 0
     else
@@ -180,6 +184,7 @@ remove_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
 
+    log_arg $1
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "No" --no-button "Yes" 10 60) then
         return 0
     else
@@ -193,6 +198,7 @@ purge_postgresql() {
 
 list_clusters() {
 
+    log_arg
     CLUSTERS=()
     
     while read -r line; do 
@@ -277,6 +283,7 @@ provision_cluster() {
         fi
         do_exit
     fi
+    log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $6
     
     PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
     
@@ -402,6 +409,7 @@ drop_cluster() {
             return 0
         fi
     fi
+    log_arg $POSTVER $POSTNAME $MODE
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
     log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
     RET=$?
@@ -448,7 +456,7 @@ drop_cluster_menu() {
         return 0
     fi
 
-    drop_cluster "$VER" "$NAME"
+    log_choice drop_cluster "$VER" "$NAME"
 
 }
 
@@ -484,6 +492,7 @@ reset_psql() {
 
     check_database_info
 
+    log_arg $1
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -524,7 +533,8 @@ backup_globals() {
     else
         DEST=$1
     fi
-
+    
+    log_arg $DEST
     log "Backing up globals to file "$DEST"."
 
     log_exec pg_dumpall --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
@@ -557,6 +567,7 @@ restore_globals() {
         SOURCE=$1
     fi
 
+    log_arg $SOURCE
     log "Restoring globals from file $SOURCE"
 
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -f "$SOURCE"
