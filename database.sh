@@ -289,6 +289,20 @@ restore_database() {
             msgbox "Something has gone wrong. Check output and correct any issues."
             do_exit
         else
+            if (whiptail --title "Add to Mobile" --yesno "Add this database to the mobile client?" 10 60) then
+                MWCCONFIG=$(grep -Rl -m 1 'port: "'$PGPORT'",' /etc/xtuple/ 2>/dev/null)
+                if [ -z "$MWCCONFIG" ]; then
+                    msgbox "No config.js found.  Add this database manually then restart the node service."
+                    return 0
+                fi
+
+                MWCVERSION=$(echo "$MWCCONFIG" | cut -d / -f 5)
+                log "Adding $DEST to the databases array in $MWCCONFIG"
+                log_exec sudo sed -i 's/\(databases: \[.*\)\],/\1, "'$DEST'"\],/' $MWCCONFIG
+
+                log "Restarting node server $MWCVERSION"
+                log_exec sudo service xtuple-$MWCVERSION restart
+            fi
             return 0
         fi
     fi
