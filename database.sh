@@ -77,11 +77,13 @@ download_demo() {
     
     if [ -z $3 ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-                "1" "PostBooks 4.7.0 Demo" \
-                "2" "PostBooks 4.7.0 Empty" \
-                "3" "PostBooks 4.8.1 Demo" \
-                "4" "PostBooks 4.8.1 Empty" \
-                "5" "Return to database menu" \
+                "1" "PostBooks 4.8.1 Demo" \
+                "2" "PostBooks 4.8.1 Empty" \
+                "3" "PostBooks 4.8.1 QuickStart" \
+                "4" "PostBooks 4.9.0 Demo" \
+                "5" "PostBooks 4.9.0 Empty" \
+                "6" "PostBooks 4.9.0 QuickStart" \
+                "7" "Return to database menu" \
                 3>&1 1>&2 2>&3)
 
         RET=$?
@@ -90,19 +92,25 @@ download_demo() {
             return 0
         elif [ $RET -eq 0 ]; then
             case "$MENUVER" in
-            "1") VERSION=4.7.0 
+            "1") VERSION=4.8.1 
                    DBTYPE="demo"
                    ;;
-            "2") VERSION=4.7.0 
+            "2") VERSION=4.8.1 
                    DBTYPE="empty"
                    ;;
             "3") VERSION=4.8.1 
+                   DBTYPE="quickstart"
+                   ;;
+            "4") VERSION=4.9.0 
                    DBTYPE="demo"
                    ;;
-            "4") VERSION=4.8.1 
+            "5") VERSION=4.9.0 
                    DBTYPE="empty"
                    ;;
-            "5") return 0 ;;
+            "6") VERSION=4.9.0 
+                   DBTYPE="quickstart"
+                   ;;
+            "7") return 0 ;;
             *) msgbox "How did you get here?" && exit 0 ;;
             esac || database_menu
         fi
