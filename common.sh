@@ -92,7 +92,12 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
-                sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 cups python-software-properties openssl apt-show-versions libnet-ssleay-perl  libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
+                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 600 ]; then
+                  sudo apt-get update
+                else
+                  log "Skipping apt-get update as it was run less than 10 minutes ago..."
+                fi
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
                 RET=$?
                 if [ $RET -eq 1 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
@@ -101,7 +106,12 @@ install_prereqs() {
                 ;;
         "debian")
                 install_pg_repo
-                sudo apt-get update && sudo apt-get -y install python-software-properties software-properties-common
+                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 600 ]; then
+                  sudo apt-get update
+                else
+                  log "Skipping apt-get update as it was run less than 10 minutes ago..."
+                fi
+                sudo apt-get -y install python-software-properties software-properties-common
                 sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
                 sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
                 RET=$?
