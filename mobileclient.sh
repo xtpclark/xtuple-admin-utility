@@ -52,16 +52,16 @@ install_mwc_menu() {
 	   elif [ $MENUVER -lt 10 ]; then
 	       read -a tagversionarray <<< $TAGVERSIONS
 	       MWCVERSION=${tagversionarray[$MENUVER]}
-		  MWCSTRING=v$MWCVERSION
+               MWCSTRING=v$MWCVERSION
 	   else
 	       read -a headversionarray <<< $HEADVERSIONS
 	       MWCVERSION=${headversionarray[(($MENUVER-10))]}
-		  MWCSTRING=$MWCVERSION
+               MWCSTRING=$MWCVERSION
 	   fi
     else
         return $RET
     fi
-    
+
     log "Chose version $MWCVERSION"
 
     MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
@@ -93,15 +93,27 @@ install_mwc_menu() {
 
     log "Chose database $DATABASE"
 
-    if (whiptail --title "Private Extensions" --yesno "Would you like to install the commercial extensions? The \"xtuple\" user will need to have a SSH key setup for github, and be deploying the web client against a commercial database or this step will fail." 10 60) then
+    if (whiptail --title "Private Extensions" --yesno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
         log "Installing the commercial extensions"
         PRIVATEEXT=true
+        GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
+        GITHUBPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
     else
         log "Not installing the commercial extensions"
         PRIVATEEXT=false
     fi
 
-    log_choice install_mwc $MWCVERSION $MWCNAME $PRIVATEEXT $DATABASE
+    log_choice install_mwc $MWCVERSION $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
 }
 
 
@@ -160,7 +172,7 @@ install_mwc() {
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"
-        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone git@github.com:/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
+        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$5":"$6"@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
     else
         log "Not installing the commercial extensions"
     fi
