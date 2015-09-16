@@ -5,7 +5,7 @@ postgresql_menu() {
     log "Opened PostgreSQL menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install PostgreSQL 9.3" \
             "2" "Remove PostgreSQL 9.3" \
             "3" "Purge PostgreSQL 9.3" \
@@ -20,9 +20,9 @@ postgresql_menu() {
             3>&1 1>&2 2>&3)
 
         RET=$?
-
         if [ $RET -ne 0 ]; then
-            do_exit
+            # instead of exiting, bring us back to the previous menu. Will capture escape and other cancels. 
+            break
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
             "1") log_choice install_postgresql 9.3 ;;
@@ -36,8 +36,8 @@ postgresql_menu() {
             "9") log_choice backup_globals ;;
             "10") log_choice restore_globals ;;
             "11") break ;;
-            *) msgbox "Error. How did you get here?" && do_exit ;;
-            esac || postgresql_menu
+            *) msgbox "Error. How did you get here?" && break ;;
+            esac
         fi
     done
 
@@ -114,11 +114,10 @@ prepare_database() {
 
 password_menu() {
 
-    log_arg
     log "Opened password menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 7 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 7 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Reset postgres via sudo postgres" \
             "2" "Reset postgres via psql" \
             "3" "Reset admin via sudo postgres" \
@@ -129,7 +128,7 @@ password_menu() {
         RET=$?
 
         if [ $RET -ne 0 ]; then
-            do_exit
+            break
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
             "1") reset_sudo postgres ;;
@@ -138,7 +137,7 @@ password_menu() {
             "4") reset_psql admin ;;
             "5") break ;;
             *) msgbox "How did you get here?" && exit 0 ;;
-            esac || postgresql_menu
+            esac
         fi
     done
 
@@ -152,14 +151,14 @@ install_postgresql() {
     log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
     RET=$?
     if [ $RET -ne 0 ]; then
-    do_exit
+        return $RET
     elif [ $RET -eq 0 ]; then
         export PGUSER=postgres
         export PGPASSWORD=postgres
         export PGHOST=localhost
         export PGPORT=5432
+        return $RET
     fi
-    return $RET
 
 }
 
@@ -168,15 +167,14 @@ install_postgresql() {
 remove_postgresql() {
 
     log_arg $1
-    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "No" --no-button "Yes" 10 60) then
-    return 0
-    else
+    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling PostgreSQL "$1"..."
+        log_exec sudo apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
+        RET=$?
+        return $RET
+    else
+        return 0
     fi
-
-    log_exec sudo apt-get -y remove postgresql-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
-    RET=$?
-    return $RET
 
 }
 
@@ -185,14 +183,14 @@ remove_postgresql() {
 purge_postgresql() {
 
     log_arg $1
-    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "No" --no-button "Yes" 10 60) then
-        return 0
-    else
+    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Purging PostgreSQL "$1"..."
-    fi 
-    log_exec sudo apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
-    RET=$?
-    return $RET
+        log_exec sudo apt-get -y purge postgresql-$1 postgresql-contrib-$1  postgresql-$1-plv8
+        RET=$?
+        return $RET
+    else
+        return 0
+    fi
 
 }
 
@@ -205,7 +203,7 @@ list_clusters() {
         CLUSTERS+=("$line" "$line")
     done < <( sudo pg_lsclusters | tail -n +2 )
 
-     if [ -z "$CLUSTERS" ]; then
+    if [ -z "$CLUSTERS" ]; then
         msgbox "No database clusters detected on this system"
         return 0
     fi

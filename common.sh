@@ -48,7 +48,7 @@ dlf_fast_console() {
 # $1 is the msg
 msgbox() {
     log "MessageBox >> ""$1"
-    whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0 
+    whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0
 }
 
 # $1 is the product

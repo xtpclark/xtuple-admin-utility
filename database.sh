@@ -23,9 +23,9 @@ database_menu() {
 
         RET=$?
 
-        if [ $RET -eq 1 ]; then
-            do_exit
-        elif [ $RET -eq 0 ]; then
+        if [ $RET -ne 0 ]; then
+            break
+        else
             case "$DBM" in
             "1") log_choice set_database_info ;;
             "2") log_choice clear_database_info ;;
@@ -40,8 +40,8 @@ database_menu() {
             "11") log_choice download_demo manual ;;
             "12") log_choice upgrade_database ;;
             "13") main_menu ;;
-            *) msgbox "How did you get here?" && do_exit ;;
-            esac || database_menu
+            *) msgbox "How did you get here?" && break ;;
+            esac
         fi
     done
 }
@@ -62,7 +62,7 @@ download_demo() {
     if [ -z $2 ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         fi
     else
@@ -88,7 +88,7 @@ download_demo() {
 
         RET=$?
 
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         elif [ $RET -eq 0 ]; then
             case "$MENUVER" in
@@ -111,8 +111,8 @@ download_demo() {
                    DBTYPE="quickstart"
                    ;;
             "7") return 0 ;;
-            *) msgbox "How did you get here?" && exit 0 ;;
-            esac || database_menu
+            *) msgbox "How did you get here?" && break ;;
+            esac || break
         fi
     else
         VERSION=$3
@@ -179,7 +179,7 @@ download_latest_demo() {
     if [ -z $DEMODEST ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database version $VERSION" 8 60 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         else
             export DEMODEST
@@ -201,12 +201,12 @@ download_latest_demo() {
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
             DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 return 0
             fi
             restore_database $DEMODEST $DEST
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 msgbox "Something has gone wrong. Check output and correct any issues."
                 do_exit
             else
@@ -225,14 +225,14 @@ backup_database() {
 
     check_database_info
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return $RET
     fi
 
     if [ -z $1 ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         fi
     else
@@ -242,7 +242,7 @@ backup_database() {
     if [ -z $2 ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         fi
     else
@@ -254,7 +254,7 @@ backup_database() {
 
     pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$DEST" "$SOURCE"
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
         do_exit
     else
@@ -297,20 +297,6 @@ restore_database() {
             msgbox "Something has gone wrong. Check output and correct any issues."
             do_exit
         else
-            if (whiptail --title "Add to Mobile" --yesno "Add this database to the mobile client?" 10 60) then
-                MWCCONFIG=$(grep -Rl -m 1 'port: "'$PGPORT'",' /etc/xtuple/ 2>/dev/null)
-                if [ -z "$MWCCONFIG" ]; then
-                    msgbox "No config.js found.  Add this database manually then restart the node service."
-                    return 0
-                fi
-
-                MWCVERSION=$(echo "$MWCCONFIG" | cut -d / -f 5)
-                log "Adding $DEST to the databases array in $MWCCONFIG"
-                log_exec sudo sed -i 's/\(databases: \[.*\)\],/\1, "'$DEST'"\],/' $MWCCONFIG
-
-                log "Restarting node server $MWCVERSION"
-                log_exec sudo service xtuple-$MWCVERSION restart
-            fi
             return 0
         fi
     fi
@@ -323,7 +309,7 @@ carve_pilot() {
 
     check_database_info
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return $RET
     fi
 
@@ -340,7 +326,7 @@ carve_pilot() {
 
         SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -350,7 +336,7 @@ carve_pilot() {
     if [ -z "$2" ]; then
         PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -365,7 +351,7 @@ carve_pilot() {
 
         log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
             restore_connect_priv $SOURCE
             do_exit
@@ -382,13 +368,13 @@ create_database_from_file() {
     log_arg
     check_database_info
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return $RET
     fi
 
     SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return $RET
     fi
 
@@ -400,13 +386,13 @@ create_database_from_file() {
     PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
 
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return $RET
     elif [ $RET -eq 0 ]; then
         log "Creating database $PILOT from file $SOURCE"
         restore_database $SOURCE $PILOT
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
             do_exit
         else
@@ -452,7 +438,7 @@ drop_database_menu() {
 
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
@@ -469,7 +455,7 @@ drop_database() {
     if [ -z "$1" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -483,7 +469,7 @@ drop_database() {
 
     sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
         do_exit
     else
@@ -508,13 +494,13 @@ rename_database_menu() {
 
     SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
     DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "" 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
@@ -530,7 +516,7 @@ rename_database() {
     if [ -z "$1" ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
@@ -540,28 +526,13 @@ rename_database() {
     if [ -z "$2" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return 0
         fi
     else
         DEST="$2"
     fi
     log_arg $SOURCE $DEST
-
-    UPDATE_CONFIG=false
-    MWCCONFIG=$(grep -Rl databases.*"$SOURCE" /etc/xtuple/ 2>/dev/null | head -1)
-    if (whiptail --title "Update config.js" --yesno "Would you like to update config.js?" 10 60) then
-        if [ -z "$MWCCONFIG" ]; then
-            if (whiptail --title "No config.js found" --yesno "No mobile client configuration was found for this database.  If this is unexpected (this database is mobilized), then select no, and file a bug report." 10 60) then
-                log "config.js not found, continuing."
-            else
-                log "config.js not found, quitting without renaming the database."
-                return 0
-            fi
-        else
-	       UPDATE_CONFIG=true
-	   fi
-    fi
 
     MWCVERSION=$(echo "$MWCCONFIG" | cut -d / -f 5)
     if [ -n "$MWCVERSION" ]; then
@@ -571,13 +542,10 @@ rename_database() {
 
     sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
         do_exit
     else
-        if $UPDATE_CONFIG ; then
-	       log_exec sudo sed -i  's/\["'$SOURCE'"\]/\["'$DEST'"\]/g' $MWCCONFIG
-	   fi
         msgbox "Successfully renamed database $SOURCE to $DEST"
     fi
 
@@ -603,7 +571,7 @@ inspect_database_menu() {
 
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to inspect" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
-    if [ $RET -eq 1 ]; then
+    if [ $RET -ne 0 ]; then
         return 0
     fi
 
@@ -667,7 +635,7 @@ set_database_info() {
 
         CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         fi
 
@@ -684,7 +652,7 @@ set_database_info() {
 
         PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
-        if [ $RET -eq 1 ]; then
+        if [ $RET -ne 0 ]; then
             return $RET
         else
             export PGPASSWORD
@@ -698,7 +666,7 @@ set_database_info() {
         if [ -z $PGHOST ]; then
             PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 return $RET
             else
                 export PGHOST
@@ -707,7 +675,7 @@ set_database_info() {
         if [ -z $PGPORT ] ; then
             PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 return $RET
             else
                 export PGPORT
@@ -716,7 +684,7 @@ set_database_info() {
         if [ -z $PGUSER ] ; then
             PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 return $RET
             else
                 export PGUSER
@@ -725,7 +693,7 @@ set_database_info() {
         if [ -z $PGPASSWORD ] ; then
             PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
             RET=$?
-            if [ $RET -eq 1 ]; then
+            if [ $RET -ne 0 ]; then
                 return $RET
             else
                 export PGPASSWORD
@@ -745,7 +713,11 @@ check_database_info() {
     if [ -z $PGHOST ] || [ -z $PGPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
         set_database_info
         RET=$?
-        return $RET
+        if [ $RET -eq 255 ]; then
+            return 0
+        else
+            return $RET
+        fi
     else
         return 0
     fi
