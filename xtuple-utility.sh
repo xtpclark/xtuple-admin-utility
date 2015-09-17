@@ -7,7 +7,7 @@ export WORKDIR=`pwd`
 
 #set some defaults
 PGVERSION=9.3
-XTVERSION=4.8.1
+XTVERSION=4.9.1
 _XTVERSION=${XTVERSION//./}
 INSTANCE=xtuple
 DBTYPE=demo

@@ -15,15 +15,15 @@ mwc_menu() {
 
         RET=$?
 
-        if [ $RET -eq 1 ]; then
-            do_exit
-        elif [ $RET -eq 0 ]; then
+        if [ $RET -ne 0 ]; then
+            break
+        else
             case "$PGM" in
             "1") install_mwc_menu ;;
             "2") log_choice remove_mwc ;;
             "3") break ;;
-            *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && do_exit ;;
-            esac || postgresql_menu
+            *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && break ;;
+            esac
         fi
     done
 
@@ -36,11 +36,11 @@ install_mwc_menu() {
 
     MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
         $(paste -d '\n' \
-	   <(seq 0 9) \
-	   <(echo $TAGVERSIONS | tr ' ' '\n')) \
-	   $(paste -d '\n' \
-	   <(seq 10 14) \
-	   <(echo $HEADVERSIONS | tr ' ' '\n')) \
+        <(seq 0 9) \
+        <(echo $TAGVERSIONS | tr ' ' '\n')) \
+        $(paste -d '\n' \
+        <(seq 10 14) \
+        <(echo $HEADVERSIONS | tr ' ' '\n')) \
         "15" "Return to main menu" \
         3>&1 1>&2 2>&3)
 
@@ -48,16 +48,16 @@ install_mwc_menu() {
 
     if [ $RET -eq 0 ]; then
         if [ $MENUVER -eq 16 ]; then
-	       return 0;
-	   elif [ $MENUVER -lt 10 ]; then
-	       read -a tagversionarray <<< $TAGVERSIONS
-	       MWCVERSION=${tagversionarray[$MENUVER]}
-               MWCSTRING=v$MWCVERSION
-	   else
-	       read -a headversionarray <<< $HEADVERSIONS
-	       MWCVERSION=${headversionarray[(($MENUVER-10))]}
-               MWCSTRING=$MWCVERSION
-	   fi
+            return 0;
+        elif [ $MENUVER -lt 10 ]; then
+            read -a tagversionarray <<< $TAGVERSIONS
+            MWCVERSION=${tagversionarray[$MENUVER]}
+            MWCSTRING=v$MWCVERSION
+        else
+            read -a headversionarray <<< $HEADVERSIONS
+            MWCVERSION=${headversionarray[(($MENUVER-10))]}
+            MWCSTRING=$MWCVERSION
+        fi
     else
         return $RET
     fi
@@ -73,6 +73,10 @@ install_mwc_menu() {
     log "Chose mobile name $MWCNAME"
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     DATABASES=()
 
@@ -81,14 +85,14 @@ install_mwc_menu() {
      done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
-        return 0
+        return 1
     fi
 
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         log "There was an error selecting the database.. exiting"
-        do_exit
+        return $RET
     fi
 
     log "Chose database $DATABASE"
@@ -107,7 +111,6 @@ install_mwc_menu() {
         if [ $RET -ne 0 ]; then
             return $RET
         fi
-
     else
         log "Not installing the commercial extensions"
         PRIVATEEXT=false
@@ -144,7 +147,7 @@ install_mwc() {
 
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash
-    
+
     log "Installing n..."
     cd $WORKDIR    
     wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
