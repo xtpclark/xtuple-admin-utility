@@ -5,7 +5,7 @@ database_menu() {
     log "Opened database menu"
 
     while true; do
-        DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Exit" --ok-button "Select" \
+        DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Set database info" \
             "2" "Clear database info" \
             "3" "Backup Database" \
@@ -22,12 +22,11 @@ database_menu() {
             3>&1 1>&2 2>&3)
 
         RET=$?
-
         if [ $RET -ne 0 ]; then
             break
         else
             case "$DBM" in
-            "1") log_choice set_database_info ;;
+            "1") log_choice clear_database_info && log_choice check_database_info ;;
             "2") log_choice clear_database_info ;;
             "3") log_choice backup_database ;;
             "4") log_choice list_databases ;;
@@ -58,7 +57,56 @@ download_demo() {
     else
         MODE="auto"
     fi
+
+    if [ -z $4 ] && [ -z "$DBTYPE" ]; then
+        DBTYPE="demo"
+    else
+        DBTYPE=$4
+    fi
     
+    if [ -z $3 ]; then
+        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
+                "1" "PostBooks 4.8.1 Demo" \
+                "2" "PostBooks 4.8.1 Empty" \
+                "3" "PostBooks 4.8.1 QuickStart" \
+                "4" "PostBooks 4.9.1 Demo" \
+                "5" "PostBooks 4.9.1 Empty" \
+                "6" "PostBooks 4.9.1 QuickStart" \
+                "7" "Return to database menu" \
+                3>&1 1>&2 2>&3)
+
+        RET=$?
+
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            case "$MENUVER" in
+            "1") VERSION=4.8.1 
+                   DBTYPE="demo"
+                   ;;
+            "2") VERSION=4.8.1
+                   DBTYPE="empty"
+                   ;;
+            "3") VERSION=4.8.1
+                   DBTYPE="quickstart"
+                   ;;
+            "4") VERSION=4.9.1
+                   DBTYPE="demo"
+                   ;;
+            "5") VERSION=4.9.1
+                   DBTYPE="empty"
+                   ;;
+            "6") VERSION=4.9.1
+                   DBTYPE="quickstart"
+                   ;;
+            "7") return 0 ;;
+            *) msgbox "How did you get here?" && return 1 ;;
+            esac || return 1
+        fi
+    else
+        VERSION=$3
+    fi
+
     if [ -z $2 ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -69,57 +117,7 @@ download_demo() {
         DEMODEST=$2
     fi
 
-    if [ -z $4 ] && [ -z "$DBTYPE" ]; then
-        DBTYPE="demo"
-    else
-        DBTYPE=$4
-    fi
-    
-    if [ -z $3 ]; then
-        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-                "1" "PostBooks 4.8.1 Demo" \
-                "2" "PostBooks 4.8.1 Empty" \
-                "3" "PostBooks 4.8.1 QuickStart" \
-                "4" "PostBooks 4.9.0 Demo" \
-                "5" "PostBooks 4.9.0 Empty" \
-                "6" "PostBooks 4.9.0 QuickStart" \
-                "7" "Return to database menu" \
-                3>&1 1>&2 2>&3)
-
-        RET=$?
-
-        if [ $RET -ne 0 ]; then
-            return 0
-        elif [ $RET -eq 0 ]; then
-            case "$MENUVER" in
-            "1") VERSION=4.8.1 
-                   DBTYPE="demo"
-                   ;;
-            "2") VERSION=4.8.1 
-                   DBTYPE="empty"
-                   ;;
-            "3") VERSION=4.8.1 
-                   DBTYPE="quickstart"
-                   ;;
-            "4") VERSION=4.9.0 
-                   DBTYPE="demo"
-                   ;;
-            "5") VERSION=4.9.0 
-                   DBTYPE="empty"
-                   ;;
-            "6") VERSION=4.9.0 
-                   DBTYPE="quickstart"
-                   ;;
-            "7") return 0 ;;
-            *) msgbox "How did you get here?" && break ;;
-            esac || break
-        fi
-    else
-        VERSION=$3
-    fi
-    
     log_arg $MODE $DEMODEST $VERSION $DBTYPE
-
 
     DB_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/$DBTYPE.backup.md5sum"
@@ -136,8 +134,8 @@ download_demo() {
     VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
     CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ]; then
-        msgbox "There was an error verifying the downloaded database. Utility will now exit."
-        do_exit
+        msgbox "There was an error verifying the downloaded database."
+        return 1
     fi
 
     if [ $MODE = "manual" ]; then
@@ -149,17 +147,18 @@ download_demo() {
             fi
             export PGDATABASE=$DEST
             log "Creating database $DEST from file $DEMODEST"
-            restore_database $DEMODEST $DEST
+            log_exec restore_database $DEMODEST $DEST
             RET=$?
             if [ $RET -ne 0 ]; then
-                msgbox "Something has gone wrong. Check output and correct any issues."
-                do_exit
+                msgbox "Something has gone wrong. Check log and correct any issues."
+                return 1
             else
                 msgbox "Database $DEST successfully restored from file $DEMODEST"
                 return 0
             fi
         else
             log "Exiting without restoring database."
+            return 0
         fi
     fi
 
@@ -167,13 +166,12 @@ download_demo() {
 
 download_latest_demo() {
 
-    log_arg
     VERSION="$( latest_version db )" 
     log "Determined latest database version to be $VERSION"
 
     if [ -z "$VERSION" ]; then
         msgbox "Could not determine latest database version"
-        do_exit
+        return 1
     fi
 
     if [ -z $DEMODEST ]; then
@@ -204,11 +202,11 @@ download_latest_demo() {
             if [ $RET -ne 0 ]; then
                 return 0
             fi
-            restore_database $DEMODEST $DEST
+            log_exec restore_database $DEMODEST $DEST
             RET=$?
             if [ $RET -ne 0 ]; then
-                msgbox "Something has gone wrong. Check output and correct any issues."
-                do_exit
+                msgbox "Something has gone wrong. Check log and correct any issues, typically warnings can be ignored."
+                return $RET
             else
                 msgbox "Database $DEST successfully restored from file $DEMODEST"
                 return 0
@@ -255,8 +253,8 @@ backup_database() {
     pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$DEST" "$SOURCE"
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Something has gone wrong. Check output and correct any issues."
-        do_exit
+        msgbox "Something has gone wrong. Check log and correct any issues."
+        return $RET
     else
         msgbox "Database $SOURCE successfully backed up to $DEST"
         return 0
@@ -270,7 +268,7 @@ restore_database() {
     check_database_info
     RET=$?
     if [ $RET -ne 0 ]; then
-        return 0
+        return $RET
     fi
 
     if [ -z $2 ]; then
@@ -287,15 +285,15 @@ restore_database() {
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Something has gone wrong. Check output and correct any issues."
-        do_exit
+        msgbox "Something has gone wrong. Check log and correct any issues."
+        return $RET
     else
         log "Restoring database $DEST from file $1 on server $PGHOST:$PGPORT"
         log_exec pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DEST" "$1"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
-            do_exit
+            return $RET
         else
             return 0
         fi
@@ -321,13 +319,13 @@ carve_pilot() {
          done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
-            return 0
+            return 1
         fi
 
         SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            return 0
+            return $RET
         fi
     else
         SOURCE="$1"
@@ -337,7 +335,7 @@ carve_pilot() {
         PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            return 0
+            return $RET
         fi
     else
         PILOT="$2"
@@ -354,7 +352,7 @@ carve_pilot() {
         if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
             restore_connect_priv $SOURCE
-            do_exit
+            return $RET
         else
             restore_connect_priv $SOURCE
             restore_connect_priv $PILOT
@@ -365,7 +363,6 @@ carve_pilot() {
 
 create_database_from_file() {
 
-    log_arg
     check_database_info
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -393,8 +390,8 @@ create_database_from_file() {
         restore_database $SOURCE $PILOT
         RET=$?
         if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check output and correct any issues."
-            do_exit
+            msgbox "Something has gone wrong. Check log and correct any issues."
+            $RET
         else
             msgbox "Database "$PILOT" has been created"
         fi
@@ -404,16 +401,18 @@ create_database_from_file() {
 
 list_databases() {
 
-    log_arg
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     DATABASES=()
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-    #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-     if [ -z "$DATABASES" ]; then
+    done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -424,14 +423,18 @@ list_databases() {
 drop_database_menu() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     DATABASES=()
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-    #done < <( su - postgres -c "psql -l -t | cut -d'|' -f1 | sed -e 's/ //g' -e '/^$/d'" )
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-     if [ -z "$DATABASES" ]; then
+            done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+    
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -439,7 +442,7 @@ drop_database_menu() {
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        return 0
+        return $RET
     fi
 
     drop_database "$DATABASE"
@@ -451,29 +454,33 @@ drop_database_menu() {
 drop_database() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     if [ -z "$1" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            return 0
+            return $RET
         fi
     else
         POSTNAME="$1"
     fi
     log_arg $POSTNAME
 
-    if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" --yes-button "No" --no-button "Yes" 10 60) then
-        return 0
-    fi
-
-    sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
-        do_exit
+    if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
+        sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
+            return $RET
+        else
+            msgbox "Dropping database $POSTNAME successful"
+        fi
     else
-        msgbox "Dropping database $POSTNAME successful"
+        return 0
     fi
 
 }
@@ -481,6 +488,10 @@ drop_database() {
 rename_database_menu() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     DATABASES=()
 
@@ -517,7 +528,7 @@ rename_database() {
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            return 0
+            return $RET
         fi
     else
         SOURCE="$1"
@@ -527,37 +538,31 @@ rename_database() {
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            return 0
+            return $RET
         fi
     else
         DEST="$2"
     fi
     log_arg $SOURCE $DEST
 
-    MWCVERSION=$(echo "$MWCCONFIG" | cut -d / -f 5)
-    if [ -n "$MWCVERSION" ]; then
-        log "Stopping node server $MWCVERSION"
-        log_exec sudo service xtuple-$MWCVERSION stop
-    fi
-
-    sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
+    log_exec sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
-        do_exit
+        return $RET
     else
         msgbox "Successfully renamed database $SOURCE to $DEST"
     fi
 
-    if [ -n "$MWCVERSION" ]; then
-        log "Starting node server $MWCVERSION"
-        log_exec sudo service xtuple-$MWCVERSION start
-    fi
 }
 
 inspect_database_menu() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     DATABASES=()
 
@@ -583,6 +588,10 @@ inspect_database_menu() {
 remove_connect_priv() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
 }
@@ -591,6 +600,10 @@ remove_connect_priv() {
 kill_database_connections() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
 }
@@ -599,6 +612,10 @@ kill_database_connections() {
 restore_connect_priv() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
@@ -619,87 +636,92 @@ inspect_database() {
 
 }
 
-set_database_info() {
+set_database_info_select() {
+    CLUSTERS=()
 
-    if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
-        CLUSTERS=()
+    while read -r line; do 
+        CLUSTERS+=("$line" "$line")
+    done < <( sudo pg_lsclusters | tail -n +2 )
 
-        while read -r line; do 
-            CLUSTERS+=("$line" "$line")
-        done < <( sudo pg_lsclusters | tail -n +2 )
+     if [ -z "$CLUSTERS" ]; then
+        msgbox "No database clusters detected on this system"
+        return 1
+    fi
 
-         if [ -z "$CLUSTERS" ]; then
-            msgbox "No database clusters detected on this system"
-            return 1
-        fi
+    CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
-        CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+    if [ -z "$CLUSTER" ]; then
+        msgbox "No database clusters detected on this system"
+        return 1
+    fi
+
+    export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
+    export PGNAME=`awk  '{print $2}' <<< "$CLUSTER"`
+    export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
+    export PGHOST=localhost
+    export PGUSER=postgres
+
+    PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    else
+        export PGPASSWORD
+    fi
+
+    if [ -z "$PGVER" ] || [ -z "$PGNAME" ] || [ -z "$PGPORT" ]; then
+        msgbox "Could not determine database version or name"
+        return 0
+    fi
+}
+
+set_database_info_manual() {
+
+    if [ -z $PGHOST ]; then
+        PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
+        else
+            export PGHOST
         fi
-
-        if [ -z "$CLUSTER" ]; then
-            msgbox "No database clusters detected on this system"
-            return 1
-        fi
-
-        export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
-        export PGNAME=`awk  '{print $2}' <<< "$CLUSTER"`
-        export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
-        export PGHOST=localhost
-        export PGUSER=postgres
-
-        PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
+    fi
+    if [ -z $PGPORT ] ; then
+        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
+            return $RET
+        else
+            export PGPORT
+        fi
+    fi
+    if [ -z $PGUSER ] ; then
+        PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
+            return $RET
+        else
+            export PGUSER
+        fi
+    fi
+    if [ -z $PGPASSWORD ] ; then
+        PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
         else
             export PGPASSWORD
         fi
-
-        if [ -z "$PGVER" ] || [ -z "$PGNAME" ] || [ -z "$PGPORT" ]; then
-            msgbox "Could not determine database version or name"
-            return 0
-        fi
-    else
-        if [ -z $PGHOST ]; then
-            PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return $RET
-            else
-                export PGHOST
-            fi
-        fi
-        if [ -z $PGPORT ] ; then
-            PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return $RET
-            else
-                export PGPORT
-            fi
-        fi
-        if [ -z $PGUSER ] ; then
-            PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return $RET
-            else
-                export PGUSER
-            fi
-        fi
-        if [ -z $PGPASSWORD ] ; then
-            PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return $RET
-            else
-                export PGPASSWORD
-            fi
-        fi
     fi
+
 }
 
 clear_database_info() {
@@ -711,11 +733,18 @@ clear_database_info() {
 
 check_database_info() {
     if [ -z $PGHOST ] || [ -z $PGPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
-        set_database_info
-        RET=$?
-        if [ $RET -eq 255 ]; then
-            return 0
+        if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
+            set_database_info_select
+            RET=$?
+            return $RET
         else
+            # I specifically need to check for ESC here as I am using the yesno box as a multiple choice question, 
+            # so it choses no code even during escape which in this case I want to actually escape when someone hits escape. 
+            if [ $? -eq 255 ]; then
+                return 255
+            fi
+            set_database_info_manual
+            RET=$?
             return $RET
         fi
     else
@@ -730,6 +759,9 @@ check_database_info() {
 # $1 is database
 # $2 is version to upgrade to
 upgrade_database() {
+
+    msgbox "This functionality is forthcoming..."
+    return 0 # for now
     DATABASE=demo481
     APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('Application') AS application;\""`
     log "Detected application $APP"
@@ -737,8 +769,6 @@ upgrade_database() {
     log "Detected server version $VER"
     UPS=`curl -s http://api.xtuple.org/upgradepath.php\?package=$APP\&fromver=3.7.0\&tover=4.8.1`
     log "Detected upgrades $UPS"
-    
-    return 0; # for now
 
     if [ -z "$1" ]; then
         DATABASES=()

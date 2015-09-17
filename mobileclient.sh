@@ -7,7 +7,7 @@ mwc_menu() {
     log "Opened Web Client menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Web\ Client\ Menu )" 0 0 9 --cancel-button "Exit" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Web\ Client\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install xTuple Web Client" \
             "2" "Remove xTuple Web Client" \
             "3" "Return to main menu" \
