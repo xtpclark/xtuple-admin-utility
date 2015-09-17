@@ -24,7 +24,7 @@ openrpt_menu() {
             "3") log_choice install_xvfb ;;
             "4") log_choice remove_xvfb ;;
             "5") break ;;
-            *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu $CC" && do_exit ;;
+            *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu $CC" && break ;;
             esac
         fi
     done
