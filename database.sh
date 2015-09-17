@@ -733,13 +733,13 @@ clear_database_info() {
 
 check_database_info() {
     if [ -z $PGHOST ] || [ -z $PGPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
-        if (whiptail --title "xTuple Utility v$_REV" --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
+        if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
             RET=$?
             return $RET
         else
             # I specifically need to check for ESC here as I am using the yesno box as a multiple choice question, 
-            # so it choses no code even during escape which in this case I want to actually escape when someone hits escape. 
+            # so it chooses no code even during escape which in this case I want to actually escape when someone hits escape. 
             if [ $? -eq 255 ]; then
                 return 255
             fi
