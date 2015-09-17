@@ -40,7 +40,7 @@ nginx_prompt() {
             export NGINXHOSTNAME
         fi
     fi
-    
+
     if [ -z $DOMAIN ]; then
         DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -51,7 +51,7 @@ nginx_prompt() {
             export DOMAIN
         fi
     fi
-    
+
     log_choice install_nginx $NGINXHOSTNAME $DOMAIN
 }
 
@@ -61,8 +61,8 @@ install_nginx() {
 
     log "Installing nginx"
 
-    export NGINXHOSTNAME=$1
-    export DOMAIN=$2
+    NGINXHOSTNAME=$1
+    DOMAIN=$2
 
     log_arg $NGINXHOSTNAME $DOMAIN
 
@@ -101,6 +101,9 @@ install_nginx() {
     else
         msgbox "nginx installed and configured successfully."
     fi
+
+    unset NGINXHOSTNAME
+    unset DOMAIN
 }
 
 remove_nginx() {

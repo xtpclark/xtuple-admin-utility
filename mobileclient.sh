@@ -258,3 +258,7 @@ install_mwc() {
     log "All set! You should now be able to log on to this server at https://$IP:8443 with username admin and password admin. Make sure you change your password!"
 
 }
+
+remove_mwc() {
+    msgbox "Uninstalling the mobile client is not yet supported"
+}
