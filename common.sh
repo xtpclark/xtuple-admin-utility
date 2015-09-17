@@ -92,7 +92,7 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
+                if [ ! -f /var/lib/apt/periodic/update-success-stamp ] || [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
                   sudo apt-get update
                 else
                   log "Skipping apt-get update as it was run less than an hour ago..."
@@ -106,7 +106,7 @@ install_prereqs() {
                 ;;
         "debian")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
+                if [ ! -f /var/lib/apt/periodic/update-success-stamp ] || [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
                   sudo apt-get update
                 else
                   log "Skipping apt-get update as it was run less than an hour ago..."
