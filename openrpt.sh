@@ -5,7 +5,7 @@ openrpt_menu() {
 
     while true; do
 
-        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
+        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install Package" \
             "2" "Build from source" \
             "3" "Install xvfb" \
@@ -15,17 +15,17 @@ openrpt_menu() {
         
         RET=$?
         
-        if [ $RET -eq 1 ]; then
-            do_exit
-        elif [ $RET -eq 0 ]; then
+        if [ $RET -ne 0 ]; then
+            break
+        else
             case "$CC" in
             "1") log_choice install_openrpt ;;
             "2") log_choice build_openrpt ;;
             "3") log_choice install_xvfb ;;
             "4") log_choice remove_xvfb ;;
             "5") break ;;
-            *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu" && do_exit ;;
-            esac || msgbox "I don't know how you got here!!! >> $CC <<  Report on GitHub"
+            *) msgbox "Don't know how you got here! Please report on GitHub >> openrpt_menu $CC" && break ;;
+            esac
         fi
     done
 }
@@ -37,7 +37,7 @@ install_openrpt() {
     log_exec sudo apt-get -y -qq install openrpt
     RET=$?
     if [ $RET -ne 0 ]; then
-      do_exit
+        msgbox "There was an error installing OpenRPT. Check the log and correct any issues before trying again"
     fi
     return $RET
 
@@ -45,7 +45,6 @@ install_openrpt() {
 
 build_openrpt() {
 
-    log_arg
     cd $WORKDIR || die "Couldn't cd $WORKDIR"
 
     log "preparing to build OpenRPT from source"
@@ -67,12 +66,11 @@ build_openrpt() {
 
 install_xvfb() {
 
-    log_arg
     log "Installing xvfb..."
     log_exec sudo apt-get -y install xvfb
     RET=$?
     if [ $RET -ne 0 ]; then
-      do_exit
+        msgbox "There was an error installing xvfb. Check the log and correct any issues before trying again"
     fi
     return $RET
 
@@ -80,15 +78,13 @@ install_xvfb() {
 
 remove_xvfb() {
 
-    log_arg
-    if (whiptail --title "Are you sure?" --yesno "Uninstall xvfb?" --yes-button "No" --no-button "Yes" 10 60) then
-      return 0
+    if (whiptail --title "Are you sure?" --yesno "Uninstall xvfb?" --yes-button "Yes" --no-button "No" 10 60) then
+        log "Uninstalling xvfb..."
+        log_exec sudo apt-get -y remove xvfb
+        RET=$?
+        return $RET
     else
-      log "Uninstalling xvfb..."
+        return 0
     fi
-
-    log_exec sudo apt-get -y remove xvfb
-    RET=$?
-    return $RET
 
 }

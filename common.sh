@@ -48,7 +48,7 @@ dlf_fast_console() {
 # $1 is the msg
 msgbox() {
     log "MessageBox >> ""$1"
-    whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0 
+    whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0
 }
 
 # $1 is the product
@@ -92,30 +92,30 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 600 ]; then
+                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
                   sudo apt-get update
                 else
-                  log "Skipping apt-get update as it was run less than 10 minutes ago..."
+                  log "Skipping apt-get update as it was run less than an hour ago..."
                 fi
                 sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
                 RET=$?
-                if [ $RET -eq 1 ]; then
+                if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
                     do_exit
                 fi
                 ;;
         "debian")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 600 ]; then
+                if [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
                   sudo apt-get update
                 else
-                  log "Skipping apt-get update as it was run less than 10 minutes ago..."
+                  log "Skipping apt-get update as it was run less than an hour ago..."
                 fi
                 sudo apt-get -y install python-software-properties software-properties-common
                 sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
                 sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
                 RET=$?
-                if [ $RET -eq 1 ]; then
+                if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
                     do_exit
                 fi
