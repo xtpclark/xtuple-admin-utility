@@ -70,7 +70,7 @@ install_xvfb() {
     log_exec sudo apt-get -y install xvfb
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "There was an error installing OpenRPT. Check the log and correct any issues before trying again"
+        msgbox "There was an error installing xvfb. Check the log and correct any issues before trying again"
     fi
     return $RET
 
