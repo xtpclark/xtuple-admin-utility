@@ -109,7 +109,8 @@ case "$_DISTRO" in
         export CODENAME=$_CODENAME
         case "$_CODENAME" in
             "wheezy") ;;
-            *) log "We currently don't support Debian (not quite yet!) Current release: `lsb_release -r -s`" 
+            "jessie") ;;
+            *) log "We currently only support Debian 7 and 8 Current release: `lsb_release -r -s`" 
                do_exit
                ;;
         esac

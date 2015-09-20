@@ -301,9 +301,30 @@ provision_cluster() {
         do_exit
     fi
 
-    log "Restarting PostgreSQL"
-    log_exec sudo service postgresql restart
-    
+    log "Restarting PostgreSQL $PGVERSION for $INSTANCE"
+    if [ $DISTRO = "ubuntu" ]; then
+        case "$CODENAME" in
+            "trusty") ;&
+            "utopic") 
+                log_exec sudo service postgresql restart
+                ;;
+            "vivid")
+                log_exec sudo systemctl restart postgresql@$PGVERSION-"$INSTANCE".service
+                ;;
+        esac
+    elif [ $DISTRO = "debian" ]; then
+        case "$CODENAME" in
+            "wheezy")
+                log_exec sudo /etc/init.d/postgresql restart
+                ;;
+            "jessie")
+                log_exec sudo systemctl stop postgresql@$PGVERSION-"$INSTANCE".service
+                sudo killall postgres # c'mon Debian...
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE".service
+                ;;
+        esac
+    fi
+
     export PGHOST=localhost
     export PGUSER=postgres
     export PGPASSWORD=postgres
@@ -462,6 +483,10 @@ drop_cluster_menu() {
 reset_sudo() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
     RET=$?
@@ -489,6 +514,10 @@ reset_sudo() {
 reset_psql() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     log_arg $1
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
