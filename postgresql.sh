@@ -309,7 +309,9 @@ provision_cluster() {
                 log_exec sudo service postgresql restart
                 ;;
             "vivid")
-                log_exec sudo systemctl restart postgresql@$PGVERSION-"$INSTANCE".service
+                log_exec sudo systemctl stop postgresql@$PGVERSION-"$INSTANCE".service
+                sudo killall postgres # c'mon postgres...
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE".service
                 ;;
         esac
     elif [ $DISTRO = "debian" ]; then
@@ -319,7 +321,7 @@ provision_cluster() {
                 ;;
             "jessie")
                 log_exec sudo systemctl stop postgresql@$PGVERSION-"$INSTANCE".service
-                sudo killall postgres # c'mon Debian...
+                sudo killall postgres # c'mon postgres...
                 log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE".service
                 ;;
         esac
