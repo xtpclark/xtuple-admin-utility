@@ -1,0 +1,18 @@
+[Unit]
+Description=xTuple ERP NodeJS Server
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=xtuple-xtuple
+User=xtuple
+Group=xtuple
+Environment=NODE_ENV=production
+ExecStop=/bin/kill -INT $MAINPID
+#ExecStart=/usr/local/bin/node /opt/xtuple/$VERSION/$INSTANCE/xtuple/node-datasource/main.js -c /etc/xtuple/$VERSION/$INSTANCE/config.js
+

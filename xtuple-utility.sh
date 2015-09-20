@@ -2,16 +2,16 @@
 
 REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
-export _REV="0.1Alpha"
+export _REV="0.2Alpha"
 export WORKDIR=`pwd`
 
 #set some defaults
-PGVERSION=9.3
-XTVERSION=4.9.1
+export PGVERSION=9.3
+export XTVERSION=4.9.1
 _XTVERSION=${XTVERSION//./}
-INSTANCE=xtuple
-DBTYPE=demo
-PGDATABASE="$DBTYPE""$_XTVERSION"
+export INSTANCE=xtuple
+export DBTYPE=demo
+export PGDATABASE="$DBTYPE""$_XTVERSION"
 # import supporting scripts
 source common.sh
 source logging.sh
@@ -98,7 +98,8 @@ case "$_DISTRO" in
         case "$_CODENAME" in
             "trusty") ;;
             "utopic") ;;
-            *) log "We currently only support Ubuntu 14.04 LTS and 14.10. Current release: `lsb_release -r -s`" 
+            "vivid") ;;
+            *) log "We currently only support Ubuntu 14.04 LTS,14.10 and 15.04. Current release: `lsb_release -r -s`" 
                do_exit
                ;;
         esac
