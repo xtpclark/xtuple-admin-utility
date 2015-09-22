@@ -92,31 +92,33 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
-                if [ ! -f /var/lib/apt/periodic/update-success-stamp ] || [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
+                if [ "$[$(date +%s) - $(stat -c %Z /var/cache/apt)]" -ge 3600 ]; then
                   sudo apt-get update
                 else
                   log "Skipping apt-get update as it was run less than an hour ago..."
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
                 RET=$?
                 if [ $RET -ne 0 ]; then
-                    msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
+                    msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
                     do_exit
                 fi
                 ;;
         "debian")
                 install_pg_repo
-                if [ ! -f /var/lib/apt/periodic/update-success-stamp ] || [ "$[$(date +%s) - $(stat -c %Z /var/lib/apt/periodic/update-success-stamp)]" -ge 3600 ]; then
-                  sudo apt-get update
+                if [ "$[$(date +%s) - $(stat -c %Z /var/cache/apt)]" -ge 3600 ]; then
+                    sudo apt-get update
                 else
-                  log "Skipping apt-get update as it was run less than an hour ago..."
+                    log "Skipping apt-get update as it was run less than an hour ago..."
                 fi
                 sudo apt-get -y install python-software-properties software-properties-common
-                sudo add-apt-repository -y "deb http://ftp.debian.org/debian wheezy-backports main"
-                sudo apt-get update && sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
+                if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
+                    sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
+                fi
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
                 RET=$?
                 if [ $RET -ne 0 ]; then
-                    msgbox "Something went wrong installing prerequisites for $DISTRO. Check the output for more info. "
+                    msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
                     do_exit
                 fi
                 ;;
@@ -125,19 +127,27 @@ install_prereqs() {
                 do_exit
                 ;;
         *)
-        log "Shouldn't reach here! Please report this on GitHub."
-        exit 0
+        log "Shouldn't reach here! Please report this on GitHub. install_prereqs"
+        do_exit
         ;;
     esac
 
 }
 
 install_pg_repo() {
-    # check to make sure the PostgreSQL repo is already added on the system
-    if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
-        sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
-        sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-    fi
+
+    case "$CODENAME" in 
+        "trusty") ;&
+        "utopic") ;&
+        "wheezy") ;&
+        "jessie")
+            # check to make sure the PostgreSQL repo is already added on the system
+            if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
+                sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
+                sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            fi
+        ;;
+    esac
 }
 
 # $1 is the port

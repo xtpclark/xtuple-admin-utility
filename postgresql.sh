@@ -221,7 +221,7 @@ list_clusters() {
 provision_cluster() {
 
     if [ -z $1 ]; then
-        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "9.3" 3>&1 1>&2 2>&3)
+        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$PGVERSION" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -230,7 +230,7 @@ provision_cluster() {
         POSTVER=$1
     fi
 
-    if [ -z $2 ]; then   
+    if [ -z $2 ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -239,7 +239,7 @@ provision_cluster() {
     else
         POSTNAME=$2
     fi
-    
+
     if [ -z $3 ]; then
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
@@ -249,8 +249,8 @@ provision_cluster() {
     else
         POSTPORT=$3
     fi
-    
-    if [ -z $4 ]; then  
+
+    if [ -z $4 ]; then
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -259,7 +259,7 @@ provision_cluster() {
     else
         POSTLOCALE=$4
     fi
-    
+
     if [ -z $5 ]; then
         if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
             POSTSTART="--start-conf=auto"
@@ -269,7 +269,7 @@ provision_cluster() {
     else
         POSTSTART="--start-conf=auto"
     fi
-    
+
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
     log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
@@ -282,9 +282,9 @@ provision_cluster() {
         do_exit
     fi
     log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $6
-    
+
     PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
-    
+
     log "Opening pg_hba.conf for internet access with passwords"
     log_exec sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $PGDIR/pg_hba.conf"
     RET=$?
@@ -292,7 +292,7 @@ provision_cluster() {
         msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
         do_exit
     fi
-    
+
     log "Adding plv8.start_proc='xt.js_init' to postgresql.conf"
     log_exec sudo bash -c "echo  \"plv8.start_proc='xt.js_init'\" >> $PGDIR/postgresql.conf"
     RET=$?
@@ -301,9 +301,35 @@ provision_cluster() {
         do_exit
     fi
 
-    log "Restarting PostgreSQL"
-    log_exec sudo service postgresql restart
-    
+    log "Restarting PostgreSQL $PGVERSION for $INSTANCE"
+    # you may wonder why I have this block when the commands are all the same, the reason is that
+    # we only support ubuntu derivatives currently, but in the near future that will not be the
+    # case, and I will lose access to pg_ctlcluster and its friends.
+    if [ $DISTRO = "ubuntu" ]; then
+        case "$CODENAME" in
+            "trusty") ;&
+            "utopic")
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                ;;
+            "vivid")
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop
+                log_exec sudo systemctl enable postgresql@$PGVERSION-"$INSTANCE"
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE"
+                ;;
+        esac
+    elif [ $DISTRO = "debian" ]; then
+        case "$CODENAME" in
+            "wheezy")
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                ;;
+            "jessie")
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop
+                log_exec sudo systemctl enable postgresql@$PGVERSION-"$INSTANCE"
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE"
+                ;;
+        esac
+    fi
+
     export PGHOST=localhost
     export PGUSER=postgres
     export PGPASSWORD=postgres
@@ -462,6 +488,10 @@ drop_cluster_menu() {
 reset_sudo() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60  3>&1 1>&2 2>&3)
     RET=$?
@@ -489,6 +519,10 @@ reset_sudo() {
 reset_psql() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
     log_arg $1
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)

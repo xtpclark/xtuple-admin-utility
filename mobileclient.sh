@@ -154,10 +154,10 @@ install_mwc() {
     log_exec chmod +x n
     log_exec sudo mv n /usr/bin/n
     # use it to set node to 0.10
-    log "Installing node 0.10..."
-    log_exec sudo n 0.10
+    log "Installing node 0.10.40..."
+    log_exec sudo n 0.10.40
 
-    # need to install npm of course...
+    # need to install npm of course...why doesn't 2.3.14 exist?
     log_exec sudo npm install -g npm@1.4.28
 
     # cleanup existing folder or git will throw a hissy fit
@@ -222,24 +222,43 @@ install_mwc() {
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
 
-    # bring on systemd please.. but until then
     if [ $DISTRO = "ubuntu" ]; then
-        log "Creating upstart script using filename /etc/init/xtuple-"$MWCNAME".conf"
-        # create the upstart script
-        sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
-        log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
-        log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+        case "$CODENAME" in
+            "trusty") ;&
+            "utopic") 
+                log "Creating upstart script using filename /etc/init/xtuple-\"$MWCNAME\".conf"
+                # create the upstart script
+                sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
+                log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+                log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+                ;;
+            "vivid")
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+                sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
+                log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
+                log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
+                ;;
+        esac
     elif [ $DISTRO = "debian" ]; then
-        log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
-        # create the weird debian sysvinit style script
-        sudo cp $WORKDIR/templates/debian-init /etc/init.d/xtuple-"$MWCNAME"
-        log_exec sudo sed -i  "/APP_DIR=/c\APP_DIR=\"/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\"" /etc/init.d/xtuple-"$MWCNAME"
-        log_exec sudo sed -i  "/CONFIG_FILE=/c\CONFIG_FILE=\"/etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js\"" /etc/init.d/xtuple-"$MWCNAME"
-        # should be +x from git but just in case...
-        sudo chmod +x /etc/init.d/xtuple-"$MWCNAME"
+        case "$CODENAME" in
+            "wheezy")
+                log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
+                # create the weird debian sysvinit style script
+                sudo cp $WORKDIR/templates/debian-init /etc/init.d/xtuple-"$MWCNAME"
+                log_exec sudo sed -i  "/APP_DIR=/c\APP_DIR=\"/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\"" /etc/init.d/xtuple-"$MWCNAME"
+                log_exec sudo sed -i  "/CONFIG_FILE=/c\CONFIG_FILE=\"/etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js\"" /etc/init.d/xtuple-"$MWCNAME"
+                # should be +x from git but just in case...
+                sudo chmod +x /etc/init.d/xtuple-"$MWCNAME"
+                ;;
+            "jessie")
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+                sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
+                log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
+                log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
+                ;;
+        esac
     else
         log "Seriously? We made it all the way to where I need to write out the init script and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
-        log "well, in the node-datasource dir, type node main.js -c /etc/init/xtuple-\"$MWCNAME\".conf and cross your fingers."
         do_exit
     fi
 
@@ -251,7 +270,31 @@ install_mwc() {
     fi
 
     # now that we have the script, start the server!
-    log_exec sudo service xtuple-"$MWCNAME" start
+    if [ $DISTRO = "ubuntu" ]; then
+        case "$CODENAME" in
+            "trusty") ;&
+            "utopic") 
+                log_exec sudo service xtuple-"$MWCNAME" start
+                ;;
+            "vivid")
+                log_exec sudo systemctl enable xtuple-"$MWCNAME".service
+                log_exec sudo systemctl start xtuple-"$MWCNAME".service
+                ;;
+        esac
+    elif [ $DISTRO = "debian" ]; then
+        case "$CODENAME" in
+            "wheezy")
+                log_exec sudo /etc/init.d/xtuple-"$MWCNAME" start
+                ;;
+            "jessie")
+                log_exec sudo systemctl enable xtuple-"$MWCNAME".service
+                log_exec sudo systemctl start xtuple-"$MWCNAME".service
+                ;;
+        esac
+    else
+        log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+        do_exit
+    fi
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
     IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`

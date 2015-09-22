@@ -1,0 +1,17 @@
+[Unit]
+Description=xTuple ERP NodeJS Server
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+User=xtuple
+Group=xtuple
+Environment=NODE_ENV=production
+ExecStop=/bin/kill -9 $MAINPID
+#SyslogIdentifier=xtuple-$MWCNAME
+#ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple/node-datasource/main.js -c /etc/xtuple/$VMWCVERSION/$MWCNAME/config.js
