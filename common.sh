@@ -92,11 +92,7 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/cache/apt)]" -ge 3600 ]; then
-                  sudo apt-get update
-                else
-                  log "Skipping apt-get update as it was run less than an hour ago..."
-                fi
+                sudo apt-get update
                 sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
                 RET=$?
                 if [ $RET -ne 0 ]; then
@@ -106,14 +102,11 @@ install_prereqs() {
                 ;;
         "debian")
                 install_pg_repo
-                if [ "$[$(date +%s) - $(stat -c %Z /var/cache/apt)]" -ge 3600 ]; then
-                    sudo apt-get update
-                else
-                    log "Skipping apt-get update as it was run less than an hour ago..."
-                fi
+                sudo apt-get update
                 sudo apt-get -y install python-software-properties software-properties-common
                 if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
+                    sudo apt-get update
                 fi
                 sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
                 RET=$?
