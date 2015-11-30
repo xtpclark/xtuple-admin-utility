@@ -69,9 +69,9 @@ download_demo() {
                 "1" "PostBooks 4.8.1 Demo" \
                 "2" "PostBooks 4.8.1 Empty" \
                 "3" "PostBooks 4.8.1 QuickStart" \
-                "4" "PostBooks 4.9.1 Demo" \
-                "5" "PostBooks 4.9.1 Empty" \
-                "6" "PostBooks 4.9.1 QuickStart" \
+                "4" "PostBooks 4.9.2 Demo" \
+                "5" "PostBooks 4.9.2 Empty" \
+                "6" "PostBooks 4.9.2 QuickStart" \
                 "7" "Return to database menu" \
                 3>&1 1>&2 2>&3)
 
@@ -90,13 +90,13 @@ download_demo() {
             "3") VERSION=4.8.1
                    DBTYPE="quickstart"
                    ;;
-            "4") VERSION=4.9.1
+            "4") VERSION=4.9.2
                    DBTYPE="demo"
                    ;;
-            "5") VERSION=4.9.1
+            "5") VERSION=4.9.2
                    DBTYPE="empty"
                    ;;
-            "6") VERSION=4.9.1
+            "6") VERSION=4.9.2
                    DBTYPE="quickstart"
                    ;;
             "7") return 0 ;;
