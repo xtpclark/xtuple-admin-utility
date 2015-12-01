@@ -270,18 +270,24 @@ provision_cluster() {
         POSTSTART="--start-conf=auto"
     fi
 
+    if [ -z $6 ] || [ $6 = "manual" ]; then
+        MODE=manual
+    else
+        MODE=auto
+    fi
+
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
     log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
-        if [ -z $6 ] || [ $6 = "manual" ]; then
+        if [ $MODE = "manual" ]; then
             msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         else
             log "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         fi
         do_exit
     fi
-    log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $6
+    log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $MODE
 
     PGDIR=/etc/postgresql/$POSTVER/$POSTNAME
 
@@ -335,11 +341,11 @@ provision_cluster() {
     export PGPASSWORD=postgres
     export PGPORT=$POSTPORT
     
-    if [ -z $6 ] || [ $6 = "manual" ]; then
+    if [ $MODE = "manual" ]; then
         msgbox "Creation of database cluster $POSTNAME using version $POSTVER was successful. You will now be asked to set a postgresql password"
         reset_sudo postgres
         if [ $RET -ne 0 ]; then
-            if [ -z $6 ] || [ $6 = "manual" ]; then
+            if [ $MODE = "manual" ]; then
                 msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
             else
                 log "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
