@@ -6,7 +6,7 @@ export _REV="0.2Alpha"
 export WORKDIR=`pwd`
 
 #set some defaults
-export PGVERSION=9.3
+export PGVERSION=9.4
 export XTVERSION=4.9.2
 _XTVERSION=${XTVERSION//./}
 export INSTANCE=xtuple
@@ -98,7 +98,7 @@ case "$_DISTRO" in
         case "$_CODENAME" in
             "trusty") ;;
             "utopic") ;;
-            "vivid") export PGVERSION=9.4 ;; # 9.3 is marked obsolete on 15.04...
+            "vivid") ;;
             *) log "We currently only support Ubuntu 14.04 LTS,14.10 and 15.04. Current release: `lsb_release -r -s`" 
                do_exit
                ;;
