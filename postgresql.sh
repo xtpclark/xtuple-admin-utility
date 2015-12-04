@@ -314,13 +314,15 @@ provision_cluster() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" start
                 ;;
             "utopic")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" start
                 ;;
             "vivid")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
                 log_exec sudo systemctl enable postgresql@$PGVERSION-"$INSTANCE"
                 log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE"
                 ;;
