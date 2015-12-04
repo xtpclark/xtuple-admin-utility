@@ -313,7 +313,9 @@ provision_cluster() {
     # case, and I will lose access to pg_ctlcluster and its friends.
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
-            "trusty") ;&
+            "trusty")
+                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                ;;
             "utopic")
                 log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
                 ;;
