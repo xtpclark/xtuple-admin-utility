@@ -307,35 +307,35 @@ provision_cluster() {
         do_exit
     fi
 
-    log "Restarting PostgreSQL $PGVERSION for $INSTANCE"
+    log "Restarting PostgreSQL $PGVERSION for $POSTNAME"
     # you may wonder why I have this block when the commands are all the same, the reason is that
     # we only support ubuntu derivatives currently, but in the near future that will not be the
     # case, and I will lose access to pg_ctlcluster and its friends.
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" start
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" start
                 ;;
             "utopic")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" start
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" start
                 ;;
             "vivid")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop --force
-                log_exec sudo systemctl enable postgresql@$PGVERSION-"$INSTANCE"
-                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE"
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
+                log_exec sudo systemctl enable postgresql@$PGVERSION-"$POSTNAME"
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$POSTNAME"
                 ;;
         esac
     elif [ $DISTRO = "debian" ]; then
         case "$CODENAME" in
             "wheezy")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" restart
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" restart
                 ;;
             "jessie")
-                log_exec sudo pg_ctlcluster $PGVERSION "$INSTANCE" stop
-                log_exec sudo systemctl enable postgresql@$PGVERSION-"$INSTANCE"
-                log_exec sudo systemctl start postgresql@$PGVERSION-"$INSTANCE"
+                log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop
+                log_exec sudo systemctl enable postgresql@$PGVERSION-"$POSTNAME"
+                log_exec sudo systemctl start postgresql@$PGVERSION-"$POSTNAME"
                 ;;
         esac
     fi
@@ -344,7 +344,7 @@ provision_cluster() {
     export PGUSER=postgres
     export PGPASSWORD=postgres
     export PGPORT=$POSTPORT
-    
+
     if [ $MODE = "manual" ]; then
         msgbox "Creation of database cluster $POSTNAME using version $POSTVER was successful. You will now be asked to set a postgresql password"
         reset_sudo postgres
