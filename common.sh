@@ -108,7 +108,7 @@ install_prereqs() {
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "

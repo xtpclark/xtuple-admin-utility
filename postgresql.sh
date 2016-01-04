@@ -6,9 +6,9 @@ postgresql_menu() {
 
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Install PostgreSQL 9.3" \
-            "2" "Remove PostgreSQL 9.3" \
-            "3" "Purge PostgreSQL 9.3" \
+            "1" "Install PostgreSQL $PGVERSION" \
+            "2" "Remove PostgreSQL $PGVERSION" \
+            "3" "Purge PostgreSQL $PGVERSION" \
             "4" "List provisioned clusters" \
             "5" "Provision database cluster" \
             "6" "Drop database cluster" \
@@ -25,9 +25,9 @@ postgresql_menu() {
             break
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") log_choice install_postgresql 9.3 ;;
-            "2") log_choice remove_postgresql 9.3 ;;
-            "3") log_choice purge_postgresql 9.3 ;;
+            "1") log_choice install_postgresql $PGVERSION ;;
+            "2") log_choice remove_postgresql $PGVERSION ;;
+            "3") log_choice purge_postgresql $PGVERSION ;;
             "4") log_choice list_clusters ;;
             "5") log_choice provision_cluster ;;
             "6") drop_cluster_menu ;;

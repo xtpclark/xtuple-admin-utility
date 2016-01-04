@@ -5,7 +5,7 @@ provision_menu() {
 
     ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Cancel" \
     "Please choose the actions you would like to take" 15 60 7 \
-    "installpg93" "Install PostgreSQL 9.3" ON \
+    "installpg" "Install PostgreSQL $PGVERSION" ON \
     "provisioncluster" "Provision PostgreSQL Cluster" ON \
     "initdb" "Add xTuple admin user and role" ON \
     "demodb" "Load xTuple Database" OFF \
@@ -16,7 +16,7 @@ provision_menu() {
 
     RET=$?
     if [ $RET = 0 ]; then
-        if [[ $ACTIONS == *"installpg93"* ]] && [[ $ACTIONS != *"provisioncluster"* ]]; then
+        if [[ $ACTIONS == *"installpg"* ]] && [[ $ACTIONS != *"provisioncluster"* ]]; then
             msgbox "You are about to install PostgreSQL but not provision to any clusters. \nYou will need to create a cluster manually before you can initialize \nit for xTuple. If you have chosen to initialize the database or install a demo \nthose actions will be skipped."
             SKIP=1
             ACTIONS=`sed "/initdb/d" <<< "$ACTIONS"`
@@ -26,10 +26,10 @@ provision_menu() {
         fi
         for i in $ACTIONS; do   
             case "$i" in
-            "installpg93") log_choice install_postgresql 9.3
-                           log_choice drop_cluster 9.3 main auto
+            "installpg") log_choice install_postgresql $PGVERSION
+                           log_choice drop_cluster $PGVERSION main auto
                            ;;
-            "provisioncluster") log_choice provision_cluster 9.3
+            "provisioncluster") log_choice provision_cluster $PGVERSION
                                 ;;
             "initdb") log_choice prepare_database auto
                       ;;
