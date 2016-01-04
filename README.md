@@ -9,7 +9,7 @@ git clone https://github.com/xtuple/xtuple-admin-utility.git
 
 cd xtuple-admin-utility && ./xtuple-utility.sh
 
-If you are installing from scratch, choose privisioning from the main menu. To install everything, choose installpg, provisioncluster, initdb, demodb, and webclient. You will be prompted along the way for information such as postgresql port, cluster name, postgres user password, admin passwords and so on. Remember what you choose! Work on implementing #7 will be forthcoming. 
+If you are installing from scratch, choose provisioning from the main menu. To install everything, choose installpg, provisioncluster, initdb, demodb, and webclient. You will be prompted along the way for information such as postgresql port, cluster name, postgres user password, admin passwords and so on. Remember what you choose! Work on implementing #7 will be forthcoming. 
 
 For an unattended install on a clean machine, try: ./xtuple-utility.sh -a
 
