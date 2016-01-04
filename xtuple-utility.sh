@@ -6,7 +6,7 @@ export _REV="0.2Alpha"
 export WORKDIR=`pwd`
 
 #set some defaults
-export PGVERSION=9.4
+export PGVERSION=9.3
 export XTVERSION=4.9.2
 _XTVERSION=${XTVERSION//./}
 export INSTANCE=xtuple
