@@ -174,7 +174,7 @@ configure_nginx()
 
     sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i -e "s/DOMAINNAME/$NGINX_DOMAIN/" -e "s/HOSTNAME/$NGINX_HOSTNAME/" /etc/nginx/sites-available/$NGINX_SITE
+    sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_SITE
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx.  Check site file in /etc/nginx/sites-available"
@@ -194,8 +194,8 @@ configure_nginx()
         fi
     fi
 
-    sudo sed -i -e 's/SERVER_CRT/'$NGINX_CERT'/g' -e 's/SERVER_KEY/'$NGINX_KEY'/g' /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i 's/MWCPORT/'$NGINX_PORT'/g' /etc/nginx/sites-available/$NGINX_SITE
+    sudo sed -i -e 's#SERVER_CRT#'$NGINX_CERT'#g' -e 's#SERVER_KEY#'$NGINX_KEY'#g' /etc/nginx/sites-available/$NGINX_SITE
+    sudo sed -i 's#MWCPORT#'$NGINX_PORT'#g' /etc/nginx/sites-available/$NGINX_SITE
 
     sudo nginx -s reload
     RET=$?
