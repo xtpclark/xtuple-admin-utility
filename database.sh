@@ -832,11 +832,8 @@ upgrade_database() {
         export DISPLAY=:99
     fi
 
-    # check for plv8
-    PLV8=`psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "select exists (select 1 from pg_extension where extname = 'plv8');"`
-    if [ "$PLV8" == "f" ]; then
-        log_exec psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "create EXTENSION plv8;"
-    fi
+    # make sure plv8 is in
+    log_exec psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # run the updater
     log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${PGPORT}/$DATABASE
