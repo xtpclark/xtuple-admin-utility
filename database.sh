@@ -762,9 +762,8 @@ upgrade_database() {
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
-        else
-            export UPDATEREXEC
         fi
+	   export UPDATEREXEC
     fi
 
     if [ -z "$UPDATEPKGS" ]; then
@@ -772,10 +771,9 @@ upgrade_database() {
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
-        else
-            log_exec mkdir -p $UPDATEPKGS
-            export UPDATEPKGS
         fi
+	   log_exec mkdir -p $UPDATEPKGS
+	   export UPDATEPKGS
     fi
 
     if [ -z "$1" ]; then
@@ -785,8 +783,8 @@ upgrade_database() {
 
         while read -r line; do
             DATABASES+=("$line")
-		  VER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $line -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
-		  APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $line -c \"SELECT fetchmetrictext('Application') AS application;\""`
+		  VER=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+		  APP=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('Application') AS application;"`
 		  VERSIONS+=("$VER")
 		  APPLICATIONS+=("$APP")
          done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
@@ -839,7 +837,7 @@ upgrade_database() {
     log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${PGPORT}/$DATABASE
 
     # display results
-    NEWVER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
+    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
     msgbox "Database $DATABASE\nVersion $NEWVER"
 
     log_arg $DATABASE
