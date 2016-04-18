@@ -752,70 +752,93 @@ check_database_info() {
     fi
 }
 
-#upgrade_database_menu() {
-#
-#}
-
 # $1 is database
-# $2 is version to upgrade to
 upgrade_database() {
 
-    msgbox "This functionality is forthcoming..."
-    return 0 # for now
-    DATABASE=demo481
-    APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('Application') AS application;\""`
-    log "Detected application $APP"
-    VER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
-    log "Detected server version $VER"
-    UPS=`curl -s http://api.xtuple.org/upgradepath.php\?package=$APP\&fromver=3.7.0\&tover=4.8.1`
-    log "Detected upgrades $UPS"
+    check_database_info
+
+    if [ -z "$UPDATEREXEC" ]; then
+        UPDATEREXEC=$(whiptail --backtitle "$( window_title )" --inputbox "Auto updater executable location" 8 60 ${HOME}/updater/utilities/AutoUpdate/xtuple_autoupdater 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+	   export UPDATEREXEC
+    fi
+
+    if [ -z "$UPDATEPKGS" ]; then
+        UPDATEPKGS=$(whiptail --backtitle "$( window_title )" --inputbox "Updater packages directory" 8 60 ${HOME}/Updater/pkgs 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+	   log_exec mkdir -p $UPDATEPKGS
+	   export UPDATEPKGS
+    fi
 
     if [ -z "$1" ]; then
         DATABASES=()
+	   VERSIONS=()
+	   APPLICATIONS=()
 
         while read -r line; do
-            DATABASES+=("$line" "$line")
+            DATABASES+=("$line")
+		  VER=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+		  APP=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('Application') AS application;"`
+		  VERSIONS+=("$VER")
+		  APPLICATIONS+=("$APP")
          done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 0
         fi
 
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        CHOICE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 --cancel-button "Cancel" --ok-button "Select" \
+	   $(paste -d '\n' \
+	   <(seq 0 $((${#DATABASES[@]}-1))) \
+        <(echo ${DATABASES[*]} | tr ' ' '\n')) \
+	   3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
         fi
+	   DATABASE=${DATABASES[$CHOICE]}
     else
         DATABASE="$1"
     fi
 
-    if [ -z "$2" ]; then
-        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-                "1" "PostBooks 4.7.0" \
-                "2" "PostBooks 4.8.0" \
-                "3" "PostBooks 4.8.1" \
-                "4" "Return to database menu" \
-                3>&1 1>&2 2>&3)
+    log "Detected application ${APPLICATIONS[$CHOICE]}"
+    log "Detected server version ${VERSIONS[$CHOICE]}"
+    UPS=`curl -s 'http://api.xtuple.org/upgradepath.php?package='${APPLICATIONS[$CHOICE]}'&fromver='${VERSIONS[$CHOICE]} | grep -oP 'http\S+' | sed 's/<.*//'`
+    log "Detected upgrades ${UPS[*]}"
 
-        RET=$?
-
-        if [ $RET -ne 0 ]; then
-            return 0
-        else
-            case "$MENUVER" in
-            "1") VERSION=4.7.0 
-                   ;;
-            "2") VERSION=4.8.0 
-                   ;;
-            "3") VERSION=4.8.1 
-                   ;;
-            "4") return 0 ;;
-            *) msgbox "How did you get here?" && exit 0 ;;
-            esac || database_menu
-        fi
-    else
-        VERSION="$2"
+    if ! (whiptail --title "Database Selected" --yesno "Database: $DATABASE\nApplication: ${APPLICATIONS[$CHOICE]}\nVersion: ${VERSIONS[$CHOICE]}\nWould you like to upgrade this database now?" 10 60) then
+        return 0
     fi
-    log_arg $DATABASE $VERSION
+
+    # download the upgrade packages
+    for pack in ${UPS[*]} ; do
+        packname=$(echo $pack | sed 's#.*/##'g)
+        dlf_fast $pack $packname $UPDATEPKGS/$packname
+    done
+
+    msgbox "All Packages Downloaded"
+
+    # Start up the virtual framebuffer to use for the updater
+    if [ ! -e /tmp/.X99-lock ]; then
+        log_exec start-stop-daemon --start -b -x /usr/bin/Xvfb :99
+        export DISPLAY=:99
+    fi
+
+    # make sure plv8 is in
+    log_exec psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
+
+    # run the updater
+    log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${PGPORT}/$DATABASE
+
+    # display results
+    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+    msgbox "Database $DATABASE\nVersion $NEWVER"
+
+    log_arg $DATABASE
 }
