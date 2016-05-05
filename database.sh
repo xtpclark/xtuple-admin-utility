@@ -316,7 +316,7 @@ carve_pilot() {
 
         while read -r line; do
             DATABASES+=("$line" "$line")
-         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 1
@@ -411,7 +411,7 @@ list_databases() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-    done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+    done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -432,7 +432,7 @@ drop_database_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-            done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+            done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
     
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
@@ -471,7 +471,7 @@ drop_database() {
     log_arg $POSTNAME
 
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
-        sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
+        psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT-c "DROP DATABASE $POSTNAME;"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
@@ -497,7 +497,7 @@ rename_database_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -545,7 +545,7 @@ rename_database() {
     fi
     log_arg $SOURCE $DEST
 
-    log_exec sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
@@ -568,7 +568,7 @@ inspect_database_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -623,13 +623,13 @@ restore_connect_priv() {
 # $1 is database name to inspect
 inspect_database() {
 
-    VAL=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $1 -c \"SELECT data FROM ( \
+    VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT $1 -c "SELECT data FROM ( \
         SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
         UNION \
         SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
         UNION \
         SELECT 3,'Pk: '||pkghead_name||' v'||pkghead_version \
-        FROM pkghead) as dummy ORDER BY 1;\""`
+        FROM pkghead) as dummy ORDER BY 1;"`
 
     msgbox "${VAL}"
     log_arg $1

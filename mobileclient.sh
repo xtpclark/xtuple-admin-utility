@@ -82,7 +82,7 @@ install_mwc_menu() {
 
     while read -r line; do
         DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+     done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
      if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 1
