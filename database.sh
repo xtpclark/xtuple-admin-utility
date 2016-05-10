@@ -45,7 +45,7 @@ database_menu() {
     done
 }
 
-# $1 is mode, auto (no prompt for demo location, delete when done) 
+# $1 is mode, auto (no prompt for demo location, delete when done)
 # manual, prompt for location, don't delete
 # $2 where to save database to
 # $3 is version to grab
@@ -63,15 +63,15 @@ download_demo() {
     else
         DBTYPE=$4
     fi
-    
+
     if [ -z $3 ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
                 "1" "PostBooks 4.8.1 Demo" \
                 "2" "PostBooks 4.8.1 Empty" \
                 "3" "PostBooks 4.8.1 QuickStart" \
-                "4" "PostBooks 4.9.2 Demo" \
-                "5" "PostBooks 4.9.2 Empty" \
-                "6" "PostBooks 4.9.2 QuickStart" \
+                "4" "PostBooks 4.9.5 Demo" \
+                "5" "PostBooks 4.9.5 Empty" \
+                "6" "PostBooks 4.9.5 QuickStart" \
                 "7" "Return to database menu" \
                 3>&1 1>&2 2>&3)
 
@@ -81,7 +81,7 @@ download_demo() {
             return $RET
         else
             case "$MENUVER" in
-            "1") VERSION=4.8.1 
+            "1") VERSION=4.8.1
                    DBTYPE="demo"
                    ;;
             "2") VERSION=4.8.1
@@ -90,13 +90,13 @@ download_demo() {
             "3") VERSION=4.8.1
                    DBTYPE="quickstart"
                    ;;
-            "4") VERSION=4.9.2
+            "4") VERSION=4.9.5
                    DBTYPE="demo"
                    ;;
-            "5") VERSION=4.9.2
+            "5") VERSION=4.9.5
                    DBTYPE="empty"
                    ;;
-            "6") VERSION=4.9.2
+            "6") VERSION=4.9.5
                    DBTYPE="quickstart"
                    ;;
             "7") return 0 ;;
@@ -166,7 +166,7 @@ download_demo() {
 
 download_latest_demo() {
 
-    VERSION="$( latest_version db )" 
+    VERSION="$( latest_version db )"
     log "Determined latest database version to be $VERSION"
 
     if [ -z "$VERSION" ]; then
@@ -186,7 +186,7 @@ download_latest_demo() {
 
     DB_URL="http://files.xtuple.org/$VERSION/demo.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/demo.backup.md5sum"
-    
+
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
     dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
 
@@ -280,7 +280,7 @@ restore_database() {
     else
         DEST=$2
     fi
-    
+
     log "Creating database $DEST."
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
@@ -396,7 +396,7 @@ create_database_from_file() {
             msgbox "Database "$PILOT" has been created"
         fi
     fi
-    
+
 }
 
 list_databases() {

@@ -5,7 +5,7 @@ openrpt_menu() {
 
     while true; do
 
-        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Cancel" --ok-button "Select" \
+        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title OpenRPT\ Menu )" 0 0 1 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install Package" \
             "2" "Build from source" \
             "3" "Install xvfb" \

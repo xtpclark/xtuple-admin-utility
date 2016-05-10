@@ -1,7 +1,5 @@
 #!/bin/bash
 
-NODE_VERSION=0.10.32
-
 mwc_menu() {
 
     log "Opened Web Client menu"
@@ -170,8 +168,6 @@ install_mwc() {
 
     # main code
     log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCSTRING && git submodule update --init --recursive && npm install bower && npm install"
-    # main extensions
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"
@@ -226,14 +222,14 @@ install_mwc() {
         case "$CODENAME" in
             "trusty") ;&
             "utopic") 
-                log "Creating upstart script using filename /etc/init/xtuple-\"$MWCNAME\".conf"
+                log "Creating upstart script using filename /etc/init/xtuple-$MWCNAME.conf"
                 # create the upstart script
                 sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
                 log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 ;;
             "vivid")
-                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
                 sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
                 log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
                 log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
@@ -242,7 +238,7 @@ install_mwc() {
     elif [ $DISTRO = "debian" ]; then
         case "$CODENAME" in
             "wheezy")
-                log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
+                log "Creating debian init script using filename /etc/init.d/xtuple-$MWCNAME"
                 # create the weird debian sysvinit style script
                 sudo cp $WORKDIR/templates/debian-init /etc/init.d/xtuple-"$MWCNAME"
                 log_exec sudo sed -i  "/APP_DIR=/c\APP_DIR=\"/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\"" /etc/init.d/xtuple-"$MWCNAME"
@@ -251,7 +247,7 @@ install_mwc() {
                 sudo chmod +x /etc/init.d/xtuple-"$MWCNAME"
                 ;;
             "jessie")
-                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
                 sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
                 log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
                 log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"

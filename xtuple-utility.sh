@@ -2,25 +2,31 @@
 
 REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
-export _REV="0.2Alpha"
+export _REV="1.0"
 export WORKDIR=`pwd`
 
 #set some defaults
 export PGVERSION=9.3
-export XTVERSION=4.9.2
-_XTVERSION=${XTVERSION//./}
+export XTVERSION=4.9.5
 export INSTANCE=xtuple
 export DBTYPE=demo
-export PGDATABASE="$DBTYPE""$_XTVERSION"
+export PGDATABASE=${DBTYPE}${XTVERSION//./}
+export CONTAINER=false
 # import supporting scripts
 source common.sh
 source logging.sh
 
 # process command line arguments
-while getopts ":ad:ip:n:hx:-:" opt; do
+# start with :, which tells it to be silent about errors
+# a doesn't require an argument, so it doesn't have a : after it
+# d does require an argument, so it is indicated by putting a : after the d, and so on
+while getopts ":acd:ip:n:qhx:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
+        ;;
+    c)
+        CONTAINER=true
         ;;
     d)
         PGDATABASE=$OPTARG
@@ -35,9 +41,15 @@ while getopts ":ad:ip:n:hx:-:" opt; do
         INSTANCE=$OPTARG
         log "Instance name set to $INSTANCE via command line argument -n"
         ;;
+    q)
+        # that is our cue to build the Qt development environment
+        BUILDQT=true
+        log "Building and installing Qt at the behest of -q"
+        ;;
     x)
         # Use a specific version of xTuple (applies to web client and db)
         XTVERSION=$OPTARG
+        PGDATABASE=${DBTYPE}${XTVERSION//./}
         log "xTuple MWC Version set to $XTVERSION via command line argument -x"
         ;;
     t)
@@ -54,6 +66,7 @@ while getopts ":ad:ip:n:hx:-:" opt; do
         echo -e "  -a\tInstall all (PostgreSQL (currently $( latest_version pg )), demo database (currently $( latest_version db )) and web client (currently $( latest_version db )))"
         echo -e "  -d\tSpecify database name to create"
         echo -e "  -p\tOverride PostgreSQL version"
+        echo -e "  -q\tBuild and Install Qt (currently $( latest_version qt_sdk ))"
         echo -e "  -n\tOverride instance name"
         echo -e "  -x\tOverride xTuple version (applies to web client and database)"
         echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
@@ -61,6 +74,10 @@ while getopts ":ad:ip:n:hx:-:" opt; do
         ;;
     \?)
         log "Invalid option: -$OPTARG"
+        ;;
+    :)
+        log "Option -$OPTARG requires an argument."
+        exit 1
         ;;
   esac
 done
@@ -83,7 +100,7 @@ fi
 
 test_connection
 RET=$?
-if [ $RET -eq 1 ]; then
+if [ $RET -ne 0 ]; then
     log "I can't seem to tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
     do_exit
 fi
@@ -135,10 +152,18 @@ source provision.sh
 source nginx.sh
 source mobileclient.sh
 source openrpt.sh
+source devenv.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
 install_prereqs
+
+# if we're supposed to build Qt, lets do that before anything else because it takes *FOREVER*
+if [ $BUILDQT ]; then
+    log "Building and installing Qt5 from source"
+    install_dev_prereqs
+    build_qt5
+fi
 
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
@@ -151,9 +176,13 @@ if [ $INSTALLALL ]; then
     restore_database $WORKDIR/tmp.backup $PGDATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION $INSTANCE false $PGDATABASE
-    do_exit
 fi
 
+# It is okay to run them both, but if either one runs we want to exit after as these
+# are expected to be used headlessly.
+if [ $BUILDQT ] || [ $INSTALLALL ]; then
+    do_exit
+fi
 
 # we load mainmenu.sh last since it calls its menu once it builds it
 # and this is the initial interface for the user
