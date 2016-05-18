@@ -145,7 +145,7 @@ download_demo() {
             if [ $RET -ne 0 ]; then
                 return $RET
             fi
-            export PGDATABASE=$DEST
+
             log "Creating database $DEST from file $DEMODEST"
             log_exec restore_database $DEMODEST $DEST
             RET=$?
@@ -282,7 +282,7 @@ restore_database() {
     fi
 
     log "Creating database $DEST."
-    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
@@ -312,12 +312,9 @@ carve_pilot() {
     fi
 
     if [ -z "$1" ]; then
-        DATABASES=()
+        get_database_list
 
-        while read -r line; do
-            DATABASES+=("$line" "$line")
-         done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
-         if [ -z "$DATABASES" ]; then
+        if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 1
         fi
@@ -347,7 +344,7 @@ carve_pilot() {
         remove_connect_priv $SOURCE
         kill_database_connections $SOURCE
 
-        log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
+        log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -d postgres -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
@@ -407,11 +404,8 @@ list_databases() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-    done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -428,12 +422,8 @@ drop_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-            done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
-    
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -471,7 +461,7 @@ drop_database() {
     log_arg $POSTNAME
 
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
-        psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT-c "DROP DATABASE $POSTNAME;"
+        psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "DROP DATABASE $POSTNAME;"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
@@ -493,12 +483,9 @@ rename_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-     done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
-     if [ -z "$DATABASES" ]; then
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -545,7 +532,7 @@ rename_database() {
     fi
     log_arg $SOURCE $DEST
 
-    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
@@ -564,12 +551,9 @@ inspect_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-     done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
-     if [ -z "$DATABASES" ]; then
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -584,6 +568,16 @@ inspect_database_menu() {
 
 }
 
+get_database_list() {
+
+    check_database_info
+
+    DATABASES=()
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+    done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
+}
+
 # $1 is database name
 remove_connect_priv() {
 
@@ -593,7 +587,7 @@ remove_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
 }
 
 # $1 is database name
@@ -605,7 +599,7 @@ kill_database_connections() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
 }
 
 # $1 is database name
@@ -617,13 +611,13 @@ restore_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
 
 # $1 is database name to inspect
 inspect_database() {
 
-    VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT $1 -c "SELECT data FROM ( \
+    VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $1 -c "SELECT data FROM ( \
         SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
         UNION \
         SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
@@ -783,11 +777,11 @@ upgrade_database() {
 
         while read -r line; do
             DATABASES+=("$line")
-		  VER=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
-		  APP=`psql -At -U ${PGUSER} -p ${PGPORT} $line -c "SELECT fetchmetrictext('Application') AS application;"`
+		  VER=`psql -At -U ${PGUSER} -p ${PGPORT} -d $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+		  APP=`psql -At -U ${PGUSER} -p ${PGPORT} -d $line -c "SELECT fetchmetrictext('Application') AS application;"`
 		  VERSIONS+=("$VER")
 		  APPLICATIONS+=("$APP")
-         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+         done < <( psql -At -h $PGHOST -p $PGPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 0
@@ -831,13 +825,13 @@ upgrade_database() {
     fi
 
     # make sure plv8 is in
-    log_exec psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
+    log_exec psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # run the updater
     log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${PGPORT}/$DATABASE
 
     # display results
-    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
     msgbox "Database $DATABASE\nVersion $NEWVER"
 
     log_arg $DATABASE
