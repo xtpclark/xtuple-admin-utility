@@ -10,7 +10,7 @@ export PGVERSION=9.3
 export XTVERSION=4.9.5
 export INSTANCE=xtuple
 export DBTYPE=demo
-export PGDATABASE=${DBTYPE}${XTVERSION//./}
+export DATABASE=${DBTYPE}${XTVERSION//./}
 export CONTAINER=false
 # import supporting scripts
 source common.sh
@@ -29,8 +29,8 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         CONTAINER=true
         ;;
     d)
-        PGDATABASE=$OPTARG
-        log "Database name set to $PGDATABASE via command line argument -d"
+        DATABASE=$OPTARG
+        log "Database name set to $DATABASE via command line argument -d"
         ;;
     p)
         PGVERSION=$OPTARG
@@ -49,7 +49,7 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
     x)
         # Use a specific version of xTuple (applies to web client and db)
         XTVERSION=$OPTARG
-        PGDATABASE=${DBTYPE}${XTVERSION//./}
+        DATABASE=${DBTYPE}${XTVERSION//./}
         log "xTuple MWC Version set to $XTVERSION via command line argument -x"
         ;;
     t)
@@ -173,9 +173,9 @@ if [ $INSTALLALL ]; then
     provision_cluster $PGVERSION $INSTANCE 5432 "$LANG" true auto
     prepare_database auto 
     download_demo auto $WORKDIR/tmp.backup $XTVERSION $DBTYPE
-    restore_database $WORKDIR/tmp.backup $PGDATABASE
+    restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
-    install_mwc $XTVERSION v$XTVERSION $INSTANCE false $PGDATABASE
+    install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
 fi
 
 # It is okay to run them both, but if either one runs we want to exit after as these
