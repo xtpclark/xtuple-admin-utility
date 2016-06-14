@@ -152,6 +152,10 @@ configure_nginx()
         NGINX_SITE=$3
     fi
 
+    if [ -n "$4" ]; then
+        GEN_SSL=$4
+    fi
+
     if [ -n "$5" ]; then
         NGINX_CERT=$5
     fi
@@ -183,7 +187,7 @@ configure_nginx()
 
     sudo ln -s /etc/nginx/sites-available/$NGINX_HOSTNAME /etc/nginx/sites-enabled/$NGINX_HOSTNAME
 
-    if [ -z "$4" ] || [ "$4" = "true" ]; then
+    if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
         sudo mkdir -p /etc/xtuple/ssl
         sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT

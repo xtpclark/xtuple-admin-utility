@@ -41,6 +41,16 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         INSTANCE=$OPTARG
         log "Instance name set to $INSTANCE via command line argument -n"
         ;;
+    H)
+        # Hostname
+        NGINX_HOSTNAME=$OPTARG
+        log "NGINX hostname set to $NGINX_HOSTNAME via command line argument -H"
+        ;;
+    D)
+        # Domain
+        NGINX_DOMAIN=$OPTARG
+        log "NGINX domain set to $NGINX_DOMAIN via command line argument -D"
+        ;;
     q)
         # that is our cue to build the Qt development environment
         BUILDQT=true
@@ -68,6 +78,8 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         echo -e "  -p\tOverride PostgreSQL version"
         echo -e "  -q\tBuild and Install Qt (currently $( latest_version qt_sdk ))"
         echo -e "  -n\tOverride instance name"
+        echo -e "  -H\tSet NGINX hostname"
+        echo -e "  -D\tSet NGINX domain"
         echo -e "  -x\tOverride xTuple version (applies to web client and database)"
         echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
         exit 0;
@@ -176,6 +188,8 @@ if [ $INSTALLALL ]; then
     restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
+    install_nginx
+    configure_nginx $NGINX_HOSTNAME $NGINX_DOMAIN $INSTANCE-$DATABASE true /etc/$INSTANCE/$DATABASE/ssl/server.{crt,key} 8443
     setup_webprint
 fi
 
