@@ -189,7 +189,7 @@ if [ $INSTALLALL ]; then
     rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
     install_nginx
-    configure_nginx $NGINX_HOSTNAME $NGINX_DOMAIN $INSTANCE-$DATABASE true /etc/$INSTANCE/$DATABASE/ssl/server.{crt,key} 8443
+    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/$INSTANCE/$XTVERSION/$DATABASE/ssl/server.{crt,key} 8443
     setup_webprint
 fi
 

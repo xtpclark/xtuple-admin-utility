@@ -176,7 +176,7 @@ configure_nginx()
 
     log_arg $NGINX_HOSTNAME $NGINX_DOMAIN $NGINX_SITE $NGINX_CERT $NGINX_KEY $NGINX_PORT
 
-    sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
+    [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
     sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_SITE
     RET=$?
@@ -188,7 +188,7 @@ configure_nginx()
     sudo ln -s /etc/nginx/sites-available/$NGINX_HOSTNAME /etc/nginx/sites-enabled/$NGINX_HOSTNAME
 
     if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
-        sudo mkdir -p /etc/xtuple/ssl
+        sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
         sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT
         RET=$?
