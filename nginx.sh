@@ -185,7 +185,7 @@ configure_nginx()
         return $RET
     fi
 
-    sudo ln -s /etc/nginx/sites-available/$NGINX_HOSTNAME /etc/nginx/sites-enabled/$NGINX_HOSTNAME
+    sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
 
     if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
         sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
