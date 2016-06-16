@@ -20,7 +20,7 @@ source logging.sh
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
 # d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:ip:n:H:D:qhx:-:" opt; do
+while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
@@ -86,6 +86,7 @@ while getopts ":acd:ip:n:H:D:qhx:-:" opt; do
         ;;
     \?)
         log "Invalid option: -$OPTARG"
+        exit 1;
         ;;
     :)
         log "Option -$OPTARG requires an argument."
@@ -189,7 +190,7 @@ if [ $INSTALLALL ]; then
     rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
     install_nginx
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/$INSTANCE/$XTVERSION/$DATABASE/ssl/server.{crt,key} 8443
+    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/xtuple/$XTVERSION/$INSTANCE/ssl/server.{crt,key} 8443
     setup_webprint
 fi
 
