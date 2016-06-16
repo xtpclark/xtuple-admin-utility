@@ -20,7 +20,7 @@ source logging.sh
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
 # d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:ip:n:qhx:-:" opt; do
+while getopts ":acd:ip:n:H:D:qhx:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
