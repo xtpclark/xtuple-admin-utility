@@ -225,14 +225,15 @@ install_mwc() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty") ;&
-            "utopic") 
+            "utopic")
                 log "Creating upstart script using filename /etc/init/xtuple-$MWCNAME.conf"
                 # create the upstart script
                 sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
                 log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 ;;
-            "vivid")
+            "vivid") ;&
+            "xenial")
                 log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
                 sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
                 log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
@@ -273,10 +274,11 @@ install_mwc() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty") ;&
-            "utopic") 
+            "utopic")
                 log_exec sudo service xtuple-"$MWCNAME" start
                 ;;
-            "vivid")
+            "vivid") ;&
+            "xenial")
                 log_exec sudo systemctl enable xtuple-"$MWCNAME".service
                 log_exec sudo systemctl start xtuple-"$MWCNAME".service
                 ;;

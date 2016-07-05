@@ -321,7 +321,8 @@ provision_cluster() {
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" start
                 ;;
-            "vivid")
+            "vivid") ;&
+            "xenial")
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
                 log_exec sudo systemctl enable postgresql@$PGVERSION-"$POSTNAME"
                 log_exec sudo systemctl start postgresql@$PGVERSION-"$POSTNAME"
