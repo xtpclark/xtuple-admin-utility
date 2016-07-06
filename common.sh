@@ -131,11 +131,12 @@ install_prereqs() {
 
 install_pg_repo() {
 
-    case "$CODENAME" in 
+    case "$CODENAME" in
         "trusty") ;&
         "utopic") ;&
         "wheezy") ;&
-        "jessie")
+        "jessie") ;&
+        "xenial")
             # check to make sure the PostgreSQL repo is already added on the system
             if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
                 sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
