@@ -127,6 +127,9 @@ install_prereqs() {
         ;;
     esac
 
+    # fix the background color
+    sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
+
 }
 
 install_pg_repo() {
