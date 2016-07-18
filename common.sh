@@ -101,6 +101,8 @@ install_prereqs() {
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
                     do_exit
                 fi
+                # fix the background color
+                sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
                 ;;
         "debian")
                 install_pg_repo
