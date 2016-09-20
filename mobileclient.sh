@@ -126,25 +126,26 @@ install_mwc() {
 
     log "installing web client"
 
-    export MWCVERSION=$1
-    export MWCREFSPEC=$2
-    export MWCNAME="$3"
+    MWCVERSION="${1:-$MWCVERSION}"
+    MWCREFSPEC="${2:-$MWCREFSPEC}"
+    MWCNAME="${3:-$MWCNAME}"
 
-    if [ -z "$4" ] || [ ! "$4" = "true" ]; then
+    PRIVATEEXT="${4:-$PRIVATEEXT}"
+    PRIVATEEXT="${PRIVATEEXT:-false}"
+    if [ ! "$PRIVATEEXT" = "true" ]; then
         PRIVATEEXT=false
     else
         PRIVATEEXT=true
     fi
-    
-    if [ -z "$5" ] && [ -z "$PGDATABASE" ]; then
+
+    PGDATABASE="${5:-$PGDATABASE}"
+    if [ -z "$PGDATABASE" ]; then
         log "No database name passed to install_mwc... exiting."
         do_exit
-    else
-        DATABASE=$5
     fi
 
-    export GITHUBNAME=$6
-    export GITHUBPASS=$7
+    GITHUBNAME="${6:-$GITHUBNAME}"
+    GITHUBPASS="${7:-$GITHUBPASS}"
     log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
 
     log "Creating xtuple user..."
@@ -218,7 +219,7 @@ install_mwc() {
 
     log "Using database $DATABASE"
     log_exec sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
-    log_exec sudo sed -i  "/port: 5432/c\      port: \"$PGPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 5432/c\      port: \"$POSTPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
 

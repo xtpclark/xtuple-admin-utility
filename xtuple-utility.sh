@@ -6,12 +6,8 @@ export _REV="1.0"
 export WORKDIR=`pwd`
 
 #set some defaults
-export PGVERSION=9.3
-export XTVERSION=4.9.5
-export INSTANCE=xtuple
-export DBTYPE=demo
-export DATABASE=${DBTYPE}${XTVERSION//./}
 export CONTAINER=false
+source config.sh
 # import supporting scripts
 source common.sh
 source logging.sh
@@ -33,8 +29,8 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         log "Database name set to $DATABASE via command line argument -d"
         ;;
     p)
-        PGVERSION=$OPTARG
-        log "PostgreSQL Version set to $PGVERSION via command line argument -p"
+        POSTVER=$OPTARG
+        log "PostgreSQL Version set to $POSTVER via command line argument -p"
         ;;
     n)
         # Name this instance
@@ -48,9 +44,9 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         ;;
     x)
         # Use a specific version of xTuple (applies to web client and db)
-        XTVERSION=$OPTARG
-        DATABASE=${DBTYPE}${XTVERSION//./}
-        log "xTuple MWC Version set to $XTVERSION via command line argument -x"
+        DBVERSION=$OPTARG
+        DATABASE=${DBTYPE}${DBVERSION//./}
+        log "xTuple MWC Version set to $DBVERSION via command line argument -x"
         ;;
     t)
         # Specify the type of database to grab (demo/quickstart/empty)
@@ -169,14 +165,14 @@ fi
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
     log "Executing full provision..."
-    install_postgresql $PGVERSION
-    drop_cluster $PGVERSION main auto
-    provision_cluster $PGVERSION $INSTANCE 5432 "$LANG" true auto
+    install_postgresql $POSTVER
+    drop_cluster $POSTVER main auto
+    provision_cluster $POSTVER $INSTANCE 5432 "$LANG" true auto
     prepare_database auto 
-    download_demo auto $WORKDIR/tmp.backup $XTVERSION $DBTYPE
+    download_demo auto $WORKDIR/tmp.backup $DBVERSION $DBTYPE
     restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
-    install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
+    install_mwc $DBVERSION v$DBVERSION $INSTANCE false $DATABASE
     setup_webprint
 fi
 
