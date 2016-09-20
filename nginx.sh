@@ -140,33 +140,12 @@ configure_nginx()
 {
     log "Configuring nginx"
 
-    if [ -n "$1" ]; then
-        NGINX_HOSTNAME=$1
-    fi
-
-    if [ -n "$2" ]; then
-        NGINX_DOMAIN=$2
-    fi
-
-    if [ -n "$3" ]; then
-        NGINX_SITE=$3
-    fi
-
-    if [ -n "$4" ]; then
-        GEN_SSL=$4
-    fi
-
-    if [ -n "$5" ]; then
-        NGINX_CERT=$5
-    fi
-
-    if [ -n "$6" ]; then
-        NGINX_KEY=$6
-    fi
-
-    if [ -n "$7" ]; then
-        NGINX_PORT=$7
-    fi
+    NGINX_HOSTNAME="${1:-$NGINX_HOSTNAME}"
+    NGINX_DOMAIN="${2:-$NGINX_DOMAIN}"
+    NGINX_SITE="${3:-$NGINX_SITE}"
+    NGINX_CERT="${5:-$NGINX_CERT}"
+    NGINX_KEY="${6:-$NGINX_KEY}"
+    NGINX_PORT="${7:-$NGINX_PORT}"
 
     nginx_prompt
     RET=$?
@@ -187,7 +166,9 @@ configure_nginx()
 
     sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
 
-    if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
+    NGINX_CERT="${4:-$NGINX_CERT}"
+    NGINX_CERT="${NGINX_CERT:-true}"
+    if [ "$NGINX_CERT" = "true" ]; then
         sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
         sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT
