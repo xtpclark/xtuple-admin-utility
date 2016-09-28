@@ -129,7 +129,8 @@ case "$_DISTRO" in
             "trusty") ;;
             "utopic") ;;
             "vivid") ;;
-            *) log "We currently only support Ubuntu 14.04 LTS,14.10 and 15.04. Current release: `lsb_release -r -s`" 
+            "xenial") ;;
+            *) log "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: `lsb_release -r -s`"
                do_exit
                ;;
         esac
@@ -140,7 +141,7 @@ case "$_DISTRO" in
         case "$_CODENAME" in
             "wheezy") ;;
             "jessie") ;;
-            *) log "We currently only support Debian 7 and 8 Current release: `lsb_release -r -s`" 
+            *) log "We currently only support Debian 7 and 8 Current release: `lsb_release -r -s`"
                do_exit
                ;;
         esac

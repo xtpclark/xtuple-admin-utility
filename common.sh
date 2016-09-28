@@ -101,6 +101,8 @@ install_prereqs() {
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
                     do_exit
                 fi
+                # fix the background color
+                sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
                 ;;
         "debian")
                 install_pg_repo
@@ -131,11 +133,12 @@ install_prereqs() {
 
 install_pg_repo() {
 
-    case "$CODENAME" in 
+    case "$CODENAME" in
         "trusty") ;&
         "utopic") ;&
         "wheezy") ;&
-        "jessie")
+        "jessie") ;&
+        "xenial")
             # check to make sure the PostgreSQL repo is already added on the system
             if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
                 sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
