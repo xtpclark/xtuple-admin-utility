@@ -20,7 +20,7 @@ source logging.sh
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
 # d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:ip:n:qhx:-:" opt; do
+while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
@@ -40,6 +40,16 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         # Name this instance
         INSTANCE=$OPTARG
         log "Instance name set to $INSTANCE via command line argument -n"
+        ;;
+    H)
+        # Hostname
+        NGINX_HOSTNAME=$OPTARG
+        log "NGINX hostname set to $NGINX_HOSTNAME via command line argument -H"
+        ;;
+    D)
+        # Domain
+        NGINX_DOMAIN=$OPTARG
+        log "NGINX domain set to $NGINX_DOMAIN via command line argument -D"
         ;;
     q)
         # that is our cue to build the Qt development environment
@@ -68,12 +78,15 @@ while getopts ":acd:ip:n:qhx:-:" opt; do
         echo -e "  -p\tOverride PostgreSQL version"
         echo -e "  -q\tBuild and Install Qt (currently $( latest_version qt_sdk ))"
         echo -e "  -n\tOverride instance name"
+        echo -e "  -H\tSet NGINX hostname"
+        echo -e "  -D\tSet NGINX domain"
         echo -e "  -x\tOverride xTuple version (applies to web client and database)"
         echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
         exit 0;
         ;;
     \?)
         log "Invalid option: -$OPTARG"
+        exit 1;
         ;;
     :)
         log "Option -$OPTARG requires an argument."
@@ -177,6 +190,8 @@ if [ $INSTALLALL ]; then
     restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
     install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
+    install_nginx
+    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/xtuple/$XTVERSION/$INSTANCE/ssl/server.{crt,key} 8443
     setup_webprint
 fi
 
