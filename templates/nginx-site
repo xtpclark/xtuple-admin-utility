@@ -4,12 +4,12 @@ upstream node-HOSTNAME {
 
 # auto redirect http -> https
 server {
-  listen 80 default_server;
+  listen 80;
   return 301 https://$host$request_uri;
 }
 
 server {
-  listen 443 default_server ssl;
+  listen 443 ssl;
   ssl on; 
   ssl_certificate SERVER_CRT;
   ssl_certificate_key SERVER_KEY;
