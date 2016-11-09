@@ -1,7 +1,5 @@
 #!/bin/bash
 
-NODE_VERSION=0.10.32
-
 mwc_menu() {
 
     log "Opened Web Client menu"
@@ -31,8 +29,8 @@ mwc_menu() {
 
 install_mwc_menu() {
 
-    TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | tail -10 | cut -d '/' -f 3 | cut -d v -f2 | sort -r)
-    HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | tail -5)
+    TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
+    HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
 
     MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
         $(paste -d '\n' \
@@ -52,11 +50,11 @@ install_mwc_menu() {
         elif [ $MENUVER -lt 10 ]; then
             read -a tagversionarray <<< $TAGVERSIONS
             MWCVERSION=${tagversionarray[$MENUVER]}
-            MWCSTRING=v$MWCVERSION
+            MWCREFSPEC=v$MWCVERSION
         else
             read -a headversionarray <<< $HEADVERSIONS
             MWCVERSION=${headversionarray[(($MENUVER-10))]}
-            MWCSTRING=$MWCVERSION
+            MWCREFSPEC=$MWCVERSION
         fi
     else
         return $RET
@@ -78,12 +76,9 @@ install_mwc_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-     if [ -z "$DATABASES" ]; then
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 1
     fi
@@ -116,33 +111,40 @@ install_mwc_menu() {
         PRIVATEEXT=false
     fi
 
-    log_choice install_mwc $MWCVERSION $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+    log_choice install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
 }
 
 
 # $1 is xtuple version
-# $2 is the instance name
-# $3 is to install private extensions
-# $4 is database name
+# $2 is the git refspec
+# $3 is the instance name
+# $4 is to install private extensions
+# $5 is database name
+# $6 is github username
+# $7 is github password
 install_mwc() {
 
     log "installing web client"
 
     export MWCVERSION=$1
-    export MWCNAME="$2"
+    export MWCREFSPEC=$2
+    export MWCNAME="$3"
 
-    if [ -z "$3" ] || [ ! "$3" = "true" ]; then
+    if [ -z "$4" ] || [ ! "$4" = "true" ]; then
         PRIVATEEXT=false
     else
         PRIVATEEXT=true
     fi
     
-    if [ -z "$4" ] && [ -z "$PGDATABASE" ]; then
+    if [ -z "$5" ] && [ -z "$PGDATABASE" ]; then
         log "No database name passed to install_mwc... exiting."
         do_exit
     else
-        PGDATABASE=$4
+        DATABASE=$5
     fi
+
+    export GITHUBNAME=$6
+    export GITHUBPASS=$7
     log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
 
     log "Creating xtuple user..."
@@ -169,13 +171,11 @@ install_mwc() {
     log_exec sudo chown -R xtuple.xtuple /opt/xtuple
 
     # main code
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCSTRING && git submodule update --init --recursive && npm install bower && npm install"
-    # main extensions
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
+    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"
-        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$5":"$6"@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCSTRING && git submodule update --init --recursive && npm install"
+        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUBNAME":"$GITHUBPASS"@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install"
     else
         log "Not installing the commercial extensions"
     fi
@@ -216,8 +216,8 @@ install_mwc() {
     log_exec sudo sed -i  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    log "Using database $PGDATABASE"
-    log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log "Using database $DATABASE"
+    log_exec sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/port: 5432/c\      port: \"$PGPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
@@ -225,15 +225,16 @@ install_mwc() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty") ;&
-            "utopic") 
-                log "Creating upstart script using filename /etc/init/xtuple-\"$MWCNAME\".conf"
+            "utopic")
+                log "Creating upstart script using filename /etc/init/xtuple-$MWCNAME.conf"
                 # create the upstart script
                 sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
                 log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
                 ;;
-            "vivid")
-                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+            "vivid") ;&
+            "xenial")
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
                 sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
                 log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
                 log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
@@ -242,7 +243,7 @@ install_mwc() {
     elif [ $DISTRO = "debian" ]; then
         case "$CODENAME" in
             "wheezy")
-                log "Creating debian init script using filename /etc/init.d/xtuple-"$MWCNAME""
+                log "Creating debian init script using filename /etc/init.d/xtuple-$MWCNAME"
                 # create the weird debian sysvinit style script
                 sudo cp $WORKDIR/templates/debian-init /etc/init.d/xtuple-"$MWCNAME"
                 log_exec sudo sed -i  "/APP_DIR=/c\APP_DIR=\"/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource\"" /etc/init.d/xtuple-"$MWCNAME"
@@ -251,7 +252,7 @@ install_mwc() {
                 sudo chmod +x /etc/init.d/xtuple-"$MWCNAME"
                 ;;
             "jessie")
-                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-"$MWCNAME".service"
+                log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
                 sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
                 log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
                 log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
@@ -273,10 +274,11 @@ install_mwc() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty") ;&
-            "utopic") 
+            "utopic")
                 log_exec sudo service xtuple-"$MWCNAME" start
                 ;;
-            "vivid")
+            "vivid") ;&
+            "xenial")
                 log_exec sudo systemctl enable xtuple-"$MWCNAME".service
                 log_exec sudo systemctl start xtuple-"$MWCNAME".service
                 ;;

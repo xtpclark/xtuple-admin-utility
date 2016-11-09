@@ -321,7 +321,8 @@ provision_cluster() {
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" start
                 ;;
-            "vivid")
+            "vivid") ;&
+            "xenial")
                 log_exec sudo pg_ctlcluster $PGVERSION "$POSTNAME" stop --force
                 log_exec sudo systemctl enable postgresql@$PGVERSION-"$POSTNAME"
                 log_exec sudo systemctl start postgresql@$PGVERSION-"$POSTNAME"
@@ -511,7 +512,7 @@ reset_sudo() {
 
     log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
 
-    log_exec sudo su - postgres -c "psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -c \"alter user $1 with password '$NEWPASS';\""
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "alter user $1 with password '$NEWPASS';"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
@@ -543,7 +544,7 @@ reset_psql() {
     
     log "Resetting PostgreSQL password for user $1 using psql directly"
     
-    log_exec psql -q -h $PGHOST -U postgres -d postgres  -p $PGPORT -c "alter user $1 with password '$NEWPASS';"
+    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -c "alter user $1 with password '$NEWPASS';"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"

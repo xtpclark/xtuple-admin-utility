@@ -28,6 +28,7 @@ ctrlc() {
 dlf() {
     log "Downloading $1 to file $3 using wget"
     wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
+    return ${PIPESTATUS[0]}
 }
 
 # $1 is the URL
@@ -36,6 +37,7 @@ dlf() {
 dlf_fast() {
     log "Downloading $1 to file $3 using axel"
     axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
+    return ${PIPESTATUS[0]}
 }
 
 # $1 is the URL
@@ -93,17 +95,19 @@ install_prereqs() {
         "ubuntu")
                 install_pg_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python 
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb 
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
                     do_exit
                 fi
+                # fix the background color
+                sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
                 ;;
         "debian")
                 install_pg_repo
                 sudo apt-get update
-                sudo apt-get -y install python-software-properties software-properties-common
+                sudo apt-get -y install python-software-properties software-properties-common xvfb
                 if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
@@ -129,11 +133,12 @@ install_prereqs() {
 
 install_pg_repo() {
 
-    case "$CODENAME" in 
+    case "$CODENAME" in
         "trusty") ;&
         "utopic") ;&
         "wheezy") ;&
-        "jessie")
+        "jessie") ;&
+        "xenial")
             # check to make sure the PostgreSQL repo is already added on the system
             if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
                 sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"

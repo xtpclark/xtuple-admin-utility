@@ -45,7 +45,7 @@ database_menu() {
     done
 }
 
-# $1 is mode, auto (no prompt for demo location, delete when done) 
+# $1 is mode, auto (no prompt for demo location, delete when done)
 # manual, prompt for location, don't delete
 # $2 where to save database to
 # $3 is version to grab
@@ -63,15 +63,15 @@ download_demo() {
     else
         DBTYPE=$4
     fi
-    
+
     if [ -z $3 ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
                 "1" "PostBooks 4.8.1 Demo" \
                 "2" "PostBooks 4.8.1 Empty" \
                 "3" "PostBooks 4.8.1 QuickStart" \
-                "4" "PostBooks 4.9.2 Demo" \
-                "5" "PostBooks 4.9.2 Empty" \
-                "6" "PostBooks 4.9.2 QuickStart" \
+                "4" "PostBooks 4.9.5 Demo" \
+                "5" "PostBooks 4.9.5 Empty" \
+                "6" "PostBooks 4.9.5 QuickStart" \
                 "7" "Return to database menu" \
                 3>&1 1>&2 2>&3)
 
@@ -81,7 +81,7 @@ download_demo() {
             return $RET
         else
             case "$MENUVER" in
-            "1") VERSION=4.8.1 
+            "1") VERSION=4.8.1
                    DBTYPE="demo"
                    ;;
             "2") VERSION=4.8.1
@@ -90,13 +90,13 @@ download_demo() {
             "3") VERSION=4.8.1
                    DBTYPE="quickstart"
                    ;;
-            "4") VERSION=4.9.2
+            "4") VERSION=4.9.5
                    DBTYPE="demo"
                    ;;
-            "5") VERSION=4.9.2
+            "5") VERSION=4.9.5
                    DBTYPE="empty"
                    ;;
-            "6") VERSION=4.9.2
+            "6") VERSION=4.9.5
                    DBTYPE="quickstart"
                    ;;
             "7") return 0 ;;
@@ -145,7 +145,7 @@ download_demo() {
             if [ $RET -ne 0 ]; then
                 return $RET
             fi
-            export PGDATABASE=$DEST
+
             log "Creating database $DEST from file $DEMODEST"
             log_exec restore_database $DEMODEST $DEST
             RET=$?
@@ -166,7 +166,7 @@ download_demo() {
 
 download_latest_demo() {
 
-    VERSION="$( latest_version db )" 
+    VERSION="$( latest_version db )"
     log "Determined latest database version to be $VERSION"
 
     if [ -z "$VERSION" ]; then
@@ -186,7 +186,7 @@ download_latest_demo() {
 
     DB_URL="http://files.xtuple.org/$VERSION/demo.backup"
     MD5_URL="http://files.xtuple.org/$VERSION/demo.backup.md5sum"
-    
+
     dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
     dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
 
@@ -280,9 +280,9 @@ restore_database() {
     else
         DEST=$2
     fi
-    
+
     log "Creating database $DEST."
-    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -c "CREATE DATABASE "$DEST" OWNER admin"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
@@ -312,12 +312,9 @@ carve_pilot() {
     fi
 
     if [ -z "$1" ]; then
-        DATABASES=()
+        get_database_list
 
-        while read -r line; do
-            DATABASES+=("$line" "$line")
-         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-         if [ -z "$DATABASES" ]; then
+        if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 1
         fi
@@ -347,7 +344,7 @@ carve_pilot() {
         remove_connect_priv $SOURCE
         kill_database_connections $SOURCE
 
-        log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
+        log_exec psql postgres -U postgres -q -h $PGHOST -p $PGPORT -d postgres -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Something has gone wrong. Check output and correct any issues."
@@ -396,7 +393,7 @@ create_database_from_file() {
             msgbox "Database "$PILOT" has been created"
         fi
     fi
-    
+
 }
 
 list_databases() {
@@ -407,11 +404,8 @@ list_databases() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-    done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -428,12 +422,8 @@ drop_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-            done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-    
     if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
@@ -471,7 +461,7 @@ drop_database() {
     log_arg $POSTNAME
 
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
-        sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"DROP DATABASE $POSTNAME;\""
+        psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "DROP DATABASE $POSTNAME;"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
@@ -493,12 +483,9 @@ rename_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-     if [ -z "$DATABASES" ]; then
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -545,7 +532,7 @@ rename_database() {
     fi
     log_arg $SOURCE $DEST
 
-    log_exec sudo su - postgres -c "psql -q -h $PGHOST -p $PGPORT -c \"ALTER DATABASE $SOURCE RENAME TO $DEST;\""
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
@@ -564,12 +551,9 @@ inspect_database_menu() {
         return $RET
     fi
 
-    DATABASES=()
+    get_database_list
 
-    while read -r line; do
-        DATABASES+=("$line" "$line")
-     done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
-     if [ -z "$DATABASES" ]; then
+    if [ -z "$DATABASES" ]; then
         msgbox "No databases detected on this system"
         return 0
     fi
@@ -584,6 +568,16 @@ inspect_database_menu() {
 
 }
 
+get_database_list() {
+
+    check_database_info
+
+    DATABASES=()
+    while read -r line; do
+        DATABASES+=("$line" "$line")
+    done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
+}
+
 # $1 is database name
 remove_connect_priv() {
 
@@ -593,7 +587,7 @@ remove_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
 }
 
 # $1 is database name
@@ -605,7 +599,7 @@ kill_database_connections() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
 }
 
 # $1 is database name
@@ -617,19 +611,19 @@ restore_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -U postgres -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
 
 # $1 is database name to inspect
 inspect_database() {
 
-    VAL=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $1 -c \"SELECT data FROM ( \
+    VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $1 -c "SELECT data FROM ( \
         SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
         UNION \
         SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
         UNION \
         SELECT 3,'Pk: '||pkghead_name||' v'||pkghead_version \
-        FROM pkghead) as dummy ORDER BY 1;\""`
+        FROM pkghead) as dummy ORDER BY 1;"`
 
     msgbox "${VAL}"
     log_arg $1
@@ -752,70 +746,93 @@ check_database_info() {
     fi
 }
 
-#upgrade_database_menu() {
-#
-#}
-
 # $1 is database
-# $2 is version to upgrade to
 upgrade_database() {
 
-    msgbox "This functionality is forthcoming..."
-    return 0 # for now
-    DATABASE=demo481
-    APP=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('Application') AS application;\""`
-    log "Detected application $APP"
-    VER=`sudo su - postgres -c "psql -At -U ${PGUSER} -p ${PGPORT} $DATABASE -c \"SELECT fetchmetrictext('ServerVersion') AS application;\""`
-    log "Detected server version $VER"
-    UPS=`curl -s http://api.xtuple.org/upgradepath.php\?package=$APP\&fromver=3.7.0\&tover=4.8.1`
-    log "Detected upgrades $UPS"
+    check_database_info
+
+    if [ -z "$UPDATEREXEC" ]; then
+        UPDATEREXEC=$(whiptail --backtitle "$( window_title )" --inputbox "Auto updater executable location" 8 60 ${HOME}/updater/utilities/AutoUpdate/xtuple_autoupdater 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+	   export UPDATEREXEC
+    fi
+
+    if [ -z "$UPDATEPKGS" ]; then
+        UPDATEPKGS=$(whiptail --backtitle "$( window_title )" --inputbox "Updater packages directory" 8 60 ${HOME}/Updater/pkgs 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+	   log_exec mkdir -p $UPDATEPKGS
+	   export UPDATEPKGS
+    fi
 
     if [ -z "$1" ]; then
         DATABASES=()
+	   VERSIONS=()
+	   APPLICATIONS=()
 
         while read -r line; do
-            DATABASES+=("$line" "$line")
-         done < <( sudo su - postgres -c "psql -h $PGHOST -p $PGPORT --tuples-only -P format=unaligned -c \"SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');\"" )
+            DATABASES+=("$line")
+		  VER=`psql -At -U ${PGUSER} -p ${PGPORT} -d $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+		  APP=`psql -At -U ${PGUSER} -p ${PGPORT} -d $line -c "SELECT fetchmetrictext('Application') AS application;"`
+		  VERSIONS+=("$VER")
+		  APPLICATIONS+=("$APP")
+         done < <( psql -At -h $PGHOST -p $PGPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
          if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 0
         fi
 
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        CHOICE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 --cancel-button "Cancel" --ok-button "Select" \
+	   $(paste -d '\n' \
+	   <(seq 0 $((${#DATABASES[@]}-1))) \
+        <(echo ${DATABASES[*]} | tr ' ' '\n')) \
+	   3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
         fi
+	   DATABASE=${DATABASES[$CHOICE]}
     else
         DATABASE="$1"
     fi
 
-    if [ -z "$2" ]; then
-        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-                "1" "PostBooks 4.7.0" \
-                "2" "PostBooks 4.8.0" \
-                "3" "PostBooks 4.8.1" \
-                "4" "Return to database menu" \
-                3>&1 1>&2 2>&3)
+    log "Detected application ${APPLICATIONS[$CHOICE]}"
+    log "Detected server version ${VERSIONS[$CHOICE]}"
+    UPS=`curl -s 'http://api.xtuple.org/upgradepath.php?package='${APPLICATIONS[$CHOICE]}'&fromver='${VERSIONS[$CHOICE]} | grep -oP 'http\S+' | sed 's/<.*//'`
+    log "Detected upgrades ${UPS[*]}"
 
-        RET=$?
-
-        if [ $RET -ne 0 ]; then
-            return 0
-        else
-            case "$MENUVER" in
-            "1") VERSION=4.7.0 
-                   ;;
-            "2") VERSION=4.8.0 
-                   ;;
-            "3") VERSION=4.8.1 
-                   ;;
-            "4") return 0 ;;
-            *) msgbox "How did you get here?" && exit 0 ;;
-            esac || database_menu
-        fi
-    else
-        VERSION="$2"
+    if ! (whiptail --title "Database Selected" --yesno "Database: $DATABASE\nApplication: ${APPLICATIONS[$CHOICE]}\nVersion: ${VERSIONS[$CHOICE]}\nWould you like to upgrade this database now?" 10 60) then
+        return 0
     fi
-    log_arg $DATABASE $VERSION
+
+    # download the upgrade packages
+    for pack in ${UPS[*]} ; do
+        packname=$(echo $pack | sed 's#.*/##'g)
+        dlf_fast $pack $packname $UPDATEPKGS/$packname
+    done
+
+    msgbox "All Packages Downloaded"
+
+    # Start up the virtual framebuffer to use for the updater
+    if [ ! -e /tmp/.X99-lock ]; then
+        log_exec start-stop-daemon --start -b -x /usr/bin/Xvfb :99
+        export DISPLAY=:99
+    fi
+
+    # make sure plv8 is in
+    log_exec psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
+
+    # run the updater
+    log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${PGPORT}/$DATABASE
+
+    # display results
+    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+    msgbox "Database $DATABASE\nVersion $NEWVER"
+
+    log_arg $DATABASE
 }
