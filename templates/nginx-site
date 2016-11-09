@@ -46,6 +46,8 @@ server {
     proxy_set_header Connection "upgrade";
 
     #error_page 502 = @handle_node_down;
+
+   large_client_header_buffers 8 8192k; 
   }
 
   # 502 gateway error, the upstream node service is likely down
