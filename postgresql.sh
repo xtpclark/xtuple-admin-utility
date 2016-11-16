@@ -221,7 +221,7 @@ list_clusters() {
 provision_cluster() {
 
     POSTVER="${1:-$POSTVER}"
-    if [ -z $POSTVER ]; then
+    if [ -z "$POSTVER" ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$POSTVER" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -230,7 +230,7 @@ provision_cluster() {
     fi
 
     POSTNAME="${2:-$POSTNAME}"
-    if [ -z $POSTNAME ]; then
+    if [ -z "$POSTNAME" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -239,7 +239,7 @@ provision_cluster() {
     fi
 
     POSTPORT="${3:-$POSTPORT}"
-    if [ -z $POSTPORT ]; then
+    if [ -z "$POSTPORT" ]; then
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -248,7 +248,7 @@ provision_cluster() {
     fi
 
     POSTLOCALE="${4:-$POSTLOCALE}"
-    if [ -z $4 ]; then
+    if [ -z "$4" ]; then
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -257,7 +257,7 @@ provision_cluster() {
     fi
 
     POSTSTART="${5:-$POSTSTART}"
-    if [ -z $POSTSTART ]; then
+    if [ -z "$POSTSTART" ]; then
         if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
             POSTSTART="--start-conf=auto"
         else
@@ -365,7 +365,7 @@ provision_cluster() {
     VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        if [ -z $1 ] || [ $1 = "manual" ]; then
+        if [ -z "$1" ] || [ "$1" = "manual" ]; then
             msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
         else
             log "There was an error verifying the init.sql that was downloaded. Utility will now exit."
@@ -554,7 +554,7 @@ backup_globals() {
         return $RET
     fi
 
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save globals to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -587,7 +587,7 @@ restore_globals() {
         return 0
     fi
 
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to globals file" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then

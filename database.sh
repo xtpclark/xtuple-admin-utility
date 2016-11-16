@@ -60,7 +60,7 @@ download_demo() {
     DBTYPE="${4:-$DBTYPE}"
     DBTYPE="${DBTYPE:-demo}"
 
-    if [ -z $DBVERSION ]; then
+    if [ -z "$DBVERSION" ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
                 "1" "PostBooks 4.8.1 Demo" \
                 "2" "PostBooks 4.8.1 Empty" \
@@ -102,7 +102,7 @@ download_demo() {
 	   DATABASE=${DBTYPE}${DBVERSION//./}
     fi
 
-    if [ -z $2 ]; then
+    if [ -z "$2" ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -169,7 +169,7 @@ download_latest_demo() {
         return 1
     fi
 
-    if [ -z $DEMODEST ]; then
+    if [ -z "$DEMODEST" ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database version $DBVERSION" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -222,7 +222,7 @@ backup_database() {
         return $RET
     fi
 
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -233,7 +233,7 @@ backup_database() {
     fi
 
     DATABASE="${2:-$DATABASE}"
-    if [ -z $DATABASE ]; then
+    if [ -z "$DATABASE" ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -271,7 +271,7 @@ restore_database() {
     fi
 
     DATABASE="${2:-$DATABASE}"
-    if [ -z $DATABASE ]; then
+    if [ -z "$DATABASE" ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -670,7 +670,7 @@ set_database_info_select() {
 
 set_database_info_manual() {
 
-    if [ -z $PGHOST ]; then
+    if [ -z "$PGHOST" ]; then
         PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -680,7 +680,7 @@ set_database_info_manual() {
             export PGHOST
         fi
     fi
-    if [ -z $POSTPORT ] ; then
+    if [ -z "$POSTPORT" ] ; then
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -690,7 +690,7 @@ set_database_info_manual() {
             export POSTPORT
         fi
     fi
-    if [ -z $PGUSER ] ; then
+    if [ -z "$PGUSER" ] ; then
         PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -700,7 +700,7 @@ set_database_info_manual() {
             export PGUSER
         fi
     fi
-    if [ -z $PGPASSWORD ] ; then
+    if [ -z "$PGPASSWORD" ] ; then
         PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -721,7 +721,7 @@ clear_database_info() {
 }
 
 check_database_info() {
-    if [ -z $PGHOST ] || [ -z $POSTPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
+    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
             RET=$?

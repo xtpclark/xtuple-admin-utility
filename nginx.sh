@@ -53,7 +53,7 @@ clear_nginx_settings() {
 
 nginx_prompt() {
 
-    if [ -z $NGINX_HOSTNAME ]; then
+    if [ -z "$NGINX_HOSTNAME" ]; then
         NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -64,7 +64,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_DOMAIN ]; then
+    if [ -z "$NGINX_DOMAIN" ]; then
         NGINX_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name (example.com)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -75,7 +75,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_SITE ]; then
+    if [ -z "$NGINX_SITE" ]; then
         NGINX_SITE=$(whiptail --backtitle "$( window_title )" --inputbox "Site name. This will be the name of the config file." 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -86,7 +86,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $GEN_SSL ]; then
+    if [ -z "$GEN_SSL" ]; then
         if (whiptail --title "Generate SSL key" --yesno "Would you like to generate a self signed SSL certificate and key?" 10 60) then
             GEN_SSL=true
 	   else
@@ -95,7 +95,7 @@ nginx_prompt() {
 	   export GEN_SSL
     fi
 
-    if [ -z $NGINX_CERT ]; then
+    if [ -z "$NGINX_CERT" ]; then
         NGINX_CERT=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Certificate file path" 8 60 "/etc/xtuple/ssl/server.crt" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -106,7 +106,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_KEY ]; then
+    if [ -z "$NGINX_KEY" ]; then
         NGINX_KEY=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Key file path" 8 60 "/etc/xtuple/ssl/server.key" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -117,7 +117,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_PORT ]; then
+    if [ -z "$NGINX_PORT" ]; then
         NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port number.  Make sure it is available first!" 8 60 "8443" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then

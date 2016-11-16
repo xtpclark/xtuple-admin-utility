@@ -60,9 +60,9 @@ latest_version() {
 }
 
 window_title() {
-    if [ -z $PGHOST ] && [ -z $POSTPORT ] && [ -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+    if [ -z "$PGHOST" ] && [ -z "$POSTPORT" ] && [ -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-    elif [ ! -z $PGHOST ] && [ ! -z $POSTPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+    elif [ ! -z "$PGHOST" ] && [ ! -z "$POSTPORT" ] && [ ! -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Not Set"
     else
         echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Set"
