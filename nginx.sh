@@ -53,7 +53,7 @@ clear_nginx_settings() {
 
 nginx_prompt() {
 
-    if [ -z $NGINX_HOSTNAME ]; then
+    if [ -z "$NGINX_HOSTNAME" ]; then
         NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -64,7 +64,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_DOMAIN ]; then
+    if [ -z "$NGINX_DOMAIN" ]; then
         NGINX_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name (example.com)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -75,7 +75,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_SITE ]; then
+    if [ -z "$NGINX_SITE" ]; then
         NGINX_SITE=$(whiptail --backtitle "$( window_title )" --inputbox "Site name. This will be the name of the config file." 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -86,7 +86,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $GEN_SSL ]; then
+    if [ -z "$GEN_SSL" ]; then
         if (whiptail --title "Generate SSL key" --yesno "Would you like to generate a self signed SSL certificate and key?" 10 60) then
             GEN_SSL=true
 	   else
@@ -95,7 +95,7 @@ nginx_prompt() {
 	   export GEN_SSL
     fi
 
-    if [ -z $NGINX_CERT ]; then
+    if [ -z "$NGINX_CERT" ]; then
         NGINX_CERT=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Certificate file path" 8 60 "/etc/xtuple/ssl/server.crt" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -106,7 +106,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_KEY ]; then
+    if [ -z "$NGINX_KEY" ]; then
         NGINX_KEY=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Key file path" 8 60 "/etc/xtuple/ssl/server.key" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -117,7 +117,7 @@ nginx_prompt() {
         fi
     fi
 
-    if [ -z $NGINX_PORT ]; then
+    if [ -z "$NGINX_PORT" ]; then
         NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port number.  Make sure it is available first!" 8 60 "8443" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -140,33 +140,12 @@ configure_nginx()
 {
     log "Configuring nginx"
 
-    if [ -n "$1" ]; then
-        NGINX_HOSTNAME=$1
-    fi
-
-    if [ -n "$2" ]; then
-        NGINX_DOMAIN=$2
-    fi
-
-    if [ -n "$3" ]; then
-        NGINX_SITE=$3
-    fi
-
-    if [ -n "$4" ]; then
-        GEN_SSL=$4
-    fi
-
-    if [ -n "$5" ]; then
-        NGINX_CERT=$5
-    fi
-
-    if [ -n "$6" ]; then
-        NGINX_KEY=$6
-    fi
-
-    if [ -n "$7" ]; then
-        NGINX_PORT=$7
-    fi
+    NGINX_HOSTNAME="${1:-$NGINX_HOSTNAME}"
+    NGINX_DOMAIN="${2:-$NGINX_DOMAIN}"
+    NGINX_SITE="${3:-$NGINX_SITE}"
+    NGINX_CERT="${5:-$NGINX_CERT}"
+    NGINX_KEY="${6:-$NGINX_KEY}"
+    NGINX_PORT="${7:-$NGINX_PORT}"
 
     nginx_prompt
     RET=$?
@@ -187,7 +166,9 @@ configure_nginx()
 
     sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
 
-    if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
+    NGINX_CERT="${4:-$NGINX_CERT}"
+    NGINX_CERT="${NGINX_CERT:-true}"
+    if [ "$NGINX_CERT" = "true" ]; then
         sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
         sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT

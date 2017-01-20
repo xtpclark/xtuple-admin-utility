@@ -60,12 +60,12 @@ latest_version() {
 }
 
 window_title() {
-    if [ -z $PGHOST ] && [ -z $PGPORT ] && [ -z $PGUSER ] && [ -z $PGPASSWORD ]; then
+    if [ -z "$PGHOST" ] && [ -z "$POSTPORT" ] && [ -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-    elif [ ! -z $PGHOST ] && [ ! -z $PGPORT ] && [ ! -z $PGUSER ] && [ -z $PGPASSWORD ]; then
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
+    elif [ ! -z "$PGHOST" ] && [ ! -z "$POSTPORT" ] && [ ! -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Not Set"
     else
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Set"
     fi
 }
 
@@ -95,7 +95,7 @@ install_prereqs() {
         "ubuntu")
                 install_pg_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$POSTVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -112,7 +112,7 @@ install_prereqs() {
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$POSTVER
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
