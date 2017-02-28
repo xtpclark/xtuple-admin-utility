@@ -5,7 +5,7 @@ provision_menu() {
 
     ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Cancel" \
     "Please choose the actions you would like to take" 15 60 7 \
-    "installpg" "Install PostgreSQL $PGVERSION" ON \
+    "installpg" "Install PostgreSQL $POSTVER" ON \
     "provisioncluster" "Provision PostgreSQL Cluster" ON \
     "initdb" "Add xTuple admin user and role" ON \
     "demodb" "Load xTuple Database" OFF \
@@ -26,10 +26,10 @@ provision_menu() {
         fi
         for i in $ACTIONS; do   
             case "$i" in
-            "installpg") log_choice install_postgresql $PGVERSION
-                           log_choice drop_cluster $PGVERSION main auto
+            "installpg") log_choice install_postgresql $POSTVER
+                           log_choice drop_cluster $POSTVER main auto
                            ;;
-            "provisioncluster") log_choice provision_cluster $PGVERSION
+            "provisioncluster") log_choice provision_cluster $POSTVER
                                 ;;
             "initdb") log_choice prepare_database auto
                       ;;
