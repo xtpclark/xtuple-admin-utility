@@ -146,6 +146,12 @@ install_postgresql() {
 
     log_arg $1
     POSTVER="${1:-$POSTVER}"
+
+# Let's not install the main cluster by default just to drop it...
+
+    log_exec sudo apt-get -y install postgresql-common
+    sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
+
     log_exec sudo apt-get -y install postgresql-$POSTVER postgresql-client-$POSTVER postgresql-contrib-$POSTVER postgresql-$POSTVER-plv8 postgresql-server-dev-$POSTVER
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -436,8 +442,8 @@ drop_cluster() {
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
 
    # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
-   # log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
-   true
+  # log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+true
     RET=$?
     if [ $MODE = "manual" ]; then
         if [ $RET -ne 0 ]; then
