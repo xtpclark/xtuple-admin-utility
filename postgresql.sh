@@ -269,7 +269,8 @@ provision_cluster() {
     MODE="${MODE:-manual}"
 
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
-    log_exec sudo bash -c "su - postgres -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
+### PERRY
+    log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
         if [ $MODE = "manual" ]; then
@@ -433,7 +434,10 @@ drop_cluster() {
 
     log_arg $POSTVER $POSTNAME $MODE
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
-    log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+
+   # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
+   # log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+   true
     RET=$?
     if [ $MODE = "manual" ]; then
         if [ $RET -ne 0 ]; then
