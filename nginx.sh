@@ -53,6 +53,9 @@ clear_nginx_settings() {
 
 nginx_prompt() {
 
+type nginx >/dev/null 2>&1 || { echo >&2 "Installing nginx."; install_nginx; }
+
+
     if [ -z "$NGINX_HOSTNAME" ]; then
         NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
