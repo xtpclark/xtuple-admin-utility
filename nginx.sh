@@ -53,6 +53,9 @@ clear_nginx_settings() {
 
 nginx_prompt() {
 
+type nginx >/dev/null 2>&1 || { echo >&2 "Installing nginx."; install_nginx; }
+
+
     if [ -z "$NGINX_HOSTNAME" ]; then
         NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -168,21 +171,37 @@ configure_nginx()
 
     NGINX_CERT="${4:-$NGINX_CERT}"
     NGINX_CERT="${NGINX_CERT:-true}"
-    if [ "$NGINX_CERT" = "true" ]; then
-        sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
-        sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
-            -keyout $NGINX_KEY -out $NGINX_CERT
+
+#    if [[ -z ${NGINX_CERT} ]]; then
+        # sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
+        sudo mkdir -p /etc/xtuple/ssl
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            msgbox "SSL DIR creation failed."
+        fi
+
+
+        sudo openssl req -x509 -newkey rsa:2048 -subj /CN=${NGINX_HOSTNAME}.${NGINX_DOMAIN} -days 365 -nodes -keyout $NGINX_KEY -out $NGINX_CERT
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "SSL Certificate creation failed."
             return $RET
         fi
-    fi
+#    fi
 
     sudo sed -i -e 's#SERVER_CRT#'$NGINX_CERT'#g' -e 's#SERVER_KEY#'$NGINX_KEY'#g' /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i 's#MWCPORT#'$NGINX_PORT'#g' /etc/nginx/sites-available/$NGINX_SITE
+    sudo sed -i 's#MWCPORT#'$NGINX_PORT'#g' /etc/nginx/sites-available/${NGINX_SITE}
 
-    sudo nginx -s reload
+#   -s signal     : send signal to a master process: stop, quit, reopen, reload
+#    sudo nginx -s start
+
+#Add check for systemd
+
+    sudo service nginx stop
+    sudo service nginx start
+#sudo systemctl stop nginx.service
+#sudo systemctl start nginx.service
+
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Reloading nginx configuration failed. Check the log file for errors."
