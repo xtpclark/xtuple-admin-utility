@@ -172,8 +172,8 @@ install_mwc() {
     log_exec sudo chown -R xtuple.xtuple /opt/xtuple
 
     # main code
-#    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive"
+    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
+#    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive"
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"

@@ -33,7 +33,7 @@ PGDATABASE=
 # demo, quikstart, or empty
 DBTYPE=demo
 # database version
-DBVERSION=4.9.5
+DBVERSION=4.10.0
 DATABASE=${DBTYPE}${DBVERSION//./}
 INSTANCE=xtuple
 
