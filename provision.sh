@@ -33,7 +33,7 @@ provision_menu() {
                                 ;;
             "initdb") log_choice prepare_database auto
                       ;;
-            "nginx") nginx_prompt
+            "nginx") configure_nginx
                      ;;
             "qt-client") msgbox "Qt Client not implemented yet"
                          ;;

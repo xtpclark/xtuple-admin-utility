@@ -92,7 +92,7 @@ install_mwc_menu() {
 
     log "Chose database $DATABASE"
 
-    if (whiptail --title "Private Extensions" --yesno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
+    if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
         log "Installing the commercial extensions"
         PRIVATEEXT=true
         GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
