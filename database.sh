@@ -62,12 +62,12 @@ download_demo() {
 
     if [ -z "$DBVERSION" ]; then
         MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
-                "1" "PostBooks 4.8.1 Demo" \
-                "2" "PostBooks 4.8.1 Empty" \
-                "3" "PostBooks 4.8.1 QuickStart" \
-                "4" "PostBooks 4.9.5 Demo" \
-                "5" "PostBooks 4.9.5 Empty" \
-                "6" "PostBooks 4.9.5 QuickStart" \
+                "1" "PostBooks 4.9.5 Demo" \
+                "2" "PostBooks 4.9.5 Empty" \
+                "3" "PostBooks 4.9.5 QuickStart" \
+                "4" "PostBooks 4.10.0 Demo" \
+                "5" "PostBooks 4.10.0 Empty" \
+                "6" "PostBooks 4.10.0 QuickStart" \
                 "7" "Return to database menu" \
                 3>&1 1>&2 2>&3)
 
@@ -77,22 +77,22 @@ download_demo() {
             return $RET
         else
             case "$MENUVER" in
-            "1") DBVERSION=4.8.1
+            "1") DBVERSION=4.9.5
                    DBTYPE="demo"
                    ;;
-            "2") DBVERSION=4.8.1
+            "2") DBVERSION=4.9.5
                    DBTYPE="empty"
                    ;;
-            "3") DBVERSION=4.8.1
+            "3") DBVERSION=4.9.5
                    DBTYPE="quickstart"
                    ;;
-            "4") DBVERSION=4.9.5
+            "4") DBVERSION=4.10.0
                    DBTYPE="demo"
                    ;;
-            "5") DBVERSION=4.9.5
+            "5") DBVERSION=4.10.0
                    DBTYPE="empty"
                    ;;
-            "6") DBVERSION=4.9.5
+            "6") DBVERSION=4.10.0
                    DBTYPE="quickstart"
                    ;;
             "7") return 0 ;;
