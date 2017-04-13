@@ -181,7 +181,6 @@ if [ $INSTALLALL ]; then
     install_postgresql $POSTVER
     drop_cluster $POSTVER main auto
     provision_cluster $POSTVER $INSTANCE 5432 "$LANG" true auto
-    prepare_database auto 
     download_demo auto $WORKDIR/tmp.backup $DBVERSION $DBTYPE
     restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}

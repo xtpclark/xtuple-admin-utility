@@ -7,16 +7,11 @@ postgresql_menu() {
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install PostgreSQL $POSTVER" \
-            "2" "Remove PostgreSQL $POSTVER" \
-            "3" "Purge PostgreSQL $POSTVER" \
-            "4" "List provisioned clusters" \
-            "5" "Provision database cluster" \
-            "6" "Drop database cluster" \
-            "7" "Prepare cluster for xTuple" \
-            "8" "Reset passwords" \
-            "9" "Backup Globals" \
-            "10" "Restore Globals" \
-            "11" "Return to main menu" \
+            "2" "List provisioned clusters" \
+            "3" "Create new cluster" \
+            "4" "Backup Globals" \
+            "5" "Restore Globals" \
+            "6" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -26,87 +21,16 @@ postgresql_menu() {
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
             "1") log_choice install_postgresql $POSTVER ;;
-            "2") log_choice remove_postgresql $POSTVER ;;
-            "3") log_choice purge_postgresql $POSTVER ;;
-            "4") log_choice list_clusters ;;
-            "5") log_choice provision_cluster ;;
-            "6") drop_cluster_menu ;;
-            "7") log_choice prepare_database ;;
-            "8") password_menu ;;
-            "9") log_choice backup_globals ;;
-            "10") log_choice restore_globals ;;
-            "11") break ;;
+            "2") log_choice list_clusters ;;
+            "3") log_choice provision_cluster ;;
+            "4") log_choice backup_globals ;;
+            "5") log_choice restore_globals ;;
+            "6") break ;;
             *) msgbox "Error. How did you get here?" && break ;;
             esac
         fi
     done
 
-}
-
-# $1 is mode (auto/manual)
-prepare_database() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    MODE="${1:-$MODE}"
-    MODE="${MODE:-manual}"
-    log_arg $MODE
-
-    EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
-
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $EXTRAS_URL $WORKDIR/extras.sql
-        dlf_fast_console $EXTRAS_URL.md5sum $WORKDIR/extras.sql.md5sum
-    else
-        dlf_fast $EXTRAS_URL "Downloading extras.sql. Please Wait." $WORKDIR/extras.sql
-        dlf_fast $EXTRAS_URL.md5sum "Downloading extras.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
-    fi
-
-
-    VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-        else
-            log "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-        fi
-        do_exit
-    fi
-
-    log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
-    psql -q -h $PGHOST -U postgres -d postgres -p $POSTPORT -f $WORKDIR/extras.sql
-    if [ $RET -ne 0 ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "Error deplying extras.sql. Check for errors and try again"
-        else
-            log "Error deploying extras.sql. Check for errors and try again"
-        fi
-        do_exit
-    fi
-
-    if [ $MODE = "manual" ]; then
-        reset_sudo admin
-        if [ $RET -ne 0 ]; then
-            msgbox "Error setting the admin password. Check for errors and try again"
-            return 0
-        fi
-    fi
-
-    log "Removing downloaded init scripts..."
-    rm $WORKDIR/extras.sql{,.md5sum}
-
-    if [ $MODE = "manual" ]; then
-        msgbox "Initializing database successful."
-    else
-        log "Initializing database successful."
-    fi
-
-    return 0
 }
 
 password_menu() {
@@ -164,6 +88,7 @@ install_postgresql() {
         return $RET
     fi
 
+    provision_cluster
 }
 
 # $1 is pg version (9.3, 9.4, etc)
@@ -246,6 +171,7 @@ provision_cluster() {
 
     POSTPORT="${3:-$POSTPORT}"
     if [ -z "$POSTPORT" ]; then
+	    # choose a free port automatically
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
