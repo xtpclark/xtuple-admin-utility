@@ -53,14 +53,12 @@ provision_menu() {
             log_choice install_postgresql $POSTVER
 		    log_choice drop_cluster $POSTVER main auto
 			log_choice provision_cluster $POSTVER
-			log_choice prepare_database auto
 			configure_nginx
 			log_choice download_demo manual $WORKDIR/tmp.backup
 		else
             log_choice install_postgresql $POSTVER
 			log_choice drop_cluster $POSTVER main auto
 			log_choice provision_cluster $POSTVER
-			log_choice prepare_database auto
 			configure_nginx
 			log_choice download_demo manual $WORKDIR/tmp.backup
 			log_choice install_mwc_menu
