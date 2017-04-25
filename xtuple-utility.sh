@@ -11,6 +11,9 @@ source config.sh
 # import supporting scripts
 source common.sh
 source logging.sh
+# make directories
+mkdir -p $DATABASEDIR
+mkdir -p $BACKUPDIR
 
 # process command line arguments
 # start with :, which tells it to be silent about errors
