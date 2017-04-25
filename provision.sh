@@ -16,13 +16,13 @@ provision_menu() {
         log_choice install_postgresql $POSTVER
         log_choice drop_cluster $POSTVER main auto
         log_choice provision_cluster $POSTVER
-        log_choice download_demo manual $WORKDIR/tmp.backup
+        log_choice create_database
     else
         log_choice install_postgresql $POSTVER
         log_choice drop_cluster $POSTVER main auto
         log_choice provision_cluster $POSTVER
         configure_nginx
-        log_choice download_demo manual $WORKDIR/tmp.backup
+        log_choice create_database
         log_choice install_mwc_menu
     fi
     msgbox "Install Complete"
