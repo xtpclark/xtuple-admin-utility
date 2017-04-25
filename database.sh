@@ -28,7 +28,7 @@ database_menu() {
 			"4") copy_database ;;
             "5") log_choice backup_database ;;
 			"6") create_database ;;
-            "7") drop_database_menu ;;
+            "7") drop_database ;;
             "8") log_choice upgrade_database ;;
             "9") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
@@ -498,7 +498,9 @@ list_databases() {
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
 }
 
-drop_database_menu() {
+# $1 is name
+# prompt if not provided
+drop_database() {
 
     check_database_info
     RET=$?
@@ -519,31 +521,8 @@ drop_database_menu() {
         return $RET
     fi
 
-    drop_database "$DATABASE"
-
-}
-
-# $1 is name
-# prompt if not provided
-drop_database() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    POSTNAME="${1:-$POSTNAME}"
-    if [ -z "$POSTNAME" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    fi
-    log_arg $POSTNAME
-
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
+        backup_database $POSTNAME
         psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $POSTNAME;"
         RET=$?
         if [ $RET -ne 0 ]; then
