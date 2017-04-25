@@ -6,6 +6,9 @@ LOG_FILE=$(pwd)/install-$DATE.log
 UPDATEPKGS=
 UPDATEREXEC=
 
+DATABASEDIR=$(pwd)/databases
+BACKUPDIR=$(pwd)/backups
+
 # leave these undefined. They should never be used in this utility because it would lead to hard to pinpoint easy to fix bugs that cause a disproportionate amount of wasted time.
 PGNAME=
 PGPORT=
@@ -15,6 +18,7 @@ POSTNAME=xtuple
 POSTVER=9.3
 PGHOST=localhost
 POSTPORT=5432
+POSTLOCALE=$LANG
 
 # postgres user, required for all postgres/database actions
 PGUSER=postgres
