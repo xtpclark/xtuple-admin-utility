@@ -244,10 +244,8 @@ copy_database() {
 
     log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
 
-    backup_database "$OLDDATABASE-copy.db" "$OLDDATABASE"
-    #pg_dump --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --format custom  --file "$OLDDATABASE-copy.db" "$OLDDATABASE"
-    restore_database "$BACKUPDIR/$OLDDATABASE-copy.db" "$NEWDATABASE"
-    #pg_restore --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" -C --dbname "$NEWDATABASE" "$OLDDATABASE-copy.db"
+    backup_database "$OLDDATABASE-copy.backup" "$OLDDATABASE"
+    restore_database "$BACKUPDIR/$OLDDATABASE-copy.backup" "$NEWDATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
         return $RET
@@ -325,7 +323,7 @@ create_database() {
 	echo $CHOICE | grep '^Download'
 	if [ $? -eq 0 ]; then
 	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
-	    download_demo "auto" "$DATABASEDIR/demo_$DBVERSION.db" "$DBVERSION" "demo"
+	    download_demo "auto" "$DATABASEDIR/demo_$DBVERSION.backup" "$DBVERSION" "demo"
 	    return $?
 	fi
 	
