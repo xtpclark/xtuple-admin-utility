@@ -200,6 +200,19 @@ provision_cluster() {
     MODE="$6:-$MODE}"
     MODE="${MODE:-manual}"
 
+    sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME &2>1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        log "Cluster $POSTNAME already exists."
+        return 2
+    fi
+    
+    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT &2>1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        msgbox "Port $POSTPORT is already in use."
+        return 1
+    fi
+
+
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
 ### PERRY
     log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
