@@ -160,7 +160,7 @@ provision_cluster() {
         fi
     fi
 
-    POSTNAME="${2:-$POSTNAME}"
+    POSTNAME="$2"
     if [ -z "$POSTNAME" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
@@ -169,9 +169,9 @@ provision_cluster() {
         fi
     fi
 
-    POSTPORT="${3:-$POSTPORT}"
+    POSTPORT="$3"
     if [ -z "$POSTPORT" ]; then
-	    # choose a free port automatically
+	    # choose a free port automatically someday
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then

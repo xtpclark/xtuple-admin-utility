@@ -12,9 +12,9 @@ BACKUPDIR=$(pwd)/backups
 # leave these undefined. They should never be used in this utility because it would lead to hard to pinpoint easy to fix bugs that cause a disproportionate amount of wasted time.
 PGNAME=
 PGPORT=
+POSTNAME=
 
 # set these
-POSTNAME=xtuple
 POSTVER=9.3
 PGHOST=localhost
 POSTPORT=5432
