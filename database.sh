@@ -42,7 +42,7 @@ database_menu() {
 # $2 where to save database to
 # $3 is version to grab
 # $4 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
-download_demo() {
+download_database() {
 
     MODE="${1:-$MODE}"
     MODE="${MODE:-manual}"
@@ -309,21 +309,47 @@ backup_database() {
 # or restore a local file
 create_database() {
 
-    DOWNLOADABLEDBS=$(curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1 demo#g' |  sort --version-sort -r | tr ' ' '_')
-    EXISTINGDBS=$(ls -t $DATABASEDIR | tr ' ' '_')
-	BACKUPDBS=$(ls -t $BACKUPDIR | tr ' ' '_')
+    DOWNLOADABLEDBS=()
+    while read -r line ; do
+        DOWNLOADABLEDBS+=($line $line)
+    done < <( curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1#g' |  sort --version-sort -r | tr ' ' '_' )
+    EXISTINGDBS=()
+    while read -r line ; do
+        EXISTINGDBS+=($line $line)
+    done < <( ls -t $DATABASEDIR | tr ' ' '_' )
+    BACKUPDBS=()
+    while read -r line ; do
+	    BACKUPDBS+=($line $line)
+    done < <( ls -t $BACKUPDIR | tr ' ' '_' )
 
-    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" --notags \
-        $DOWNLOADABLEDBS \
-		$EXISTINGDBS \
-		$BACKUPDBS \
-        "Return to main menu" \
+    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
+        ${DOWNLOADABLEDBS[@]} \
+        ${EXISTINGDBS[@]} \
+        ${BACKUPDBS[@]} \
         3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 	
 	echo $CHOICE | grep '^Download'
 	if [ $? -eq 0 ]; then
 	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
-	    download_demo "auto" "$DATABASEDIR/demo_$DBVERSION.backup" "$DBVERSION" "demo"
+        EDITIONS=()
+        while read line ; do
+            EDITIONS+=($line $line)
+        done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
+        CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database Edition" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
+            ${EDITIONS[@]} \
+            3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
+        EDITION=$(echo $CHOICE | cut -f1 -d'.')
+	    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+        restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup"
 	    return $?
 	fi
 	
@@ -354,7 +380,7 @@ restore_database() {
         return 1
     fi
 
-    DATABASE="${2:-$DATABASE}"
+    DATABASE="$2"
     if [ -z "$DATABASE" ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
@@ -812,13 +838,15 @@ upgrade_database() {
     psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'xt';"
 	if [ $? -ne 0 ]; then
         if ! (whiptail --title "Database not Web-Enabled" --yesno "Your database is not currently web-enabled. To keep it that way, do not use xTAU to update your database. Instead, get the xTuple Updater app and apply the desired update package. If you continue the update in xTAU, it will update AND web-enable the database. Continue?" 10 60) then
-        return 0
+            return 0
+        fi
     fi
 
     # make sure plv8 is in
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # install or update the mobile client
+    install_mwc_menu
 
     # display results
     NEWVER=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
