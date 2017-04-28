@@ -14,12 +14,10 @@ provision_menu() {
         return 0
     elif [ $ACTION = "1" ]; then
         log_choice install_postgresql $POSTVER
-        log_choice drop_cluster $POSTVER main auto
         log_choice provision_cluster $POSTVER
         log_choice create_database
     else
         log_choice install_postgresql $POSTVER
-        log_choice drop_cluster $POSTVER main auto
         log_choice provision_cluster $POSTVER
         configure_nginx
         log_choice create_database
