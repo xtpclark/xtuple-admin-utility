@@ -200,13 +200,13 @@ provision_cluster() {
     MODE="$6:-$MODE}"
     MODE="${MODE:-manual}"
 
-    sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME &2>1 > /dev/null
+    sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME 2>&1 > /dev/null
     if [ "$?" -eq 0 ]; then
         log "Cluster $POSTNAME already exists."
         return 2
     fi
     
-    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT &2>1 > /dev/null
+    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT 2>&1 > /dev/null
     if [ "$?" -eq 0 ]; then
         msgbox "Port $POSTPORT is already in use."
         return 1
