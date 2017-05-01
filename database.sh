@@ -316,11 +316,11 @@ create_database() {
     EXISTINGDBS=()
     while read -r line ; do
         EXISTINGDBS+=($line $line)
-    done < <( ls -t $DATABASEDIR | tr ' ' '_' )
+    done < <( ls -t "${DATABASEDIR}*.backup" | tr ' ' '_' )
     BACKUPDBS=()
     while read -r line ; do
 	    BACKUPDBS+=($line $line)
-    done < <( ls -t $BACKUPDIR | tr ' ' '_' )
+    done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
 
     CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
         ${DOWNLOADABLEDBS[@]} \
@@ -834,6 +834,23 @@ check_database_info() {
 upgrade_database() {
 
     check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    get_database_list
+
+    if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return 0
+    fi
 
     psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'xt';"
 	if [ $? -ne 0 ]; then
@@ -846,6 +863,7 @@ upgrade_database() {
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # install or update the mobile client
+    PGDATABASE=$DATABASE
     install_mwc_menu
 
     # display results
