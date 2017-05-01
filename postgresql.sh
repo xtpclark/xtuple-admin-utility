@@ -23,8 +23,8 @@ postgresql_menu() {
             case "$PGM" in
             "1") log_choice install_postgresql $POSTVER ;;
             "2") log_choice list_clusters ;;
-            "3") log_choice provision_cluster ;;
-            "4") log_choice select_cluster ;;
+            "3") log_choice select_cluster ;;
+            "4") log_choice provision_cluster ;;
             "5") log_choice backup_globals ;;
             "6") log_choice restore_globals ;;
             "7") break ;;
