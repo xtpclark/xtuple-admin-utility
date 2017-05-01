@@ -8,10 +8,11 @@ postgresql_menu() {
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install PostgreSQL $POSTVER" \
             "2" "List provisioned clusters" \
-            "3" "Create new cluster" \
-            "4" "Backup Globals" \
-            "5" "Restore Globals" \
-            "6" "Return to main menu" \
+            "3" "Select Cluster" \
+            "4" "Create new cluster" \
+            "5" "Backup Globals" \
+            "6" "Restore Globals" \
+            "7" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -23,9 +24,10 @@ postgresql_menu() {
             "1") log_choice install_postgresql $POSTVER ;;
             "2") log_choice list_clusters ;;
             "3") log_choice provision_cluster ;;
-            "4") log_choice backup_globals ;;
-            "5") log_choice restore_globals ;;
-            "6") break ;;
+            "4") log_choice select_cluster ;;
+            "5") log_choice backup_globals ;;
+            "6") log_choice restore_globals ;;
+            "7") break ;;
             *) msgbox "Error. How did you get here?" && break ;;
             esac
         fi
@@ -342,6 +344,13 @@ provision_cluster() {
 
     return 0
 
+}
+
+select_cluster() {
+
+    clear_database_info
+
+    check_database_info
 }
 
 # $1 is version
