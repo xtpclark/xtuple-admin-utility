@@ -180,7 +180,7 @@ provision_cluster() {
     fi
 
     POSTLOCALE="${4:-$POSTLOCALE}"
-    if [ -z "$4" ]; then
+    if [ -z "$POSTLOCALE" ]; then
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
