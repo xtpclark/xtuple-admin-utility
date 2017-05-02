@@ -545,15 +545,15 @@ drop_database() {
         return $RET
     fi
 
-    if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
-        backup_database $POSTNAME
-        psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $POSTNAME;"
+    if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
+        backup_database $DATABASE
+        psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $DATABASE;"
         RET=$?
         if [ $RET -ne 0 ]; then
-            msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
+            msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
             return $RET
         else
-            msgbox "Dropping database $POSTNAME successful"
+            msgbox "Dropping database $DATABASE successful"
         fi
     else
         return 0
