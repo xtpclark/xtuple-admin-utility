@@ -5,8 +5,8 @@ provision_menu() {
     log "Opened provisioning menu"
 
     ACTION=$(whiptail --backtitle "$( window_title )" --menu "Select Action" 0 0 7 --ok-button "Select" --cancel-button "Cancel" \
-    "1" "Install PostBooks Database Only" \
-    "2" "Install PostBooks Database With Web Components" \
+    "1" "Install non-web-enabled xTuple" \
+    "2" "Install web-enabled xTuple" \
     3>&1 1>&2 2>&3)
 
     RET=$?
