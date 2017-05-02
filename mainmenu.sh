@@ -7,7 +7,7 @@ main_menu() {
     while true; do
 
         CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Main\ Menu)" 0 0 1 --cancel-button "Exit" --ok-button "Select" \
-            "1" "Quick Install of PostBooks" \
+            "1" "Quick Install" \
             "2" "PostgreSQL Maintenance" \
             "3" "Database Maintenance" \
             "4" "Development Environment Setup" \
