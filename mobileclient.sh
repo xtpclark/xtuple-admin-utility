@@ -29,6 +29,19 @@ mwc_menu() {
 
 install_mwc_menu() {
 
+    check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    get_database_list
+    
+    if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 1
+    fi
+
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -78,19 +91,6 @@ install_mwc_menu() {
     fi
 
     log "Chose mobile name $MWCNAME"
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    get_database_list
-
-    if [ -z "$DATABASES" ]; then
-        msgbox "No databases detected on this system"
-        return 1
-    fi
 
     if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
         log "Installing the commercial extensions"
