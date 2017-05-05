@@ -1,6 +1,5 @@
 #!/bin/bash
 
-REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="1.0"
 export WORKDIR=`pwd`
