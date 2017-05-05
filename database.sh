@@ -22,14 +22,14 @@ database_menu() {
             break
         else
             case "$DBM" in
-            "1") log_choice list_databases ;;
+            "1") log_exec list_databases ;;
             "2") inspect_database_menu ;;
             "3") rename_database_menu ;;
 			"4") copy_database ;;
-            "5") log_choice backup_database ;;
+            "5") log_exec backup_database ;;
 			"6") create_database ;;
             "7") drop_database ;;
-            "8") log_choice upgrade_database ;;
+            "8") log_exec upgrade_database ;;
             "9") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
             esac

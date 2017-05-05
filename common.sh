@@ -1,10 +1,6 @@
 #!/bin/bash
 
 do_exit() {
-    if [ $REBOOT -eq 1 ]; then
-        whiptail --backtitle "$( window_title )" --msgbox \
-        "You need to reboot your server for the changes to take effect" 0 0
-    fi
     log "Exiting xTuple Admin Utility"
     exit 0
 }
