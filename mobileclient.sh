@@ -18,7 +18,7 @@ mwc_menu() {
         else
             case "$PGM" in
             "1") install_mwc_menu ;;
-            "2") log_choice remove_mwc ;;
+            "2") log_exec remove_mwc ;;
             "3") break ;;
             *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && break ;;
             esac
@@ -111,7 +111,7 @@ install_mwc_menu() {
         PRIVATEEXT=false
     fi
 
-    log_choice install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+    log_exec install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
 }
 
 

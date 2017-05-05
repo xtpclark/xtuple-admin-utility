@@ -18,9 +18,9 @@ nginx_menu() {
             break
         else
             case "$NGM" in
-            "1") log_choice install_nginx ;;
-            "2") log_choice configure_nginx ;;
-            "3") log_choice remove_nginx ;;
+            "1") log_exec install_nginx ;;
+            "2") log_exec configure_nginx ;;
+            "3") log_exec remove_nginx ;;
             "4") break ;;
             *) msgbox "How did you get here? nginx_menu $NGM" && break ;;
             esac
