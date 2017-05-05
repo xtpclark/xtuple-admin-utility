@@ -5,7 +5,6 @@ export _REV="1.0"
 export WORKDIR=`pwd`
 
 #set some defaults
-export CONTAINER=false
 source config.sh
 # import supporting scripts
 source common.sh
@@ -22,9 +21,6 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
-        ;;
-    c)
-        CONTAINER=true
         ;;
     d)
         DATABASE=$OPTARG
