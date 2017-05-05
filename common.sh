@@ -154,18 +154,14 @@ is_port_open() {
 
 test_connection() {
     log "Testing internet connectivity..."
-    while true
-    do
-        wget -q --tries=5 --timeout=10 -O - http://files.xtuple.org > /dev/null
-        if [[ $? -eq 0 ]]; then
-            log "Internet connectivity detected."
-            return 0
-        else
-            log "Internet connectivity not detected."
-            return 1
-        fi
-        sleep 5
-    done
+    wget -q --tries=5 --timeout=10 -O - http://files.xtuple.org > /dev/null
+    if [[ $? -eq 0 ]]; then
+        log "Internet connectivity detected."
+        return 0
+    else
+        log "Internet connectivity not detected."
+        return 1
+    fi
 }
 # define some colors if the tty supports it
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
