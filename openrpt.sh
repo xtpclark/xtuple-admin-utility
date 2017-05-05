@@ -21,12 +21,12 @@ openrpt_menu() {
             break
         else
             case "$CC" in
-            "1") log_choice setup_webprint ;;
-            "2") log_choice install_openrpt ;;
-            "3") log_choice build_openrpt ;;
-            "4") log_choice install_xvfb ;;
-            "5") log_choice remove_xvfb ;;
-            "6") log_choice install_xtuple_xvfb;;
+            "1") log_exec setup_webprint ;;
+            "2") log_exec install_openrpt ;;
+            "3") log_exec build_openrpt ;;
+            "4") log_exec install_xvfb ;;
+            "5") log_exec remove_xvfb ;;
+            "6") log_exec install_xtuple_xvfb;;
             "7") break ;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> openrpt_menu $CC" && break ;;
             esac

@@ -13,15 +13,15 @@ provision_menu() {
     if [ $RET -ne 0 ]; then
         return 0
     elif [ $ACTION = "1" ]; then
-        log_choice install_postgresql $POSTVER
-        log_choice provision_cluster $POSTVER
-        log_choice create_database
+        log_exec install_postgresql $POSTVER
+        log_exec provision_cluster $POSTVER
+        log_exec create_database
     else
-        log_choice install_postgresql $POSTVER
-        log_choice provision_cluster $POSTVER
+        log_exec install_postgresql $POSTVER
+        log_exec provision_cluster $POSTVER
         configure_nginx
-        log_choice create_database
-        log_choice install_mwc_menu
+        log_exec create_database
+        log_exec install_mwc_menu
     fi
     msgbox "Install Complete"
 
