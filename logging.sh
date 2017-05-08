@@ -13,10 +13,6 @@ log() {
     echo "$( timestamp ) xtuple >> $@" >> $LOG_FILE
 }
 
-log_arg() {
-	echo "$@" >> $CHOICE_FILE
-}
-
 timestamp() {
   date +"%T"
 }

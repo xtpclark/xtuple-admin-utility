@@ -70,7 +70,6 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
 
 # Let's not install the main cluster by default just to drop it...
@@ -97,7 +96,6 @@ install_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $POSTVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling PostgreSQL "$POSTVER"..."
@@ -114,7 +112,6 @@ remove_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $POSTVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Purging PostgreSQL "$POSTVER"..."
@@ -129,7 +126,6 @@ purge_postgresql() {
 
 list_clusters() {
 
-    log_arg
     CLUSTERS=()
     
     while read -r line; do 
@@ -227,7 +223,6 @@ provision_cluster() {
         fi
         do_exit
     fi
-    log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $MODE
 
     POSTDIR=/etc/postgresql/$POSTVER/$POSTNAME
 
@@ -386,7 +381,6 @@ drop_cluster() {
         fi
     fi
 
-    log_arg $POSTVER $POSTNAME $MODE
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
 
    # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
@@ -480,7 +474,6 @@ reset_psql() {
         return $RET
     fi
 
-    log_arg $1
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -522,7 +515,6 @@ backup_globals() {
         DEST=$1
     fi
     
-    log_arg $DEST
     log "Backing up globals to file "$DEST"."
 
     log_exec pg_dumpall --host "$PGHOST" --port "$POSTPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
@@ -555,7 +547,6 @@ restore_globals() {
         SOURCE=$1
     fi
 
-    log_arg $SOURCE
     log "Restoring globals from file $SOURCE"
 
     log_exec psql -h $PGHOST -p $POSTPORT -U $PGUSER -d postgres -q -f "$SOURCE"

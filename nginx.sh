@@ -32,7 +32,6 @@ nginx_menu() {
 install_nginx() {
 
     log "Installing nginx"
-    log_arg
 
     log_exec sudo apt-get -y install nginx
     RET=$?
@@ -155,8 +154,6 @@ configure_nginx()
     if [ $RET -ne 0 ]; then
         return $RET
     fi
-
-    log_arg $NGINX_HOSTNAME $NGINX_DOMAIN $NGINX_SITE $NGINX_CERT $NGINX_KEY $NGINX_PORT
 
     [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE

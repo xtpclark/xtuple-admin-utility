@@ -104,8 +104,6 @@ download_database() {
         DEMODEST=$2
     fi
 
-    log_arg $MODE $DEMODEST $DBVERSION $DBTYPE
-
     DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
 
@@ -187,7 +185,6 @@ copy_database() {
             return $RET
         fi
     fi
-    log_arg $OLDSDATABASE $NEWDATABASE
 
     log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
 
@@ -237,7 +234,6 @@ backup_database() {
     else
         DEST=$1
     fi
-    log_arg $DEST $DATABASE
 
     log "Backing up database "$DATABASE" to file "$DEST"."
 
@@ -447,7 +443,6 @@ rename_database() {
             return $RET
         fi
     fi
-    log_arg $SOURCE $DEST
 
     log_exec psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
@@ -543,7 +538,6 @@ inspect_database() {
         FROM pkghead) as dummy ORDER BY 1;"`
 
     msgbox "${VAL}"
-    log_arg $1
 
 }
 
@@ -702,6 +696,4 @@ upgrade_database() {
     # display results
     NEWVER=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
     msgbox "Database $DATABASE\nVersion $NEWVER"
-
-    log_arg $DATABASE
 }
