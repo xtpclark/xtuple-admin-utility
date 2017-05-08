@@ -24,7 +24,7 @@ database_menu() {
             case "$DBM" in
             "1") log_exec list_databases ;;
             "2") inspect_database_menu ;;
-            "3") rename_database_menu ;;
+            "3") rename_database ;;
 			"4") copy_database ;;
             "5") log_exec backup_database ;;
 			"6") create_database ;;
@@ -150,59 +150,6 @@ download_database() {
         fi
     fi
 
-}
-
-download_latest_demo() {
-
-    DBVERSION="$( latest_version db )"
-    log "Determined latest database version to be $DBVERSION"
-
-    if [ -z "$DBVERSION" ]; then
-        msgbox "Could not determine latest database version"
-        return 1
-    fi
-
-    if [ -z "$DEMODEST" ]; then
-        DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database version $DBVERSION" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        else
-            export DEMODEST
-        fi
-    fi
-
-    DB_URL="http://files.xtuple.org/$DBVERSION/demo.backup"
-    MD5_URL="http://files.xtuple.org/$DBVERSION/demo.backup.md5sum"
-
-    dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-    dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
-
-    VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the downloaded database. Utility will now exit."
-        exit
-    else
-        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
-            DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-            log_exec restore_database $DEMODEST $DEST
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                msgbox "Something has gone wrong. Check log and correct any issues, typically warnings can be ignored."
-                return $RET
-            else
-                msgbox "Database $DEST successfully restored from file $DEMODEST"
-                return 0
-            fi
-        else
-            log "Exiting without restoring database."
-        fi
-    fi
 }
 
 #  $1 is database file to backup to
@@ -408,102 +355,6 @@ restore_database() {
     fi
 }
 
-# $1 is source
-# $2 is new pilot
-# prompt if not provided
-carve_pilot() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    SOURCE="${1:-$SOURCE}"
-    if [ -z "$SOURCE" ]; then
-        get_database_list
-
-        if [ -z "$DATABASES" ]; then
-            msgbox "No databases detected on this system"
-            return 1
-        fi
-
-        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    fi
-
-    PILOT="${2:-$PILOT}"
-    if [ -z "$PILOT" ]; then
-        PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    else
-        PILOT="$2"
-    fi
-    log_arg $SOURCE $PILOT
-
-    log "Creating pilot database $PILOT from database $SOURCE"
-    if (whiptail --title "Warning" --yesno "This will kill all active connections to the database, if any.  Continue?" 10 60) then
-        remove_connect_priv $SOURCE
-        kill_database_connections $SOURCE
-
-        log_exec psql postgres -U postgres -q -h $PGHOST -p $POSTPORT -d postgres -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check output and correct any issues."
-            restore_connect_priv $SOURCE
-            return $RET
-        else
-            restore_connect_priv $SOURCE
-            restore_connect_priv $PILOT
-            msgbox "Database "$PILOT" has been created"
-        fi
-    fi
-}
-
-create_database_from_file() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    if [ ! -f $SOURCE ]; then
-        msgbox "File "$SOURCE" not found!"
-        return 1
-    fi
-
-    PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
-    RET=$?
-
-    if [ $RET -ne 0 ]; then
-        return $RET
-    elif [ $RET -eq 0 ]; then
-        log "Creating database $PILOT from file $SOURCE"
-        restore_database $SOURCE $PILOT
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check log and correct any issues."
-            $RET
-        else
-            msgbox "Database "$PILOT" has been created"
-        fi
-    fi
-
-}
-
 list_databases() {
 
     check_database_info
@@ -561,7 +412,10 @@ drop_database() {
 
 }
 
-rename_database_menu() {
+# $1 is source
+# $2 is new name
+# prompt if not provided
+rename_database() {
 
     check_database_info
     RET=$?
@@ -576,30 +430,9 @@ rename_database_menu() {
         return 0
     fi
 
-    SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
-    fi
-
-    DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
-    fi
-
-    rename_database "$SOURCE" "$DEST"
-
-}
-
-# $1 is source
-# $2 is new name
-# prompt if not provided
-rename_database() {
-
     SOURCE="${1:-$SOURCE}"
     if [ -z "$SOURCE" ]; then
-        SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
+        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
