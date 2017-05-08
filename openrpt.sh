@@ -36,7 +36,6 @@ openrpt_menu() {
 
 install_openrpt() {
 
-    log_arg
     log "Installing OpenRPT from apt..."
     log_exec sudo apt-get -y -qq install openrpt
     RET=$?

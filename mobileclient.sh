@@ -146,7 +146,6 @@ install_mwc() {
 
     GITHUBNAME="${6:-$GITHUBNAME}"
     GITHUBPASS="${7:-$GITHUBPASS}"
-    log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
 
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash
