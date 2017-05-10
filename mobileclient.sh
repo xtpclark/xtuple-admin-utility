@@ -221,6 +221,8 @@ install_mwc() {
     log_exec sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/port: 5432/c\      port: \"$POSTPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
+    log_exec sudo sed -i  "/port: 8443/c\      port: \"$NGINX_PORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
 
     if [ $DISTRO = "ubuntu" ]; then
