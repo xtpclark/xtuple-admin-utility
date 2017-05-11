@@ -30,11 +30,6 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
         POSTVER=$OPTARG
         log "PostgreSQL Version set to $POSTVER via command line argument -p"
         ;;
-    n)
-        # Name this instance
-        INSTANCE=$OPTARG
-        log "Instance name set to $INSTANCE via command line argument -n"
-        ;;
     H)
         # Hostname
         NGINX_HOSTNAME=$OPTARG
