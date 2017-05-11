@@ -39,7 +39,6 @@ DBTYPE=demo
 # database version
 DBVERSION=4.10.0
 DATABASE=${DBTYPE}${DBVERSION//./}
-INSTANCE=xtuple
 
 # folder to save downloads
 SAVEDIR=$HOME/$POSTNAME
