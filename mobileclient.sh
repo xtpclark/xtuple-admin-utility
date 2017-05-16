@@ -220,7 +220,7 @@ install_mwc() {
     log_exec sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log "Using database $DATABASE"
-    log_exec sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/port: 5432/c\      port: \"$POSTPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo sed -i  "/port: 8443/c\      port: \"$NGINX_PORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
