@@ -679,7 +679,7 @@ upgrade_database() {
         return 0
     fi
 
-    psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'xt';"
+    psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
 	if [ $? -ne 0 ]; then
         if ! (whiptail --title "Database not Web-Enabled" --yesno "Your database is not currently web-enabled. To keep it that way, do not use xTAU to update your database. Instead, get the xTuple Updater app and apply the desired update package. If you continue the update in xTAU, it will update AND web-enable the database. Continue?" 10 60) then
             return 0
@@ -688,6 +688,70 @@ upgrade_database() {
 
     # make sure plv8 is in
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
+
+    # find the instance name and version
+    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl '(?<=databases: \[")first_web' {} \;)
+    if [ -z "$CONFIG_JS" ]; then
+        # no installation exists, just skip to installation
+        log "config.js not found. Skipping cleanup of old datasource."
+    else
+        MWCNAME=$(echo $CONFIG_JS | cut -d'/' -f4)
+        MWCVERSION=$(echo $CONFIG_JS | cut -d'/' -f5)
+    
+        # shutdown node datasource
+        if [ $DISTRO = "ubuntu" ]; then
+            case "$CODENAME" in
+                "trusty") ;&
+                "utopic")
+                    log_exec sudo service xtuple-"$MWCNAME" stop
+                    ;;
+                "vivid") ;&
+                "xenial")
+                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
+                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
+                    ;;
+            esac
+        elif [ $DISTRO = "debian" ]; then
+            case "$CODENAME" in
+                "wheezy")
+                    log_exec sudo /etc/init.d/xtuple-"$MWCNAME" stop
+                    ;;
+                "jessie")
+                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
+                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
+                    ;;
+            esac
+        else
+            log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+            do_exit
+        fi
+
+        # get the listening port for the node datasource
+        MWCPORT=$(grep -Po "(?<= port: )[0-9]{4}" /etc/xtuple/4.10.1/first_web/config.js)
+        # find nginx site
+        NGINX_SITE_FILE=$(grep -Pl "127.0.0.1:$MWCPORT" /etc/nginx/sites-available/*)
+        if [ -z "$NGINX_SITE_FILE" ]; then
+            log "No nginx site file found. Skipping removal."
+        else
+            # get the site name
+            NGINX_SITE=$(echo "$NGINX_SITE_FILE" | cut -d'/' -f5)
+            # delete nginx site
+            log_exec sudo rm /etc/nginx/sites-available/$NGINX_SITE
+            log_exec sudo rm /etc/nginx/sites-enabled/$NGINX_SITE
+            log "Nginx site \"$NGINX_SITE\" removed."
+        fi
+        
+        log "Removing files in /etc/xtuple"
+        log_exec sudo rm -rf /etc/xtuple/$MWCVERSION/$MWCNAME
+
+        log "Removing files in /opt/xtuple"
+        log_exec sudo rm -rf /opt/xtuple/$MWCVERSION/$MWCNAME
+
+        log "Deleting systemd service file"
+        log_exec sudo rm /etc/systemd/system/xtuple-$MWCNAME.service
+
+        log "Completely removed previous mobile client installation"
+    fi
 
     # install or update the mobile client
     PGDATABASE=$DATABASE
