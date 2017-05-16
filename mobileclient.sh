@@ -29,24 +29,26 @@ mwc_menu() {
 
 install_mwc_menu() {
 
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
+    if [ -z "$DATABASE" ]; then
+        check_database_info
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
 
-    get_database_list
+        get_database_list
     
-    if [ -z "$DATABASES" ]; then
-        msgbox "No databases detected on this system"
-        return 1
-    fi
+        if [ -z "$DATABASES" ]; then
+            msgbox "No databases detected on this system"
+            return 1
+        fi
 
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        log "There was an error selecting the database.. exiting"
-        return $RET
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            log "There was an error selecting the database.. exiting"
+            return $RET
+        fi
     fi
 
     log "Chose database $DATABASE"
