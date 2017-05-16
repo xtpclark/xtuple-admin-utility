@@ -305,7 +305,7 @@ install_mwc() {
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
     IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
-    log "All set! You should now be able to log on to this server at https://$IP:8443 with username admin and password admin. Make sure you change your password!"
+    log "All set! You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
 
 }
 
