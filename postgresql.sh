@@ -343,9 +343,8 @@ provision_cluster() {
 
 select_cluster() {
 
-    clear_database_info
+    set_database_info_select
 
-    check_database_info
 }
 
 # $1 is version
