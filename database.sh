@@ -254,15 +254,15 @@ create_database() {
 
     DOWNLOADABLEDBS=()
     while read -r line ; do
-        DOWNLOADABLEDBS+=($line $line)
+        DOWNLOADABLEDBS+=("$line" "$line")
     done < <( curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1#g' |  sort --version-sort -r | tr ' ' '_' )
     EXISTINGDBS=()
     while read -r line ; do
-        EXISTINGDBS+=($line $line)
+        EXISTINGDBS+=("$line" "$line")
     done < <( ls -t "${DATABASEDIR}*.backup" | tr ' ' '_' )
     BACKUPDBS=()
     while read -r line ; do
-	    BACKUPDBS+=($line $line)
+	    BACKUPDBS+=("$line" "$line")
     done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
 
     CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
@@ -280,7 +280,7 @@ create_database() {
 	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
         EDITIONS=()
         while read line ; do
-            EDITIONS+=($line $line)
+            EDITIONS+=("$line" "$line")
         done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
         CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database Edition" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
             ${EDITIONS[@]} \
@@ -352,12 +352,6 @@ restore_database() {
 }
 
 list_databases() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
 
     get_database_list
 
@@ -637,7 +631,7 @@ clear_database_info() {
 }
 
 check_database_info() {
-    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ]; then
+    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
             RET=$?
