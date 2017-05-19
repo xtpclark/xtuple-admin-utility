@@ -86,10 +86,12 @@ install_mwc_menu() {
 
     log "Chose version $MWCVERSION"
 
-    MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
+    if [ -z "$MWCNAME" ]; then
+        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
     fi
 
     log "Chose mobile name $MWCNAME"
