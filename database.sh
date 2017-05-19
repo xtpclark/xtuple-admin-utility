@@ -684,13 +684,14 @@ upgrade_database() {
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # find the instance name and version
-    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl '(?<=databases: \[")first_web' {} \;)
+    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \;)
     if [ -z "$CONFIG_JS" ]; then
         # no installation exists, just skip to installation
         log "config.js not found. Skipping cleanup of old datasource."
+        configure_nginx
     else
-        MWCNAME=$(echo $CONFIG_JS | cut -d'/' -f4)
-        MWCVERSION=$(echo $CONFIG_JS | cut -d'/' -f5)
+        MWCNAME=$(echo $CONFIG_JS | cut -d'/' -f5)
+        MWCVERSION=$(echo $CONFIG_JS | cut -d'/' -f4)
     
         # shutdown node datasource
         if [ $DISTRO = "ubuntu" ]; then
@@ -721,19 +722,8 @@ upgrade_database() {
         fi
 
         # get the listening port for the node datasource
-        MWCPORT=$(grep -Po "(?<= port: )[0-9]{4}" /etc/xtuple/4.10.1/first_web/config.js)
-        # find nginx site
-        NGINX_SITE_FILE=$(grep -Pl "127.0.0.1:$MWCPORT" /etc/nginx/sites-available/*)
-        if [ -z "$NGINX_SITE_FILE" ]; then
-            log "No nginx site file found. Skipping removal."
-        else
-            # get the site name
-            NGINX_SITE=$(echo "$NGINX_SITE_FILE" | cut -d'/' -f5)
-            # delete nginx site
-            log_exec sudo rm /etc/nginx/sites-available/$NGINX_SITE
-            log_exec sudo rm /etc/nginx/sites-enabled/$NGINX_SITE
-            log "Nginx site \"$NGINX_SITE\" removed."
-        fi
+        MWCPORT=$(grep -Po '(?<= port: ")8[0-9]{3}' /etc/xtuple/$MWCVERSION/$MWCNAME/config.js)
+        NGINX_PORT=$MWCPORT
         
         log "Removing files in /etc/xtuple"
         log_exec sudo rm -rf /etc/xtuple/$MWCVERSION/$MWCNAME
