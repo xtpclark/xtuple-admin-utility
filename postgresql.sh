@@ -158,11 +158,9 @@ provision_cluster() {
     get_cluster_list
 
     if [ -z "$CLUSTERS" ]; then
-        msgbox "No database clusters detected on this system"
-        return 0
+        set_database_info_select
     fi
 
-    set_database_info_select
     RET=$?
     if [ $RET -ne 0 ]; then
         POSTVER="${1:-$POSTVER}"
