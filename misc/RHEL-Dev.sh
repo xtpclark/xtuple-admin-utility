@@ -6,7 +6,10 @@ WORKDIR=`pwd`
 GITTAG=v4.10.0
 
 installEnv() {
+# statisfies all of xtuple requirements and most QT Configure options.
+	
 yum install -y  			\
+        yum-utils
         deltarpm					\
         wget						\
         git 						\
@@ -19,7 +22,8 @@ yum install -y  			\
         ruby 						\
         axel						\
         curl						\
-        gperf 						
+        gperf 						\
+        screen
 
 yum install -y  			 \
         postgresql-devel  			\
@@ -92,12 +96,11 @@ tar zxvf qt-everywhere-opensource-src-5.5.1.tar.gz
 
 QTSRCDIR=${SRCDIR}/qt-everywhere-opensource-src-5.5.1
 
-# Need to remove leveldb dir inorder to build qt-web etc...
+# Need to remove leveldb dir in order to build qt-web etc...
 # See: https://github.com/xtuple/qt-client/wiki/Desktop-Development-Environment-Setup#get-qt
 # https://bugreports.qt.io/browse/QTBUG-15344
 
-cd ${QTSRCDIR}/qtwebkit/Tools/qmake/config.tests
-rm -r leveldb
+rm -r ${QTSRCDIR}/qtwebkit/Tools/qmake/config.tests/leveldb
 
 cd ${QTSRCDIR}
 
