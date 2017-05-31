@@ -574,7 +574,7 @@ set_database_info_select() {
 
     if [ -z "$POSTVER" ] || [ -z "$POSTNAME" ] || [ -z "$POSTPORT" ]; then
         msgbox "Could not determine database version or name"
-        return 0
+        return 1
     fi
 }
 
