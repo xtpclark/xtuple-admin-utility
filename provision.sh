@@ -14,11 +14,25 @@ provision_menu() {
         return 0
     elif [ $ACTION = "1" ]; then
         log_exec install_postgresql $POSTVER
-        log_exec provision_cluster $POSTVER
+        
+        get_cluster_list
+
+        if [ -n "$CLUSTERS" ]; then
+            set_database_info_select
+        else
+            log_exec provision_cluster $POSTVER
+        fi
         log_exec create_database
     else
         log_exec install_postgresql $POSTVER
-        log_exec provision_cluster $POSTVER
+        
+        get_cluster_list
+
+        if [ -n "$CLUSTERS" ]; then
+            set_database_info_select
+        else
+            log_exec provision_cluster $POSTVER
+        fi
         configure_nginx
         log_exec create_database
         log_exec install_mwc_menu

@@ -155,74 +155,65 @@ list_clusters() {
 # $6 is mode (auto/manual) manual if not specified
 provision_cluster() {
 
-    get_cluster_list
-
-    if [ -z "$CLUSTERS" ]; then
-        set_database_info_select
-    fi
-
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        POSTVER="${1:-$POSTVER}"
-        if [ -z "$POSTVER" ]; then
-            POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$POSTVER" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        POSTNAME="$2"
-        if [ -z "$POSTNAME" ]; then
-            POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        POSTPORT="$3"
-        if [ -z "$POSTPORT" ]; then
-            # choose a free port automatically someday
-            POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        POSTLOCALE="${4:-$POSTLOCALE}"
-        if [ -z "$POSTLOCALE" ]; then
-            POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        POSTSTART="${5:-$POSTSTART}"
-        if [ -z "$POSTSTART" ]; then
-            if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
-                POSTSTART="--start-conf=auto"
-            else
-                POSTSTART=""
-            fi
-        fi
-
-        sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME 2>&1 > /dev/null
-        if [ "$?" -eq 0 ]; then
-            log "Cluster $POSTNAME already exists."
-            return 2
-        fi
-    
-        sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT 2>&1 > /dev/null
-        if [ "$?" -eq 0 ]; then
-            msgbox "Port $POSTPORT is already in use."
-            return 1
+    POSTVER="${1:-$POSTVER}"
+    if [ -z "$POSTVER" ]; then
+        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$POSTVER" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
         fi
     fi
 
-    MODE="$6:-$MODE}"
+    POSTNAME="$2"
+    if [ -z "$POSTNAME" ]; then
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
+        fi
+    fi
+
+    POSTPORT="$3"
+    if [ -z "$POSTPORT" ]; then
+        # choose a free port automatically someday
+        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
+        fi
+    fi
+
+    POSTLOCALE="${4:-$POSTLOCALE}"
+    if [ -z "$POSTLOCALE" ]; then
+        POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
+        fi
+    fi
+
+    POSTSTART="${5:-$POSTSTART}"
+    if [ -z "$POSTSTART" ]; then
+        if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
+            POSTSTART="--start-conf=auto"
+        else
+            POSTSTART=""
+        fi
+    fi
+
+    sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME 2>&1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        log "Cluster $POSTNAME already exists."
+        return 2
+    fi
+
+    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT 2>&1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        msgbox "Port $POSTPORT is already in use."
+        return 1
+    fi
+
+    MODE="${6:-$MODE}"
     MODE="${MODE:-manual}"
 
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
