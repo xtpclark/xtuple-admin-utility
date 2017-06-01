@@ -127,7 +127,10 @@ make -j`nproc`
 
 makePackage() {
 #TODO: Make a correct package.
-
+#TODO: Make an RPM
+#TODO: Assign a maintainer.
+# https://docs.fedoraproject.org/en-US/Fedora_Draft_Documentation/0.1/html/Packagers_Guide/
+# https://docs.fedoraproject.org/en-US/Fedora_Draft_Documentation/0.1/html/RPM_Guide/ch-creating-rpms.html
 cp ${XTWORKDIR}/lib/*.so.1 ${XTWORKDIR}/qt-client
 
 cp ${XTWORKDIR}/qt-client/openrpt/lib/*.so.1 ${XTWORKDIR}/qt-client
@@ -153,7 +156,10 @@ for QTLIB in ${QTLIBS"; do
 cp ${QTLIBPATH}/${QTLIB} ${XTWORKDIR}/qt-client
 done;
 
+
 }
+
+
 
 installEnv
 
