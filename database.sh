@@ -13,7 +13,7 @@ database_menu() {
             "5" "Backup Database" \
 			"6" "Create Database" \
             "7" "Drop Database" \
-            "8" "Upgrade xTuple Database" \
+            "8" "Update/Web-enable Database" \
             "9" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
