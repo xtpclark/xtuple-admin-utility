@@ -684,7 +684,7 @@ upgrade_database() {
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # find the instance name and version
-    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \;)
+    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \; -exec grep -P "(?<=port: \[\")$POSTPORT" {} \;)
     if [ -z "$CONFIG_JS" ]; then
         # no installation exists, just skip to installation
         log "config.js not found. Skipping cleanup of old datasource."
