@@ -223,9 +223,9 @@ install_mwc() {
 
     log "Using database $PGDATABASE"
     log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
-    log_exec sudo sed -i  "/port: 5432/c\      port: \"$POSTPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 5432/c\      port: $POSTPORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    log_exec sudo sed -i  "/port: 8443/c\      port: \"$NGINX_PORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 8443/c\      port: $NGINX_PORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
 
