@@ -54,7 +54,10 @@ build_qt5() {
     log "Building Qt5 from source"
 
     cd $WORKDIR
-    wget http://download.qt.io/official_releases/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+
+    # This moved: http://download.qt.io/official_releases/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+    wget https://download.qt.io/archive/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+
     tar zxvf qt-everywhere-opensource-src-5.5.1.tar.gz
     cd qt-everywhere-opensource-src-5.5.1
     # we will likely want to embrace qtwebengine but for now it doubles the build time...
