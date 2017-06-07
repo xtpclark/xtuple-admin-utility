@@ -18,9 +18,9 @@ nginx_menu() {
             break
         else
             case "$NGM" in
-            "1") log_choice install_nginx ;;
-            "2") log_choice configure_nginx ;;
-            "3") log_choice remove_nginx ;;
+            "1") log_exec install_nginx ;;
+            "2") log_exec configure_nginx ;;
+            "3") log_exec remove_nginx ;;
             "4") break ;;
             *) msgbox "How did you get here? nginx_menu $NGM" && break ;;
             esac
@@ -32,7 +32,6 @@ nginx_menu() {
 install_nginx() {
 
     log "Installing nginx"
-    log_arg
 
     log_exec sudo apt-get -y install nginx
     RET=$?
@@ -155,8 +154,6 @@ configure_nginx()
     if [ $RET -ne 0 ]; then
         return $RET
     fi
-
-    log_arg $NGINX_HOSTNAME $NGINX_DOMAIN $NGINX_SITE $NGINX_CERT $NGINX_KEY $NGINX_PORT
 
     [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE

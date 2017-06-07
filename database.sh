@@ -6,19 +6,15 @@ database_menu() {
 
     while true; do
         DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Set database info" \
-            "2" "Clear database info" \
-            "3" "Backup Database" \
-            "4" "List Databases" \
-            "5" "Rename Database" \
-            "6" "Drop Database" \
-            "7" "Inspect Database" \
-            "8" "Carve Pilot From Existing Database" \
-            "9" "Create Database From File" \
-            "10" "Download Latest Demo Database" \
-            "11" "Download Specific Database" \
-            "12" "Upgrade xTuple Database" \
-            "13" "Return to main menu" \
+            "1" "List Databases" \
+            "2" "Inspect Database" \
+            "3" "Rename Database" \
+			"4" "Copy database" \
+            "5" "Backup Database" \
+			"6" "Create Database" \
+            "7" "Drop Database" \
+            "8" "Update/Web-enable Database" \
+            "9" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -26,19 +22,15 @@ database_menu() {
             break
         else
             case "$DBM" in
-            "1") log_choice clear_database_info && log_choice check_database_info ;;
-            "2") log_choice clear_database_info ;;
-            "3") log_choice backup_database ;;
-            "4") log_choice list_databases ;;
-            "5") rename_database_menu ;;
-            "6") drop_database_menu ;;
-            "7") inspect_database_menu ;;
-            "8") log_choice carve_pilot ;;
-            "9") log_choice create_database_from_file ;;
-            "10") log_choice download_latest_demo ;;
-            "11") log_choice download_demo manual ;;
-            "12") log_choice upgrade_database ;;
-            "13") main_menu ;;
+            "1") log_exec list_databases ;;
+            "2") inspect_database_menu ;;
+            "3") rename_database ;;
+			"4") copy_database ;;
+            "5") log_exec backup_database ;;
+			"6") create_database ;;
+            "7") drop_database ;;
+            "8") log_exec upgrade_database ;;
+            "9") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi
@@ -50,7 +42,7 @@ database_menu() {
 # $2 where to save database to
 # $3 is version to grab
 # $4 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
-download_demo() {
+download_database() {
 
     MODE="${1:-$MODE}"
     MODE="${MODE:-manual}"
@@ -112,8 +104,6 @@ download_demo() {
         DEMODEST=$2
     fi
 
-    log_arg $MODE $DEMODEST $DBVERSION $DBTYPE
-
     DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
     MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
 
@@ -133,6 +123,7 @@ download_demo() {
         return 1
     fi
 
+    # where is the auto option
     if [ $MODE = "manual" ]; then
         if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
             DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
@@ -159,56 +150,52 @@ download_demo() {
 
 }
 
-download_latest_demo() {
+#  $1 is database file to backup to
+#  $2 is name of database (if not provided, prompt)
+copy_database() {
 
-    DBVERSION="$( latest_version db )"
-    log "Determined latest database version to be $DBVERSION"
-
-    if [ -z "$DBVERSION" ]; then
-        msgbox "Could not determine latest database version"
-        return 1
+    check_database_info
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
     fi
 
-    if [ -z "$DEMODEST" ]; then
-        DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database version $DBVERSION" 8 60 3>&1 1>&2 2>&3)
+    get_database_list
+
+    if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
+        return 0
+    fi
+
+
+    OLDDATABASE="${1:-$OLDDATABASE}"
+	if [ -z "$OLDDATABASE" ]; then
+        OLDDATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to copy" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
-        else
-            export DEMODEST
+        fi
+	fi
+
+    NEWDATABASE="${2:-$NEWDATABASE}"
+    if [ -z "$NEWDATABASE" ]; then
+        NEWDATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
         fi
     fi
 
-    DB_URL="http://files.xtuple.org/$DBVERSION/demo.backup"
-    MD5_URL="http://files.xtuple.org/$DBVERSION/demo.backup.md5sum"
+    log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
 
-    dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-    dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
-
-    VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the downloaded database. Utility will now exit."
-        exit
+    backup_database "$OLDDATABASE-copy.backup" "$OLDDATABASE"
+    restore_database "$BACKUPDIR/$OLDDATABASE-copy.backup" "$NEWDATABASE"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
     else
-        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
-            DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-            log_exec restore_database $DEMODEST $DEST
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                msgbox "Something has gone wrong. Check log and correct any issues, typically warnings can be ignored."
-                return $RET
-            else
-                msgbox "Database $DEST successfully restored from file $DEMODEST"
-                return 0
-            fi
-        else
-            log "Exiting without restoring database."
-        fi
+        msgbox "Database $OLDDATABASE successfully copied up to $NEWDATABASE"
+        return 0
     fi
 }
 
@@ -222,6 +209,22 @@ backup_database() {
         return $RET
     fi
 
+    DATABASE="$2"
+    if [ -z "$DATABASE" ]; then
+        get_database_list
+
+        if [ -z "$DATABASES" ]; then
+            msgbox "No databases detected on this system"
+            return 0
+        fi
+
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to back up" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+    fi
+
     if [ -z "$1" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -232,19 +235,9 @@ backup_database() {
         DEST=$1
     fi
 
-    DATABASE="${2:-$DATABASE}"
-    if [ -z "$DATABASE" ]; then
-        DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Database name to back up" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    fi
-    log_arg $DEST $DATABASE
-
     log "Backing up database "$DATABASE" to file "$DEST"."
 
-    pg_dump --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --format custom  --file "$DEST" "$DATABASE"
+    pg_dump --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --format custom  --file "$BACKUPDIR/$DEST" "$DATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
@@ -253,6 +246,66 @@ backup_database() {
         msgbox "Database $DATABASE successfully backed up to $DEST"
         return 0
     fi
+}
+
+# Either download and restore a new database
+# or restore a local file
+create_database() {
+
+    DOWNLOADABLEDBS=()
+    while read -r line ; do
+        DOWNLOADABLEDBS+=("$line" "$line")
+    done < <( curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1#g' |  sort --version-sort -r | tr ' ' '_' )
+    EXISTINGDBS=()
+    while read -r line ; do
+        EXISTINGDBS+=("$line" "$line")
+    done < <( ls -t "${DATABASEDIR}*.backup" | tr ' ' '_' )
+    BACKUPDBS=()
+    while read -r line ; do
+	    BACKUPDBS+=("$line" "$line")
+    done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
+
+    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
+        ${DOWNLOADABLEDBS[@]} \
+        ${EXISTINGDBS[@]} \
+        ${BACKUPDBS[@]} \
+        3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+	
+	echo $CHOICE | grep '^Download'
+	if [ $? -eq 0 ]; then
+	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
+        EDITIONS=()
+        while read line ; do
+            EDITIONS+=("$line" "$line")
+        done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
+        CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database Edition" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
+            ${EDITIONS[@]} \
+            3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
+        EDITION=$(echo $CHOICE | cut -f1 -d'.')
+	    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+        restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup"
+	    return $?
+	fi
+	
+	echo $CHOICE | grep '^Backup db'
+	if [ $? -eq 0 ]; then
+	    DATABASE=$(echo $CHOICE | sed 's/Backup db //')
+	    restore_database "$BACKUPDIR/$DATABASE"
+        return $?
+	fi
+	
+	restore_database "$DATABASEDIR/$CHOICE"
+	return $?
+
 }
 
 #  $1 is database file to restore
@@ -270,7 +323,7 @@ restore_database() {
         return 1
     fi
 
-    DATABASE="${2:-$DATABASE}"
+    DATABASE="$2"
     if [ -z "$DATABASE" ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
@@ -298,109 +351,7 @@ restore_database() {
     fi
 }
 
-# $1 is source
-# $2 is new pilot
-# prompt if not provided
-carve_pilot() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    SOURCE="${1:-$SOURCE}"
-    if [ -z "$SOURCE" ]; then
-        get_database_list
-
-        if [ -z "$DATABASES" ]; then
-            msgbox "No databases detected on this system"
-            return 1
-        fi
-
-        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to use as source for pilot" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    fi
-
-    PILOT="${2:-$PILOT}"
-    if [ -z "$PILOT" ]; then
-        PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    else
-        PILOT="$2"
-    fi
-    log_arg $SOURCE $PILOT
-
-    log "Creating pilot database $PILOT from database $SOURCE"
-    if (whiptail --title "Warning" --yesno "This will kill all active connections to the database, if any.  Continue?" 10 60) then
-        remove_connect_priv $SOURCE
-        kill_database_connections $SOURCE
-
-        log_exec psql postgres -U postgres -q -h $PGHOST -p $POSTPORT -d postgres -c "CREATE DATABASE "$PILOT" TEMPLATE "$SOURCE" OWNER admin;"
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check output and correct any issues."
-            restore_connect_priv $SOURCE
-            return $RET
-        else
-            restore_connect_priv $SOURCE
-            restore_connect_priv $PILOT
-            msgbox "Database "$PILOT" has been created"
-        fi
-    fi
-}
-
-create_database_from_file() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter source backup filename" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    if [ ! -f $SOURCE ]; then
-        msgbox "File "$SOURCE" not found!"
-        return 1
-    fi
-
-    PILOT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
-    RET=$?
-
-    if [ $RET -ne 0 ]; then
-        return $RET
-    elif [ $RET -eq 0 ]; then
-        log "Creating database $PILOT from file $SOURCE"
-        restore_database $SOURCE $PILOT
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check log and correct any issues."
-            $RET
-        else
-            msgbox "Database "$PILOT" has been created"
-        fi
-    fi
-
-}
-
 list_databases() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
 
     get_database_list
 
@@ -412,7 +363,9 @@ list_databases() {
     DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
 }
 
-drop_database_menu() {
+# $1 is name
+# prompt if not provided
+drop_database() {
 
     check_database_info
     RET=$?
@@ -433,38 +386,15 @@ drop_database_menu() {
         return $RET
     fi
 
-    drop_database "$DATABASE"
-
-}
-
-# $1 is name
-# prompt if not provided
-drop_database() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    POSTNAME="${1:-$POSTNAME}"
-    if [ -z "$POSTNAME" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to drop" 8 60 "" 3>&1 1>&2 2>&3)
+    if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
+        backup_database $DATABASE
+        psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $DATABASE;"
         RET=$?
         if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    fi
-    log_arg $POSTNAME
-
-    if (whiptail --title "Are you sure?" --yesno "Completely remove database $POSTNAME?" 10 60) then
-        psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $POSTNAME;"
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "Dropping database $POSTNAME failed. Please check the output and correct any issues."
+            msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
             return $RET
         else
-            msgbox "Dropping database $POSTNAME successful"
+            msgbox "Dropping database $DATABASE successful"
         fi
     else
         return 0
@@ -472,7 +402,10 @@ drop_database() {
 
 }
 
-rename_database_menu() {
+# $1 is source
+# $2 is new name
+# prompt if not provided
+rename_database() {
 
     check_database_info
     RET=$?
@@ -487,30 +420,9 @@ rename_database_menu() {
         return 0
     fi
 
-    SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
-    fi
-
-    DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new database name" 8 60 "" 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
-    fi
-
-    rename_database "$SOURCE" "$DEST"
-
-}
-
-# $1 is source
-# $2 is new name
-# prompt if not provided
-rename_database() {
-
     SOURCE="${1:-$SOURCE}"
     if [ -z "$SOURCE" ]; then
-        SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
+        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
@@ -525,7 +437,6 @@ rename_database() {
             return $RET
         fi
     fi
-    log_arg $SOURCE $DEST
 
     log_exec psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
@@ -621,7 +532,6 @@ inspect_database() {
         FROM pkghead) as dummy ORDER BY 1;"`
 
     msgbox "${VAL}"
-    log_arg $1
 
 }
 
@@ -664,7 +574,7 @@ set_database_info_select() {
 
     if [ -z "$POSTVER" ] || [ -z "$POSTNAME" ] || [ -z "$POSTPORT" ]; then
         msgbox "Could not determine database version or name"
-        return 0
+        return 1
     fi
 }
 
@@ -721,7 +631,7 @@ clear_database_info() {
 }
 
 check_database_info() {
-    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ]; then
+    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
             RET=$?
@@ -745,89 +655,93 @@ check_database_info() {
 upgrade_database() {
 
     check_database_info
-
-    if [ -z "$UPDATEREXEC" ]; then
-        UPDATEREXEC=$(whiptail --backtitle "$( window_title )" --inputbox "Auto updater executable location" 8 60 ${HOME}/updater/utilities/AutoUpdate/xtuple_autoupdater 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-	   export UPDATEREXEC
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
     fi
 
-    if [ -z "$UPDATEPKGS" ]; then
-        UPDATEPKGS=$(whiptail --backtitle "$( window_title )" --inputbox "Updater packages directory" 8 60 ${HOME}/Updater/pkgs 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-	   log_exec mkdir -p $UPDATEPKGS
-	   export UPDATEPKGS
-    fi
+    get_database_list
 
-    if [ -z "$1" ]; then
-        DATABASES=()
-	   VERSIONS=()
-	   APPLICATIONS=()
-
-        while read -r line; do
-            DATABASES+=("$line")
-		  VER=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $line -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
-		  APP=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $line -c "SELECT fetchmetrictext('Application') AS application;"`
-		  VERSIONS+=("$VER")
-		  APPLICATIONS+=("$APP")
-         done < <( psql -At -h $PGHOST -p $POSTPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
-         if [ -z "$DATABASES" ]; then
-            msgbox "No databases detected on this system"
-            return 0
-        fi
-
-        CHOICE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 --cancel-button "Cancel" --ok-button "Select" \
-	   $(paste -d '\n' \
-	   <(seq 0 $((${#DATABASES[@]}-1))) \
-        <(echo ${DATABASES[*]} | tr ' ' '\n')) \
-	   3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return 0
-        fi
-	   DATABASE=${DATABASES[$CHOICE]}
-    else
-        DATABASE="$1"
-    fi
-
-    log "Detected application ${APPLICATIONS[$CHOICE]}"
-    log "Detected server version ${VERSIONS[$CHOICE]}"
-    UPS=`curl -s 'http://api.xtuple.org/upgradepath.php?package='${APPLICATIONS[$CHOICE]}'&fromver='${VERSIONS[$CHOICE]} | grep -oP 'http\S+' | sed 's/<.*//'`
-    log "Detected upgrades ${UPS[*]}"
-
-    if ! (whiptail --title "Database Selected" --yesno "Database: $DATABASE\nApplication: ${APPLICATIONS[$CHOICE]}\nVersion: ${VERSIONS[$CHOICE]}\nWould you like to upgrade this database now?" 10 60) then
+    if [ -z "$DATABASES" ]; then
+        msgbox "No databases detected on this system"
         return 0
     fi
 
-    # download the upgrade packages
-    for pack in ${UPS[*]} ; do
-        packname=$(echo $pack | sed 's#.*/##'g)
-        dlf_fast $pack $packname $UPDATEPKGS/$packname
-    done
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return 0
+    fi
 
-    msgbox "All Packages Downloaded"
-
-    # Start up the virtual framebuffer to use for the updater
-    if [ ! -e /tmp/.X99-lock ]; then
-        log_exec start-stop-daemon --start -b -x /usr/bin/Xvfb :99
-        export DISPLAY=:99
+    psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
+	if [ $? -ne 0 ]; then
+        if ! (whiptail --title "Database not Web-Enabled" --yesno "Your database is not currently web-enabled. To keep it that way, do not use xTAU to update your database. Instead, get the xTuple Updater app and apply the desired update package. If you continue the update in xTAU, it will update AND web-enable the database. Continue?" 10 60) then
+            return 0
+        fi
     fi
 
     # make sure plv8 is in
     log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
-    # run the updater
-    log_exec bash $UPDATEREXEC -l $UPDATEPKGS ${PGHOST}:${POSTPORT}/$DATABASE
+    # find the instance name and version
+    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \; -exec grep -P "(?<=port: \[\")$POSTPORT" {} \;)
+    if [ -z "$CONFIG_JS" ]; then
+        # no installation exists, just skip to installation
+        log "config.js not found. Skipping cleanup of old datasource."
+        configure_nginx
+    else
+        MWCNAME=$(echo $CONFIG_JS | cut -d'/' -f5)
+        MWCVERSION=$(echo $CONFIG_JS | cut -d'/' -f4)
+    
+        # shutdown node datasource
+        if [ $DISTRO = "ubuntu" ]; then
+            case "$CODENAME" in
+                "trusty") ;&
+                "utopic")
+                    log_exec sudo service xtuple-"$MWCNAME" stop
+                    ;;
+                "vivid") ;&
+                "xenial")
+                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
+                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
+                    ;;
+            esac
+        elif [ $DISTRO = "debian" ]; then
+            case "$CODENAME" in
+                "wheezy")
+                    log_exec sudo /etc/init.d/xtuple-"$MWCNAME" stop
+                    ;;
+                "jessie")
+                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
+                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
+                    ;;
+            esac
+        else
+            log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+            do_exit
+        fi
+
+        # get the listening port for the node datasource
+        MWCPORT=$(grep -Po '(?<= port: ")8[0-9]{3}' /etc/xtuple/$MWCVERSION/$MWCNAME/config.js)
+        NGINX_PORT=$MWCPORT
+        
+        log "Removing files in /etc/xtuple"
+        log_exec sudo rm -rf /etc/xtuple/$MWCVERSION/$MWCNAME
+
+        log "Removing files in /opt/xtuple"
+        log_exec sudo rm -rf /opt/xtuple/$MWCVERSION/$MWCNAME
+
+        log "Deleting systemd service file"
+        log_exec sudo rm /etc/systemd/system/xtuple-$MWCNAME.service
+
+        log "Completely removed previous mobile client installation"
+    fi
+
+    # install or update the mobile client
+    PGDATABASE=$DATABASE
+    install_mwc_menu
 
     # display results
     NEWVER=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
     msgbox "Database $DATABASE\nVersion $NEWVER"
-
-    log_arg $DATABASE
 }

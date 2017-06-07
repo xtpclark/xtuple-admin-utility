@@ -1,52 +1,43 @@
 #!/bin/bash
+
 provision_menu() {
 
     log "Opened provisioning menu"
 
-    ACTIONS=$(whiptail --separate-output --title "Select Components" --checklist --cancel-button "Cancel" \
-    "Please choose the actions you would like to take" 15 60 7 \
-    "installpg" "Install PostgreSQL $POSTVER" ON \
-    "provisioncluster" "Provision PostgreSQL Cluster" ON \
-    "initdb" "Add xTuple admin user and role" ON \
-    "demodb" "Load xTuple Database" OFF \
-    "webclient" "Load xTuple Web Client" OFF \
-    "nginx" "Nginx" OFF \
+    ACTION=$(whiptail --backtitle "$( window_title )" --menu "Select Action" 0 0 7 --ok-button "Select" --cancel-button "Cancel" \
+    "1" "Install non-web-enabled xTuple" \
+    "2" "Install web-enabled xTuple" \
     3>&1 1>&2 2>&3)
 
     RET=$?
-    if [ $RET = 0 ]; then
-        if [[ $ACTIONS == *"installpg"* ]] && [[ $ACTIONS != *"provisioncluster"* ]]; then
-            msgbox "You are about to install PostgreSQL but not provision to any clusters. \nYou will need to create a cluster manually before you can initialize \nit for xTuple. If you have chosen to initialize the database or install a demo \nthose actions will be skipped."
-            SKIP=1
-            ACTIONS=`sed "/initdb/d" <<< "$ACTIONS"`
-            log "Skipping initdb because provisioncluster was not chosen."
-            ACTIONS=`sed "/demodb/d" <<< "$ACTIONS"`
-            log "Skipping demodb because provisioncluster was not chosen."
+    if [ $RET -ne 0 ]; then
+        return 0
+    elif [ $ACTION = "1" ]; then
+        log_exec install_postgresql $POSTVER
+        
+        get_cluster_list
+
+        if [ -n "$CLUSTERS" ]; then
+            set_database_info_select
+        else
+            log_exec provision_cluster $POSTVER
         fi
-        for i in $ACTIONS; do   
-            case "$i" in
-            "installpg") log_choice install_postgresql $POSTVER
-                           log_choice drop_cluster $POSTVER main auto
-                           ;;
-            "provisioncluster") log_choice provision_cluster $POSTVER
-                                ;;
-            "initdb") log_choice prepare_database auto
-                      ;;
-            "nginx") configure_nginx
-                     ;;
-            "demodb") log_choice download_demo manual $WORKDIR/tmp.backup
-                      ;;
-            "webclient") log_choice install_mwc_menu
-                      ;;
-             *) ;;
-            esac || main_menu
-        done
+        log_exec create_database
+    else
+        log_exec install_postgresql $POSTVER
+        
+        get_cluster_list
+
+        if [ -n "$CLUSTERS" ]; then
+            set_database_info_select
+        else
+            log_exec provision_cluster $POSTVER
+        fi
+        configure_nginx
+        log_exec create_database
+        log_exec install_mwc_menu
     fi
-    
-    if [ -n "$ACTIONS" ]; then
-        msgbox "The following actions were completed: \n$ACTIONS" 
-    elif [ -z "$ACTIONS" ]; then
-        msgbox "No actions were taken."
-    fi
-    return 0;
+    msgbox "Install Complete"
+
+    return 0
 }

@@ -18,7 +18,7 @@ mwc_menu() {
         else
             case "$PGM" in
             "1") install_mwc_menu ;;
-            "2") log_choice remove_mwc ;;
+            "2") log_exec remove_mwc ;;
             "3") break ;;
             *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && break ;;
             esac
@@ -28,6 +28,30 @@ mwc_menu() {
 }
 
 install_mwc_menu() {
+
+    if [ -z "$DATABASE" ]; then
+        check_database_info
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
+        get_database_list
+    
+        if [ -z "$DATABASES" ]; then
+            msgbox "No databases detected on this system"
+            return 1
+        fi
+
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            log "There was an error selecting the database.. exiting"
+            return $RET
+        fi
+    fi
+
+    log "Chose database $DATABASE"
 
     TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
     HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
@@ -62,35 +86,15 @@ install_mwc_menu() {
 
     log "Chose version $MWCVERSION"
 
-    MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
+    if [ -z "$MWCNAME" ]; then
+        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
     fi
 
     log "Chose mobile name $MWCNAME"
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    get_database_list
-
-    if [ -z "$DATABASES" ]; then
-        msgbox "No databases detected on this system"
-        return 1
-    fi
-
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        log "There was an error selecting the database.. exiting"
-        return $RET
-    fi
-
-    log "Chose database $DATABASE"
 
     if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
         log "Installing the commercial extensions"
@@ -111,7 +115,7 @@ install_mwc_menu() {
         PRIVATEEXT=false
     fi
 
-    log_choice install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+    log_exec install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
 }
 
 
@@ -146,7 +150,6 @@ install_mwc() {
 
     GITHUBNAME="${6:-$GITHUBNAME}"
     GITHUBPASS="${7:-$GITHUBPASS}"
-    log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
 
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash
@@ -218,9 +221,11 @@ install_mwc() {
     log_exec sudo sed -i  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    log "Using database $DATABASE"
-    log_exec sudo sed -i  "/databases:/c\      databases: [\"$DATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
-    log_exec sudo sed -i  "/port: 5432/c\      port: \"$POSTPORT\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log "Using database $PGDATABASE"
+    log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 5432/c\      port: $POSTPORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+
+    log_exec sudo sed -i  "/port: 8443/c\      port: $NGINX_PORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo chown -R xtuple.xtuple /etc/xtuple
 
@@ -302,7 +307,7 @@ install_mwc() {
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
     IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
-    log "All set! You should now be able to log on to this server at https://$IP:8443 with username admin and password admin. Make sure you change your password!"
+    log "All set! You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
 
 }
 

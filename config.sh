@@ -3,42 +3,23 @@ ACTIONS=()
 
 # default configurations
 LOG_FILE=$(pwd)/install-$DATE.log
-UPDATEPKGS=
-UPDATEREXEC=
+
+DATABASEDIR=$(pwd)/databases
+BACKUPDIR=$(pwd)/backups
 
 # leave these undefined. They should never be used in this utility because it would lead to hard to pinpoint easy to fix bugs that cause a disproportionate amount of wasted time.
 PGNAME=
 PGPORT=
 
 # set these
-POSTNAME=xtuple
 POSTVER=9.3
 PGHOST=localhost
-POSTPORT=5432
 
 # postgres user, required for all postgres/database actions
 PGUSER=postgres
-# postgres password to use. will prompt if missing
-PGPASSWORD=postgres
-# new password to set for postgres
-NEWPASS=
 
 # usually set to $LANG
 POSTLOCALE=$LANG
-# start cluster on boot
-PGSTART=true
-
-# default database to select, optional
-PGDATABASE=
-# demo, quikstart, or empty
-DBTYPE=demo
-# database version
-DBVERSION=4.10.0
-DATABASE=${DBTYPE}${DBVERSION//./}
-INSTANCE=xtuple
-
-# folder to save downloads
-SAVEDIR=$HOME/$POSTNAME
 
 # default nginx site to select
 NGINX_SITE=

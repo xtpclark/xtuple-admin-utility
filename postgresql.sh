@@ -7,16 +7,12 @@ postgresql_menu() {
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install PostgreSQL $POSTVER" \
-            "2" "Remove PostgreSQL $POSTVER" \
-            "3" "Purge PostgreSQL $POSTVER" \
-            "4" "List provisioned clusters" \
-            "5" "Provision database cluster" \
-            "6" "Drop database cluster" \
-            "7" "Prepare cluster for xTuple" \
-            "8" "Reset passwords" \
-            "9" "Backup Globals" \
-            "10" "Restore Globals" \
-            "11" "Return to main menu" \
+            "2" "List provisioned clusters" \
+            "3" "Select Cluster" \
+            "4" "Create new cluster" \
+            "5" "Backup Globals" \
+            "6" "Restore Globals" \
+            "7" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -25,88 +21,18 @@ postgresql_menu() {
             break
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") log_choice install_postgresql $POSTVER ;;
-            "2") log_choice remove_postgresql $POSTVER ;;
-            "3") log_choice purge_postgresql $POSTVER ;;
-            "4") log_choice list_clusters ;;
-            "5") log_choice provision_cluster ;;
-            "6") drop_cluster_menu ;;
-            "7") log_choice prepare_database ;;
-            "8") password_menu ;;
-            "9") log_choice backup_globals ;;
-            "10") log_choice restore_globals ;;
-            "11") break ;;
+            "1") log_exec install_postgresql $POSTVER ;;
+            "2") log_exec list_clusters ;;
+            "3") log_exec select_cluster ;;
+            "4") log_exec provision_cluster ;;
+            "5") log_exec backup_globals ;;
+            "6") log_exec restore_globals ;;
+            "7") break ;;
             *) msgbox "Error. How did you get here?" && break ;;
             esac
         fi
     done
 
-}
-
-# $1 is mode (auto/manual)
-prepare_database() {
-
-    check_database_info
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    MODE="${1:-$MODE}"
-    MODE="${MODE:-manual}"
-    log_arg $MODE
-
-    EXTRAS_URL="http://files.xtuple.org/common/extras.sql"
-
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $EXTRAS_URL $WORKDIR/extras.sql
-        dlf_fast_console $EXTRAS_URL.md5sum $WORKDIR/extras.sql.md5sum
-    else
-        dlf_fast $EXTRAS_URL "Downloading extras.sql. Please Wait." $WORKDIR/extras.sql
-        dlf_fast $EXTRAS_URL.md5sum "Downloading extras.sql.md5sum. Please Wait." $WORKDIR/extras.sql.md5sum
-    fi
-
-
-    VALID=`cat $WORKDIR/extras.sql.md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum $WORKDIR/extras.sql | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-        else
-            log "There was an error verifying the extras.sql that was downloaded. Utility will now exit."
-        fi
-        do_exit
-    fi
-
-    log "Deploying extras.sql, creating extensions adminpack, pgcrypto, cube, earthdistance. Extension exists errors can be safely ignored."
-    psql -q -h $PGHOST -U postgres -d postgres -p $POSTPORT -f $WORKDIR/extras.sql
-    if [ $RET -ne 0 ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "Error deplying extras.sql. Check for errors and try again"
-        else
-            log "Error deploying extras.sql. Check for errors and try again"
-        fi
-        do_exit
-    fi
-
-    if [ $MODE = "manual" ]; then
-        reset_sudo admin
-        if [ $RET -ne 0 ]; then
-            msgbox "Error setting the admin password. Check for errors and try again"
-            return 0
-        fi
-    fi
-
-    log "Removing downloaded init scripts..."
-    rm $WORKDIR/extras.sql{,.md5sum}
-
-    if [ $MODE = "manual" ]; then
-        msgbox "Initializing database successful."
-    else
-        log "Initializing database successful."
-    fi
-
-    return 0
 }
 
 password_menu() {
@@ -144,7 +70,6 @@ password_menu() {
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
 
 # Let's not install the main cluster by default just to drop it...
@@ -164,13 +89,13 @@ install_postgresql() {
         return $RET
     fi
 
+    provision_cluster
 }
 
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $POSTVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling PostgreSQL "$POSTVER"..."
@@ -187,7 +112,6 @@ remove_postgresql() {
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
 
-    log_arg $1
     POSTVER="${1:-$POSTVER}"
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $POSTVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Purging PostgreSQL "$POSTVER"..."
@@ -200,14 +124,19 @@ purge_postgresql() {
 
 }
 
-list_clusters() {
+get_cluster_list() {
 
-    log_arg
     CLUSTERS=()
     
     while read -r line; do 
         CLUSTERS+=("$line" "$line")
     done < <( sudo pg_lsclusters | tail -n +2 )
+
+}
+
+list_clusters() {
+
+    get_cluster_list
 
     if [ -z "$CLUSTERS" ]; then
         msgbox "No database clusters detected on this system"
@@ -235,7 +164,7 @@ provision_cluster() {
         fi
     fi
 
-    POSTNAME="${2:-$POSTNAME}"
+    POSTNAME="$2"
     if [ -z "$POSTNAME" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
@@ -244,8 +173,9 @@ provision_cluster() {
         fi
     fi
 
-    POSTPORT="${3:-$POSTPORT}"
+    POSTPORT="$3"
     if [ -z "$POSTPORT" ]; then
+        # choose a free port automatically someday
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -254,7 +184,7 @@ provision_cluster() {
     fi
 
     POSTLOCALE="${4:-$POSTLOCALE}"
-    if [ -z "$4" ]; then
+    if [ -z "$POSTLOCALE" ]; then
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -271,7 +201,19 @@ provision_cluster() {
         fi
     fi
 
-    MODE="$6:-$MODE}"
+    sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME 2>&1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        log "Cluster $POSTNAME already exists."
+        return 2
+    fi
+
+    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT 2>&1 > /dev/null
+    if [ "$?" -eq 0 ]; then
+        msgbox "Port $POSTPORT is already in use."
+        return 1
+    fi
+
+    MODE="${6:-$MODE}"
     MODE="${MODE:-manual}"
 
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
@@ -286,7 +228,6 @@ provision_cluster() {
         fi
         do_exit
     fi
-    log_arg $POSTVER $POSTNAME $POSTPORT $POSTLOCALE $POSTSTART $MODE
 
     POSTDIR=/etc/postgresql/$POSTVER/$POSTNAME
 
@@ -405,6 +346,12 @@ provision_cluster() {
 
 }
 
+select_cluster() {
+
+    set_database_info_select
+
+}
+
 # $1 is version
 # $2 is name
 # $3 is mode (auto/manual)
@@ -438,7 +385,6 @@ drop_cluster() {
         fi
     fi
 
-    log_arg $POSTVER $POSTNAME $MODE
     log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
 
    # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
@@ -488,7 +434,7 @@ drop_cluster_menu() {
         return 0
     fi
 
-    log_choice drop_cluster "$VER" "$NAME"
+    log_exec drop_cluster "$VER" "$NAME"
 
 }
 
@@ -532,7 +478,6 @@ reset_psql() {
         return $RET
     fi
 
-    log_arg $1
     NEWPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "New $1 password" 8 60 "$CH" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -574,7 +519,6 @@ backup_globals() {
         DEST=$1
     fi
     
-    log_arg $DEST
     log "Backing up globals to file "$DEST"."
 
     log_exec pg_dumpall --host "$PGHOST" --port "$POSTPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
@@ -607,7 +551,6 @@ restore_globals() {
         SOURCE=$1
     fi
 
-    log_arg $SOURCE
     log "Restoring globals from file $SOURCE"
 
     log_exec psql -h $PGHOST -p $POSTPORT -U $PGUSER -d postgres -q -f "$SOURCE"

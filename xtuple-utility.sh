@@ -1,16 +1,17 @@
 #!/bin/bash
 
-REBOOT=0
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="1.0"
 export WORKDIR=`pwd`
 
 #set some defaults
-export CONTAINER=false
 source config.sh
 # import supporting scripts
 source common.sh
 source logging.sh
+# make directories
+mkdir -p $DATABASEDIR
+mkdir -p $BACKUPDIR
 
 # process command line arguments
 # start with :, which tells it to be silent about errors
@@ -21,9 +22,6 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
     a)
         INSTALLALL=true
         ;;
-    c)
-        CONTAINER=true
-        ;;
     d)
         DATABASE=$OPTARG
         log "Database name set to $DATABASE via command line argument -d"
@@ -31,11 +29,6 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
     p)
         POSTVER=$OPTARG
         log "PostgreSQL Version set to $POSTVER via command line argument -p"
-        ;;
-    n)
-        # Name this instance
-        INSTANCE=$OPTARG
-        log "Instance name set to $INSTANCE via command line argument -n"
         ;;
     H)
         # Hostname
@@ -173,22 +166,6 @@ if [ $BUILDQT ]; then
     log "Building and installing Qt5 from source"
     install_dev_prereqs
     build_qt5
-fi
-
-# if we were given command line options for installation process them now
-if [ $INSTALLALL ]; then
-    log "Executing full provision..."
-    install_postgresql $POSTVER
-    drop_cluster $POSTVER main auto
-    provision_cluster $POSTVER $INSTANCE 5432 "$LANG" true auto
-    prepare_database auto 
-    download_demo auto $WORKDIR/tmp.backup $DBVERSION $DBTYPE
-    restore_database $WORKDIR/tmp.backup $DATABASE
-    rm -f $WORKDIR/tmp.backup{,.md5sum}
-    install_mwc $DBVERSION v$DBVERSION $INSTANCE false $DATABASE
-    install_nginx
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/xtuple/$DBVERSION/$INSTANCE/ssl/server.{crt,key} 8443
-    setup_webprint
 fi
 
 # It is okay to run them both, but if either one runs we want to exit after as these
