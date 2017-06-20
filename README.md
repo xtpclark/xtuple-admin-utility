@@ -1,7 +1,7 @@
 # xTuple Admin Utility
 management of the linux-based xTuple stack. 
 
-Getting Started, Ubuntu 14.04 LTS, 14.10, and 15.04. Debian 7.x and 8.1, all 64bit only
+Getting Started, Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04. Debian 7.x and 8.1, all 64bit only
 
 sudo apt-get install git
 
