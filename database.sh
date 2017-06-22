@@ -333,7 +333,7 @@ restore_database() {
     fi
 
     log "Creating database $DATABASE."
-    log_exec psql -h $PGHOST -p $POSTPORT -U $PGUSER -d postgres -q -c "CREATE DATABASE "$DATABASE" OWNER admin"
+    log_exec createdb -h $PGHOST -p $POSTPORT -U $PGUSER -O "admin" "$DATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
@@ -388,7 +388,7 @@ drop_database() {
 
     if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
         backup_database $DATABASE
-        psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "DROP DATABASE $DATABASE;"
+        log_exec dropdb -U $PGUSER -h $PGHOST -p $POSTPORT "$DATABASE"
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
