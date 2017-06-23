@@ -120,7 +120,8 @@ type nginx >/dev/null 2>&1 || { echo >&2 "Installing nginx."; install_nginx; }
     fi
 
     if [ -z "$NGINX_PORT" ]; then
-        NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port number.  Make sure it is available first!" 8 60 "8443" 3>&1 1>&2 2>&3)
+        new_nginx_port
+        NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter port number.\n\nUsed Ports:\n$(head -2 /etc/nginx/sites-available/* | grep -Po '8[0-9]{3}')" 18 60 "$NGINX_PORT" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             clear_nginx_settings

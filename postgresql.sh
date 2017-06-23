@@ -166,7 +166,7 @@ provision_cluster() {
 
     POSTNAME="$2"
     if [ -z "$POSTNAME" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name (make sure it isn't already in use!)" 8 60 "xtuple" 3>&1 1>&2 2>&3)
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\nExisting Clusters:\n$(sudo pg_lsclusters -h | awk '{print $2}')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -176,7 +176,8 @@ provision_cluster() {
     POSTPORT="$3"
     if [ -z "$POSTPORT" ]; then
         # choose a free port automatically someday
-        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port (make sure it isn't already in use!)" 8 60 "5432" 3>&1 1>&2 2>&3)
+        new_postgres_port
+        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port" 8 60 "$POSTPORT" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0

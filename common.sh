@@ -152,6 +152,14 @@ is_port_open() {
 
 }
 
+new_postgres_port() {
+    POSTPORT=$(for i in $(seq 5432 5500) $(sudo pg_lsclusters -h | awk '{print $3}') ; do echo $i; done | sort | uniq -u | head -1)
+}
+
+new_nginx_port() {
+    NGINX_PORT=$(for i in $(seq 8443 8500) $(head -2 /etc/nginx/sites-available/* | grep -Po '8[0-9]{3}') ; do echo $i; done | sort | uniq -u | head -1)
+}
+
 test_connection() {
     log "Testing internet connectivity..."
     wget -q --tries=5 --timeout=10 -O - http://files.xtuple.org > /dev/null
