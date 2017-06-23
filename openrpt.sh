@@ -67,41 +67,48 @@ build_openrpt() {
 
 }
 
-install_xvfb() {
-
-    log "Installing xvfb..."
-    log_exec sudo apt-get -y install xvfb
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "There was an error installing xvfb. Check the log and correct any issues before trying again"
-    fi
-    return $RET
-
-}
-
-remove_xvfb() {
-
-    if (whiptail --title "Are you sure?" --yesno "Uninstall xvfb?" --yes-button "Yes" --no-button "No" 10 60) then
-        log "Uninstalling xvfb..."
-        log_exec sudo apt-get -y remove xvfb
-        RET=$?
-        return $RET
-    else
-        return 0
-    fi
-
-}
-
 install_xtuple_xvfb() {
-    log "Installing xtuple-Xvfb to /etc/init.d..."
-    log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d 
-    log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb 
-    log_exec sudo update-rc.d xtuple-Xvfb defaults
-    log_exec sudo service xtuple-Xvfb start
+    if [ $DISTRO = "ubuntu" ]; then
+        case "$CODENAME" in
+            "trusty") ;&
+            "utopic")
+                log "Installing xtuple-Xvfb to /etc/init.d..."
+                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
+                log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
+                log_exec sudo update-rc.d xtuple-Xvfb defaults
+                log_exec sudo service xtuple-Xvfb start
+                ;;
+            "vivid") ;&
+            "xenial")
+                log "Installing xtuple-Xvfb.service to /etc/systemd/service"
+                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
+                log_exec sudo systemctl enable xtuple-Xvfb.service
+                log_exec sudo systemctl start xtuple-Xvfb.service
+                ;;
+        esac
+    elif [ $DISTRO = "debian" ]; then
+        case "$CODENAME" in
+            "wheezy")
+                log "Installing xtuple-Xvfb to /etc/init.d..."
+                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
+                log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
+                log_exec sudo update-rc.d xtuple-Xvfb defaults
+                log_exec sudo service xtuple-Xvfb start
+                ;;
+            "jessie")
+                log "Installing xtuple-Xvfb.service to /etc/systemd/service"
+                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
+                log_exec sudo systemctl enable xtuple-Xvfb.service
+                log_exec sudo systemctl start xtuple-Xvfb.service
+                ;;
+        esac
+    else
+        log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+        do_exit
+    fi
 }
 
 setup_webprint() {
     install_openrpt
-    install_xvfb
     install_xtuple_xvfb
 }
