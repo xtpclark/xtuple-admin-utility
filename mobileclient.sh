@@ -87,7 +87,7 @@ install_mwc_menu() {
     log "Chose version $MWCVERSION"
 
     if [ -z "$MWCNAME" ]; then
-        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\n\n * The source code for the mobile client will be saved in /opt/xtuple/$(MWCVERSION)/ with this name.\n * This will also be part of the name of the service script in one of these directories:\n  systemd:      /etc/systemd/system/\n  upstart:      /etc/init/\n  initscripts:  /etc/init.d/" 15 60 3>&1 1>&2 2>&3)
+        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\nThis name will be used in several ways:\n- naming the service script in /etc/systemd/system, /etc/init, or /etc/init.d\n- naming the directory for the xTuple web-enabling source code - /opt/xtuple/$(MWCVERSION)/" 15 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
