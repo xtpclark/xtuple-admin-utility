@@ -87,7 +87,7 @@ install_mwc_menu() {
     log "Chose version $MWCVERSION"
 
     if [ -z "$MWCNAME" ]; then
-        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance" 8 60 3>&1 1>&2 2>&3)
+        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\nThis name will be used in several ways:\n- naming the service script in /etc/systemd/system, /etc/init, or /etc/init.d\n- naming the directory for the xTuple web-enabling source code - /opt/xtuple/$(MWCVERSION)/" 15 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
