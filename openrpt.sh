@@ -68,30 +68,25 @@ build_openrpt() {
 }
 
 install_xtuple_xvfb() {
-    if [ $DISTRO = "ubuntu" ]; then
-        case "$CODENAME" in
-            "trusty") ;&
-            "utopic") ;&
-            "wheezy")
-                log "Installing xtuple-Xvfb to /etc/init.d..."
-                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
-                log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
-                log_exec sudo update-rc.d xtuple-Xvfb defaults
-                log_exec sudo service xtuple-Xvfb start
-                ;;
-            "vivid") ;&
-            "xenial") ;&
-            "jessie")
-                log "Installing xtuple-Xvfb.service to /etc/systemd/service"
-                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
-                log_exec sudo systemctl enable xtuple-Xvfb.service
-                log_exec sudo systemctl start xtuple-Xvfb.service
-                ;;
-        esac
-    else
-        log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
-        do_exit
-    fi
+    case "$CODENAME" in
+        "trusty") ;&
+        "utopic") ;&
+        "wheezy")
+            log "Installing xtuple-Xvfb to /etc/init.d..."
+            log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
+            log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
+            log_exec sudo update-rc.d xtuple-Xvfb defaults
+            log_exec sudo service xtuple-Xvfb start
+            ;;
+        "vivid") ;&
+        "xenial") ;&
+        "jessie")
+            log "Installing xtuple-Xvfb.service to /etc/systemd/service"
+            log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
+            log_exec sudo systemctl enable xtuple-Xvfb.service
+            log_exec sudo systemctl start xtuple-Xvfb.service
+            ;;
+    esac
 }
 
 setup_webprint() {
