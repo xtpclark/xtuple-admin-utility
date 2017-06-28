@@ -71,23 +71,7 @@ install_xtuple_xvfb() {
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty") ;&
-            "utopic")
-                log "Installing xtuple-Xvfb to /etc/init.d..."
-                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
-                log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
-                log_exec sudo update-rc.d xtuple-Xvfb defaults
-                log_exec sudo service xtuple-Xvfb start
-                ;;
-            "vivid") ;&
-            "xenial")
-                log "Installing xtuple-Xvfb.service to /etc/systemd/service"
-                log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
-                log_exec sudo systemctl enable xtuple-Xvfb.service
-                log_exec sudo systemctl start xtuple-Xvfb.service
-                ;;
-        esac
-    elif [ $DISTRO = "debian" ]; then
-        case "$CODENAME" in
+            "utopic") ;&
             "wheezy")
                 log "Installing xtuple-Xvfb to /etc/init.d..."
                 log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
@@ -95,6 +79,8 @@ install_xtuple_xvfb() {
                 log_exec sudo update-rc.d xtuple-Xvfb defaults
                 log_exec sudo service xtuple-Xvfb start
                 ;;
+            "vivid") ;&
+            "xenial") ;&
             "jessie")
                 log "Installing xtuple-Xvfb.service to /etc/systemd/service"
                 log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
