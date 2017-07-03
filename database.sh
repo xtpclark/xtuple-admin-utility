@@ -340,10 +340,11 @@ restore_database() {
         return $RET
     else
         log "Restoring database $DATABASE from file $1 on server $PGHOST:$POSTPORT"
-        log_exec pg_restore --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --dbname "$DATABASE" "$1"
+        pg_restore --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
         RET=$?
         if [ $RET -ne 0 ]; then
-            msgbox "Something has gone wrong. Check output and correct any issues."
+            msgbox "$(cat restore_output.log)"
+            log "$(cat restore_output.log)"
             return $RET
         else
             return 0
