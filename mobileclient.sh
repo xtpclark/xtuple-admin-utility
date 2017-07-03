@@ -151,6 +151,8 @@ install_mwc() {
     GITHUBNAME="${6:-$GITHUBNAME}"
     GITHUBPASS="${7:-$GITHUBPASS}"
 
+    setup_webprint
+
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash
 
@@ -306,7 +308,7 @@ install_mwc() {
     fi
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
-    IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
+    IP=`ip -f inet -o addr show | grep -vw lo | awk '{print $4}' | cut -d/ -f 1`
     log "All set! You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
 
 }
