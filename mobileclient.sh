@@ -128,7 +128,7 @@ install_mwc_menu() {
 # $7 is github password
 install_mwc() {
 
-    log "installing web client"
+    log "Installing web client"
 
     MWCVERSION="${1:-$MWCVERSION}"
     MWCREFSPEC="${2:-$MWCREFSPEC}"
