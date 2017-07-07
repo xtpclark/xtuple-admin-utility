@@ -676,7 +676,7 @@ upgrade_database() {
 
     psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
 	if [ $? -ne 0 ]; then
-        if ! (whiptail --title "Database not Web-Enabled" --yesno "Your database is not currently web-enabled. To keep it that way, do not use xTAU to update your database. Instead, get the xTuple Updater app and apply the desired update package. If you continue the update in xTAU, it will update AND web-enable the database. Continue?" 10 60) then
+        if ! (whiptail --title "Database not Web-Enabled" --yesno "The selected database is not currently web-enabled. If you continue, this process will update AND web-enable the database. If you prefer to not web-enable the database, exit xTuple Admin Utility and use the xTuple Updater app to apply the desired update package. Continue?" 10 60) then
             return 0
         fi
     fi
