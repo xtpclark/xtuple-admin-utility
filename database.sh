@@ -718,7 +718,7 @@ upgrade_database() {
                     ;;
             esac
         else
-            log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+            log "Seriously? We made it all the way to where we need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
             do_exit
         fi
 
