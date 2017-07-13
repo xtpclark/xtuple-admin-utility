@@ -3,6 +3,8 @@ WORKDIR=`pwd`
 source common.sh
 source logging.sh
 
+menu_title=Conman
+
 MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
 
 connectSSH()
@@ -96,11 +98,14 @@ getPGInfo()
 
 createPGTunnel
 
-PGCONN="psql -At -U admin -h localhost -p ${RANDPORT}"
+PGCONN="psql -At -U postgres -h localhost -p ${RANDPORT}"
 
 msgbox "Created PG Tunnel to ${CONNECTION} on Port ${RANDPORT}"
 
-TUNDATABASES=`$PGCONN postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1;"`
+
+NUMPGUSERS=`$PGCONN postgres -c "SELECT count(*) FROM pg_stat_activity;"`
+
+TUNDATABASES=`$PGCONN postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1 LIMIT 10;"`
 
 for TUNDATABASE in $TUNDATABASES; do
 DBVERS+=`$PGCONN -d $TUNDATABASE -c "SELECT ' ${TUNDATABASE}: Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion');"`
@@ -109,11 +114,7 @@ done
 TUNPGTEST=`$PGCONN postgres -c "SELECT now();"`
 RET=$?
 if [ $RET -ne 0 ]; then
-msgbox "Error connecting to PostgreSQL without auth\n
-trying
-Other Info:\n
-${REMOTEPGINFO}"
-
+msgbox "Error connecting to PostgreSQL on $CONNECTION"
 else
 msgbox "While this window is SHOWING,\nYou can connect with: \n
 Server: localhost (or ${MYIPADDR}) \n
@@ -124,8 +125,11 @@ Databases: \n
 ${TUNDATABASES}\n
 Versions:\n
 ${DBVERS}\n
+
 Other Info:\n
 ${REMOTEPGINFO}\n
+User Count: ${NUMPGUSERS}\n
+
 Remote Connection Info: \n
 Server: $REMOTEIPV4 Port: $REMOTEPGPORT User: admin Pass: None"
 
@@ -156,7 +160,7 @@ database_menu() {
     #log "Opened server menu"
 
     while true; do
-        DBM=$(whiptail --backtitle "$( menu_title )" --menu "$( menu_title Server\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
+        DBM=$(whiptail --backtitle "Viewing $CONNECTION" --menu "Actions on $CONNECTION" 20 80 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Connect SSH" \
             "2" "Inspect And Connect to PG" \
             "3" "Create Tunnel" \
@@ -177,7 +181,7 @@ database_menu() {
 	    "4")  readHbaConf ;;
 	    "5")  getDiskInfo ;;
 	    "6")  getEC2Info ;;
-            "9") selectServer ;;
+            "9")  selectServer ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi
