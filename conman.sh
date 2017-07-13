@@ -1,0 +1,210 @@
+#!/bin/bash
+WORKDIR=`pwd`
+source common.sh
+source logging.sh
+
+MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
+
+connectSSH()
+{
+ssh $CONNECTION
+RET=$?
+if [ $RET -ne 0 ]; then
+msgbox "Error Connecting to $CONNECTION"
+fi
+
+selectBox
+
+}
+
+setEC2Data()
+{
+REMOTEEC2DATA=`ssh $CONNECTION ec2metadata`
+}
+
+setPGInfo()
+{
+setEC2Data
+REMOTEIPV4=`ssh $CONNECTION ec2metadata --public-ipv4`
+#REMOTEPGINFO=`ssh $CONNECTION pg_lsclusters -h | cut -d ' ' -f3`
+REMOTEPGINFO=`ssh $CONNECTION pg_lsclusters -h | head -1`
+# 9.3 cordeck 20043 online postgres /var/lib/postgresql/9.3/cordeck custom
+REMOTEPGVER=$(echo $REMOTEPGINFO | cut -d' ' -f1)
+REMOTEPGCLUSTER=$(echo $REMOTEPGINFO | cut -d' ' -f2)
+REMOTEPGPORT=$(echo $REMOTEPGINFO | cut -d' ' -f3)
+REMOTEPGSTATE=$(echo $REMOTEPGINFO | cut -d' ' -f4)
+REMOTEPGOWNER=$(echo $REMOTEPGINFO | cut -d' ' -f5)
+REMOTEPGDATA=$(echo $REMOTEPGINFO | cut -d' ' -f6)
+REMOTEPGLOG=$(echo $REMOTEPGINFO | cut -d' ' -f7)
+REMOTEPGHOME=/etc/postgresql/${REMOTEPGVER}/${REMOTEPGCLUSTER}
+REMOTEPGHBA=${REMOTEPGHOME}/pg_hba.conf
+REMOTEPGCONF=${REMOTEPGHOME}/postgresql.conf
+}
+
+readHbaConf()
+{
+setPGInfo
+PGHBAINFO=`ssh ${CONNECTION} "sudo cat ${REMOTEPGHBA}"`
+msgbox "${PGHBAINFO}"
+
+}
+
+getEC2Info()
+{
+setEC2Data
+msgbox "$REMOTEEC2DATA"
+}
+
+getDiskInfo()
+{
+DISKSTAT=`ssh $CONNECTION df -h`
+msgbox "${DISKSTAT}"
+}
+
+createPGTunnel()
+{
+setPGInfo
+RANDPORT=`shuf -i 5500-65000 -n 1`
+SOCKETNAME=${CONNECTION}_ctrl-socket
+ssh -M -S ${SOCKETNAME} -fnNT -L${RANDPORT}:localhost:$REMOTEPGPORT $CONNECTION
+sleep 5
+}
+
+
+
+killPGTunnel()
+{
+ssh -S ${SOCKETNAME} -O exit $CONNECTION
+}
+
+createTunnel()
+{
+createPGTunnel
+msgbox "Tunnel to $CONNECTION Created on ${RANDPORT} \n
+Socket: ${WORKDIR}/${SOCKETNAME}\n
+
+Kill the socket manually with: \n
+ssh -S ${SOCKETNAME} -O exit ${CONNECTION} \n
+You can close this message box."
+
+cat << EOF >> cleansockets.sh
+ssh -S ${SOCKETNAME} -O exit ${CONNECTION}
+EOF
+
+}
+
+getPGInfo()
+{
+
+createPGTunnel
+
+PGCONN="psql -At -U admin -h localhost -p ${RANDPORT}"
+
+msgbox "Created PG Tunnel to ${CONNECTION} on Port ${RANDPORT}"
+# REMOTEPGTEST=`psql -At -U admin postgres -h ${REMOTEIPV4} -p ${REMOTEPGPORT} -c "SELECT now();"`
+# REMOTEDATABASES=`psql -At -U admin postgres -h ${REMOTEIPV4} -p ${REMOTEPGPORT} -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1;"`
+
+TUNDATABASES=`$PGCONN postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1;"`
+
+for TUNDATABASE in $TUNDATABASES; do
+DBVERS+=`$PGCONN -d $TUNDATABASE -c "SELECT ' ${TUNDATABASE}: Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion');"`
+done
+
+TUNPGTEST=`$PGCONN postgres -c "SELECT now();"`
+RET=$?
+if [ $RET -ne 0 ]; then
+msgbox "Error connecting to PostgreSQL without auth\n
+trying
+Other Info:\n
+${REMOTEPGINFO}"
+
+else
+msgbox "While this window is SHOWING,\nYou can connect with: \n
+Server: localhost (or ${MYIPADDR}) \n
+Port: ${RANDPORT}  \n
+User: admin \n
+Password: None \n
+Databases: \n
+${TUNDATABASES}\n
+Versions:\n
+${DBVERS}\n
+Other Info:\n
+${REMOTEPGINFO}\n
+Remote Connection Info: \n
+Server: $REMOTEIPV4 Port: $REMOTEPGPORT User: admin Pass: None"
+
+fi
+
+killPGTunnel
+msgbox "Killed Tunnel to ${CONNECTION}"
+
+}
+
+
+getClusterInfo()
+{
+VAL=`ssh $CONNECTION psql -U postgres -l`
+RET=$?
+if [ $RET -ne 0 ]; then
+msgbox "Error Connecting to $CONNECTION"
+else
+msgbox "PGInfo For $CONNECTION \n $VAL"
+fi
+
+}
+
+
+
+database_menu() {
+
+    #log "Opened database menu"
+
+    while true; do
+        DBM=$(whiptail --backtitle "$( menu_title )" --menu "$( menu_title Server\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
+            "1" "Connect SSH" \
+            "2" "Inspect And Connect to PG" \
+            "3" "Create Tunnel" \
+            "4" "View pg_hba.conf" \
+            "5" "View Disk Info" \
+            "6" "View EC2 Info" \
+            "9" "Return to main menu" \
+            3>&1 1>&2 2>&3)
+
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            break
+        else
+            case "$DBM" in
+            "1")  connectSSH ;;
+            "2")  getPGInfo ;;
+            "3")  createTunnel ;;
+	    "4")  readHbaConf ;;
+	    "5")  getDiskInfo ;;
+	    "6")  getEC2Info ;;
+            "9") selectBox ;;
+            *) msgbox "How did you get here?" && break ;;
+            esac
+        fi
+    done
+}
+
+
+selectBox()
+{
+
+CONNECTIONS=()
+
+while read -r line; do
+CONNECTIONS+=("$line" "$line")
+done < <(grep  '^Host ' ~/.ssh/config | grep -v '[?*]' | cut -d ' ' -f 2- | sort)
+
+  CONNECTION=$(whiptail --title "XTN Servers" --menu "Select Server to Connect To" 40 80 30 "${CONNECTIONS[@]}" --notags 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return 0
+ fi
+database_menu
+}
+
+
+selectBox
