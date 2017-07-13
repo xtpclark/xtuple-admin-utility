@@ -2,7 +2,6 @@
 WORKDIR=`pwd`
 source common.sh
 source logging.sh
-
 menu_title=Conman
 
 MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
@@ -15,7 +14,7 @@ if [ $RET -ne 0 ]; then
 msgbox "Error Connecting to $CONNECTION"
 fi
 
-selectServer
+# selectServer
 
 }
 
@@ -161,13 +160,14 @@ database_menu() {
 
     while true; do
         DBM=$(whiptail --backtitle "Viewing $CONNECTION" --menu "Actions on $CONNECTION" 20 80 10 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Connect SSH" \
-            "2" "Inspect And Connect to PG" \
-            "3" "Create Tunnel" \
-            "4" "View pg_hba.conf" \
-            "5" "View Disk Info" \
-            "6" "View EC2 Info" \
-            "9" "Return to main menu" \
+            "1" "Connect SSH to $CONNECTION" \
+            "2" "Inspect And Connect to PG on $CONNECTION" \
+            "3" "Create Tunnel to $CONNECTION" \
+            "4" "View pg_hba.conf on $CONNECTION" \
+            "5" "View Disk Info on $CONNECTION" \
+            "6" "View EC2 Info for $CONNECTION" \
+            "9" "Select another Server" \
+            "10" "Exit Program" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -182,6 +182,7 @@ database_menu() {
 	    "5")  getDiskInfo ;;
 	    "6")  getEC2Info ;;
             "9")  selectServer ;;
+            "10")  exit 0 ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi
