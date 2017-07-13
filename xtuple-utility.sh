@@ -161,6 +161,31 @@ source devenv.sh
 log "Installing pre-requisite packages..."
 install_prereqs
 
+# if we were given command line options for installation process them now
+if [ $INSTALLALL ]; then
+    log "Executing full provision..."
+
+    DBVERSION="${DBVERSION:-4.10.1}"
+    EDITION="${EDITION:-demo}"
+    DATABASE="${DATABASE:-xtuple}"
+    MWCNAME="${MWCNAME:-xtuple-web}"
+
+    NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
+    NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
+
+    log_exec install_postgresql "$POSTVER"
+    #drop_cluster $POSTVER main auto
+    provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto" auto
+    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+    restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
+    rm -f "$WORKDIR/tmp.backup{,.md5sum}"
+    install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
+    install_nginx
+    mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
+    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" true /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
+    setup_webprint
+fi
+
 # if we're supposed to build Qt, lets do that before anything else because it takes *FOREVER*
 if [ $BUILDQT ]; then
     log "Building and installing Qt5 from source"
