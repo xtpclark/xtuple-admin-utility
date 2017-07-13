@@ -13,7 +13,7 @@ if [ $RET -ne 0 ]; then
 msgbox "Error Connecting to $CONNECTION"
 fi
 
-selectBox
+selectServer
 
 }
 
@@ -26,9 +26,7 @@ setPGInfo()
 {
 setEC2Data
 REMOTEIPV4=`ssh $CONNECTION ec2metadata --public-ipv4`
-#REMOTEPGINFO=`ssh $CONNECTION pg_lsclusters -h | cut -d ' ' -f3`
 REMOTEPGINFO=`ssh $CONNECTION pg_lsclusters -h | head -1`
-# 9.3 cordeck 20043 online postgres /var/lib/postgresql/9.3/cordeck custom
 REMOTEPGVER=$(echo $REMOTEPGINFO | cut -d' ' -f1)
 REMOTEPGCLUSTER=$(echo $REMOTEPGINFO | cut -d' ' -f2)
 REMOTEPGPORT=$(echo $REMOTEPGINFO | cut -d' ' -f3)
@@ -101,8 +99,6 @@ createPGTunnel
 PGCONN="psql -At -U admin -h localhost -p ${RANDPORT}"
 
 msgbox "Created PG Tunnel to ${CONNECTION} on Port ${RANDPORT}"
-# REMOTEPGTEST=`psql -At -U admin postgres -h ${REMOTEIPV4} -p ${REMOTEPGPORT} -c "SELECT now();"`
-# REMOTEDATABASES=`psql -At -U admin postgres -h ${REMOTEIPV4} -p ${REMOTEPGPORT} -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1;"`
 
 TUNDATABASES=`$PGCONN postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres','template1','template0') ORDER BY 1;"`
 
@@ -157,7 +153,7 @@ fi
 
 database_menu() {
 
-    #log "Opened database menu"
+    #log "Opened server menu"
 
     while true; do
         DBM=$(whiptail --backtitle "$( menu_title )" --menu "$( menu_title Server\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
@@ -181,7 +177,7 @@ database_menu() {
 	    "4")  readHbaConf ;;
 	    "5")  getDiskInfo ;;
 	    "6")  getEC2Info ;;
-            "9") selectBox ;;
+            "9") selectServer ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi
@@ -189,7 +185,7 @@ database_menu() {
 }
 
 
-selectBox()
+selectServer()
 {
 
 CONNECTIONS=()
@@ -207,4 +203,4 @@ database_menu
 }
 
 
-selectBox
+selectServer
