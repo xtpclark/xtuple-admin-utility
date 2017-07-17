@@ -3,6 +3,7 @@
 DATE=`date +%Y.%m.%d-%H.%M`
 export _REV="1.0"
 export WORKDIR=`pwd`
+export MODE="manual"
 
 #set some defaults
 source config.sh
@@ -164,26 +165,29 @@ install_prereqs
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
     log "Executing full provision..."
+    MODE="auto"
 
     DBVERSION="${DBVERSION:-4.10.1}"
     EDITION="${EDITION:-demo}"
     DATABASE="${DATABASE:-xtuple}"
     MWCNAME="${MWCNAME:-xtuple-web}"
+    POSTPORT=5432
+    PGUSER=postgres
 
     NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
     NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
     log_exec install_postgresql "$POSTVER"
     #drop_cluster $POSTVER main auto
-    provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto" auto
-    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
-    restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
-    rm -f "$WORKDIR/tmp.backup{,.md5sum}"
-    install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
-    install_nginx
-    mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" true /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
-    setup_webprint
+    log_exec provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto" auto
+    log_exec download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+    log_exec restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
+    log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
+    log_exec install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
+    log_exec install_nginx
+    log_exec sudo mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
+    log_exec configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" true /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
+    log_exec setup_webprint
 fi
 
 # if we're supposed to build Qt, lets do that before anything else because it takes *FOREVER*
