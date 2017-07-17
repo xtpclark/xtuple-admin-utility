@@ -10,8 +10,8 @@ installEnv() {
 # RHEL/Centos, SuSE, Ubuntu
 
 # statisfies all of xtuple requirements and most QT Configure options.
-#PKG_CMD=`yum install -y`
-PKG_CMD="dnf install "
+PKG_CMD="yum -y install "
+#PKG_CMD="dnf install "
 
 # TODO: Find which linux we're running on and their proper way to
 # install packages. lsb_release, /etc/redhat-release, yum, apt, zypper
