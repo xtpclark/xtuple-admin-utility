@@ -10,7 +10,8 @@ installEnv() {
 # RHEL/Centos, SuSE, Ubuntu
 
 # statisfies all of xtuple requirements and most QT Configure options.
-PKG_CMD=`yum install -y`
+PKG_CMD="yum -y install "
+#PKG_CMD="dnf install "
 
 # TODO: Find which linux we're running on and their proper way to
 # install packages. lsb_release, /etc/redhat-release, yum, apt, zypper
@@ -80,7 +81,7 @@ bash -c "echo export LD_LIBRARY_PATH=/usr/local/Qt-5.5.1/lib:$LD_LIBRARY_PATH >>
 }
 
 build_xtuple() {
-    
+
 # TODO: Set a workdate on each run or a git commit?
 WORKDATE=`date +'%m%d%Y-%s'`
 
@@ -152,7 +153,7 @@ QTLIBS="libQt5CLucene.so.5 libQt5Core.so.5 libQt5DBus.so.5 \
     libQt5WebSockets.so.5 libQt5Widgets.so.5 libQt5XcbQpa.so.5 \
     libQt5XmlPatterns.so.5 libQt5Xml.so.5 "
 
-for QTLIB in ${QTLIBS"; do
+for QTLIB in ${QTLIBS}; do
 cp ${QTLIBPATH}/${QTLIB} ${XTWORKDIR}/qt-client
 done;
 
