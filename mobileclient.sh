@@ -53,66 +53,76 @@ install_mwc_menu() {
 
     log "Chose database $DATABASE"
 
-    TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
-    HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
+    if [ -z "$MWCVERSION" ] && [ "$MODE" = "manual" ]; then
+        TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
+        HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
 
-    MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
-        $(paste -d '\n' \
-        <(seq 0 9) \
-        <(echo $TAGVERSIONS | tr ' ' '\n')) \
-        $(paste -d '\n' \
-        <(seq 10 14) \
-        <(echo $HEADVERSIONS | tr ' ' '\n')) \
-        "15" "Return to main menu" \
-        3>&1 1>&2 2>&3)
+        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 7 --cancel-button "Exit" --ok-button "Select" \
+            $(paste -d '\n' \
+            <(seq 0 9) \
+            <(echo $TAGVERSIONS | tr ' ' '\n')) \
+            $(paste -d '\n' \
+            <(seq 10 14) \
+            <(echo $HEADVERSIONS | tr ' ' '\n')) \
+            "15" "Return to main menu" \
+            3>&1 1>&2 2>&3)
 
-    RET=$?
+        RET=$?
 
-    if [ $RET -eq 0 ]; then
-        if [ $MENUVER -eq 16 ]; then
-            return 0;
-        elif [ $MENUVER -lt 10 ]; then
-            read -a tagversionarray <<< $TAGVERSIONS
-            MWCVERSION=${tagversionarray[$MENUVER]}
-            MWCREFSPEC=v$MWCVERSION
+        if [ $RET -eq 0 ]; then
+            if [ $MENUVER -eq 16 ]; then
+                return 0;
+            elif [ $MENUVER -lt 10 ]; then
+                read -a tagversionarray <<< $TAGVERSIONS
+                MWCVERSION=${tagversionarray[$MENUVER]}
+                MWCREFSPEC=v$MWCVERSION
+            else
+                read -a headversionarray <<< $HEADVERSIONS
+                MWCVERSION=${headversionarray[(($MENUVER-10))]}
+                MWCREFSPEC=$MWCVERSION
+            fi
         else
-            read -a headversionarray <<< $HEADVERSIONS
-            MWCVERSION=${headversionarray[(($MENUVER-10))]}
-            MWCREFSPEC=$MWCVERSION
+            return $RET
         fi
-    else
-        return $RET
+    elif [ -z "$MWCVERSION" ]; then
+        return 127
     fi
 
     log "Chose version $MWCVERSION"
 
-    if [ -z "$MWCNAME" ]; then
+    if [ -z "$MWCNAME" ] && [ "$MODE" = "manual" ]; then
         MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\nThis name will be used in several ways:\n- naming the service script in /etc/systemd/system, /etc/init, or /etc/init.d\n- naming the directory for the xTuple web-enabling source code - /opt/xtuple/$(MWCVERSION)/" 15 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$MWCNAME" ]; then
+        return 127
     fi
 
     log "Chose mobile name $MWCNAME"
 
-    if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
-        log "Installing the commercial extensions"
-        PRIVATEEXT=true
-        GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
+    if [ -z "$PRIVATEEXT" ] && [ "$MODE" = "manual" ]; then
+        if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
+            log "Installing the commercial extensions"
+            PRIVATEEXT=true
+            GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -ne 0 ]; then
+                return $RET
+            fi
 
-        GITHUBPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
+            GITHUBPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
+            RET=$?
+            if [ $RET -ne 0 ]; then
+                return $RET
+            fi
+        else
+            log "Not installing the commercial extensions"
+            PRIVATEEXT=false
         fi
-    else
-        log "Not installing the commercial extensions"
-        PRIVATEEXT=false
+    elif [ -z "$PRIVATEEXT" ]; then
+        return 127
     fi
 
     log_exec install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
@@ -211,7 +221,7 @@ install_mwc() {
     log_exec sudo chmod 660 /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/encryption_key.txt
     log_exec sudo chmod 660 /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt
 
-    log_exec sudo openssl genrsa -des3 -out /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.key -passout pass:xtuple 1024
+    log_exec sudo openssl genrsa -des3 -out /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.key -passout pass:xtuple 4096
     log_exec sudo openssl rsa -in /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.key -passin pass:xtuple -out /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/key.pem -passout pass:xtuple
     log_exec sudo openssl req -batch -new -key /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/key.pem -out /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.csr -subj '/CN='$(hostname)
     log_exec sudo openssl x509 -req -days 365 -in /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.csr -signkey /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/key.pem -out /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt

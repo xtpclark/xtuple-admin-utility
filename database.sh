@@ -37,71 +37,32 @@ database_menu() {
     done
 }
 
-# $1 is mode, auto (no prompt for demo location, delete when done)
+# auto, (no prompt for demo location, delete when done)
 # manual, prompt for location, don't delete
-# $2 where to save database to
-# $3 is version to grab
-# $4 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
+# $1 where to save database to
+# $2 is version to grab
+# $3 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
+# $4 is the database name to restore to
 download_database() {
 
-    MODE="${1:-$MODE}"
-    MODE="${MODE:-manual}"
-
-    DBVERSION="${3:-$DBVERSION}"
-
-    DBTYPE="${4:-$DBTYPE}"
-    DBTYPE="${DBTYPE:-demo}"
-
+    DBVERSION="$2"
     if [ -z "$DBVERSION" ]; then
-        MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Version" 15 60 7 --cancel-button "Cancel" --ok-button "Select" \
-                "1" "PostBooks 4.9.5 Demo" \
-                "2" "PostBooks 4.9.5 Empty" \
-                "3" "PostBooks 4.9.5 QuickStart" \
-                "4" "PostBooks 4.10.0 Demo" \
-                "5" "PostBooks 4.10.0 Empty" \
-                "6" "PostBooks 4.10.0 QuickStart" \
-                "7" "Return to database menu" \
-                3>&1 1>&2 2>&3)
-
-        RET=$?
-
-        if [ $RET -ne 0 ]; then
-            return $RET
-        else
-            case "$MENUVER" in
-            "1") DBVERSION=4.9.5
-                   DBTYPE="demo"
-                   ;;
-            "2") DBVERSION=4.9.5
-                   DBTYPE="empty"
-                   ;;
-            "3") DBVERSION=4.9.5
-                   DBTYPE="quickstart"
-                   ;;
-            "4") DBVERSION=4.10.0
-                   DBTYPE="demo"
-                   ;;
-            "5") DBVERSION=4.10.0
-                   DBTYPE="empty"
-                   ;;
-            "6") DBVERSION=4.10.0
-                   DBTYPE="quickstart"
-                   ;;
-            "7") return 0 ;;
-            *) msgbox "How did you get here?" && return 1 ;;
-            esac || return 1
-        fi
-	   DATABASE=${DBTYPE}${DBVERSION//./}
+        msgbox "Database version not specified."
+        return 1
     fi
 
-    if [ -z "$2" ]; then
+    DBTYPE="${3:-$DBTYPE}"
+    DBTYPE="${DBTYPE:-demo}"
+
+    DEMODEST="$1"
+    if [ -z "$DEMODEST" ] && [ "$MODE" = "manual" ]; then
         DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
-    else
-        DEMODEST=$2
+    elif [ -z "$DEMODEST" ]; then
+        return 127
     fi
 
     DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
@@ -123,35 +84,11 @@ download_database() {
         return 1
     fi
 
-    # where is the auto option
-    if [ $MODE = "manual" ]; then
-        if (whiptail --title "Download Successful" --yesno "Download complete. Would you like to deploy this database now?" 10 60) then
-            DEST=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return $RET
-            fi
-
-            log "Creating database $DEST from file $DEMODEST"
-            log_exec restore_database $DEMODEST $DEST
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                msgbox "Something has gone wrong. Check log and correct any issues."
-                return 1
-            else
-                msgbox "Database $DEST successfully restored from file $DEMODEST"
-                return 0
-            fi
-        else
-            log "Exiting without restoring database."
-            return 0
-        fi
-    fi
-
 }
 
-#  $1 is database file to backup to
-#  $2 is name of database (if not provided, prompt)
+# Copies database $1 to $2 by backing up $1 and restoring to $2
+#  $1 is database to be copied
+#  $2 is name of the new database
 copy_database() {
 
     check_database_info
@@ -168,30 +105,41 @@ copy_database() {
     fi
 
 
-    OLDDATABASE="${1:-$OLDDATABASE}"
-	if [ -z "$OLDDATABASE" ]; then
+    OLDDATABASE="$1"
+	if [ -z "$OLDDATABASE" ] && [ "$MODE" = "manual" ]; then
         OLDDATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to copy" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$OLDDATABASE" ]; then
+        return 127
 	fi
 
-    NEWDATABASE="${2:-$NEWDATABASE}"
-    if [ -z "$NEWDATABASE" ]; then
+    NEWDATABASE="$2"
+    if [ -z "$NEWDATABASE" ] && [ "$MODE" = "manual" ]; then
         NEWDATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$NEWDATABASE" ]; then
+        return 127
     fi
 
     log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
 
     backup_database "$OLDDATABASE-copy.backup" "$OLDDATABASE"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Backup of $OLDDATABASE failed."
+        return $RET
+    fi
+
     restore_database "$BACKUPDIR/$OLDDATABASE-copy.backup" "$NEWDATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
+        msgbox "Restore of $NEWDATABASE failed."
         return $RET
     else
         msgbox "Database $OLDDATABASE successfully copied up to $NEWDATABASE"
@@ -218,6 +166,9 @@ backup_database() {
             return 0
         fi
 
+        if [ "$MODE" = "auto" ]; then
+            return 127
+        fi
         DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to back up" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -225,14 +176,15 @@ backup_database() {
         fi
     fi
 
-    if [ -z "$1" ]; then
+    DEST="$1"
+    if [ -z "$DEST" ] && [ "$MODE" = "manual" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Full file name to save backup to" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
-    else
-        DEST=$1
+    elif [ -z "$DEST" ]; then
+        return 127
     fi
 
     log "Backing up database "$DATABASE" to file "$DEST"."
@@ -250,7 +202,10 @@ backup_database() {
 
 # Either download and restore a new database
 # or restore a local file
+# This can not be run in automatic mode
 create_database() {
+
+    [ "$MODE" = "auto" ] && return 127
 
     DOWNLOADABLEDBS=()
     while read -r line ; do
@@ -259,23 +214,25 @@ create_database() {
     EXISTINGDBS=()
     while read -r line ; do
         EXISTINGDBS+=("$line" "$line")
-    done < <( ls -t "${DATABASEDIR}*.backup" | tr ' ' '_' )
+    done < <( ls -t "${DATABASEDIR}/*.backup" | tr ' ' '_' )
     BACKUPDBS=()
     while read -r line ; do
 	    BACKUPDBS+=("$line" "$line")
     done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
+    CUSTOMDB=("Enter File Name..." "Enter File Name...")
 
     CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
         ${DOWNLOADABLEDBS[@]} \
         ${EXISTINGDBS[@]} \
         ${BACKUPDBS[@]} \
+        ${CUSTOMDB[@]} \
         3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return $RET
     fi
-	
-	echo $CHOICE | grep '^Download'
+
+    echo $CHOICE | grep '^Download'
 	if [ $? -eq 0 ]; then
 	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
         EDITIONS=()
@@ -291,18 +248,29 @@ create_database() {
         fi
 
         EDITION=$(echo $CHOICE | cut -f1 -d'.')
-	    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+	    download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
         restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup"
 	    return $?
 	fi
-	
+
 	echo $CHOICE | grep '^Backup db'
 	if [ $? -eq 0 ]; then
 	    DATABASE=$(echo $CHOICE | sed 's/Backup db //')
 	    restore_database "$BACKUPDIR/$DATABASE"
         return $?
 	fi
-	
+
+    if [ "$CHOICE" = "Enter File Name..." ]; then
+        DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Full Database Pathname" 8 60 `pwd` 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+
+        restore_database "$DATABASE"
+        return $?
+    fi
+
 	restore_database "$DATABASEDIR/$CHOICE"
 	return $?
 
@@ -324,12 +292,14 @@ restore_database() {
     fi
 
     DATABASE="$2"
-    if [ -z "$DATABASE" ]; then
+    if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 "$CH" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$DATABASE" ]; then
+        return 127
     fi
 
     log "Creating database $DATABASE."
@@ -344,7 +314,6 @@ restore_database() {
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "$(cat restore_output.log)"
-            log "$(cat restore_output.log)"
             return $RET
         else
             return 0
@@ -352,7 +321,11 @@ restore_database() {
     fi
 }
 
+# list the existing databases on the current configured cluster
+# this can not be run in automatic mode
 list_databases() {
+
+    [ "$MODE" = "auto" ] && return 127
 
     get_database_list
 
@@ -381,24 +354,29 @@ drop_database() {
         return 0
     fi
 
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    fi
-
-    if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
-        backup_database $DATABASE
-        log_exec dropdb -U $PGUSER -h $PGHOST -p $POSTPORT "$DATABASE"
+    DATABASE="$1"
+    if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
             return $RET
-        else
-            msgbox "Dropping database $DATABASE successful"
         fi
-    else
-        return 0
+
+        if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
+            backup_database "$BACKUPDIR/$DATABASE.$(date +%Y.%m.%d-%H:%M).backup" "$DATABASE"
+            log_exec dropdb -U $PGUSER -h $PGHOST -p $POSTPORT "$DATABASE"
+            RET=$?
+            if [ $RET -ne 0 ]; then
+                msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
+                return $RET
+            else
+                msgbox "Dropping database $DATABASE successful"
+            fi
+        else
+            return 0
+        fi
+    elif [ -z "$DATABASE" ]; then
+        return 127
     fi
 
 }
@@ -421,22 +399,26 @@ rename_database() {
         return 0
     fi
 
-    SOURCE="${1:-$SOURCE}"
-    if [ -z "$SOURCE" ]; then
+    SOURCE="$1"
+    if [ -z "$SOURCE" ] && [ "MODE" = "manual"]; then
         SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$SOURCE" ]; then
+        return 127
     fi
 
-    DEST="${2:-$DEST}"
-    if [ -z "$DEST" ]; then
+    DEST="$2"
+    if [ -z "$DEST" ] && [ "MODE" = "manual"]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+    elif [ -z "$DEST" ]; then
+        return 127
     fi
 
     log_exec psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
@@ -450,7 +432,11 @@ rename_database() {
 
 }
 
+# display a menu of databases on the currently configured cluster
+# can not be run in automatic mode
 inspect_database_menu() {
+
+    [ "MODE" = "auto"] && return 127
 
     check_database_info
     RET=$?
@@ -475,6 +461,8 @@ inspect_database_menu() {
 
 }
 
+# Get a list of databases on the currently configured cluster
+# into the DATABASES array
 get_database_list() {
 
     check_database_info
@@ -484,6 +472,9 @@ get_database_list() {
         DATABASES+=("$line" "$line")
     done < <( psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
 }
+
+## remove, kill, and restore are used to stop new connections
+##   to a database in order to allow dropping
 
 # $1 is database name
 remove_connect_priv() {
@@ -521,6 +512,7 @@ restore_connect_priv() {
     log_exec psql -At -U postgres -h $PGHOST -p $POSTPORT -d postgres -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
 
+# Display important metrics of an xTuple database in the current configured cluster
 # $1 is database name to inspect
 inspect_database() {
 
@@ -536,7 +528,12 @@ inspect_database() {
 
 }
 
+# select a cluster that the functions in this file will use
+# this can not be run in automatic mode, set the variables in script
 set_database_info_select() {
+
+    [ "$MODE" = "auto" ] && return 127
+
     CLUSTERS=()
 
     while read -r line; do 
@@ -579,7 +576,12 @@ set_database_info_select() {
     fi
 }
 
+
+# set the current cluster by entering the parameters manually
+# this can not be run in automatic mode
 set_database_info_manual() {
+
+    [ "$MODE" = "auto" ] && return 127
 
     if [ -z "$PGHOST" ]; then
         PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
@@ -631,6 +633,7 @@ clear_database_info() {
     unset PGUSER
 }
 
+# Check that there is a currently selected cluster
 check_database_info() {
     if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
@@ -652,6 +655,7 @@ check_database_info() {
     fi
 }
 
+# Upgrade an existing database to a Web-Enabled
 # $1 is database
 upgrade_database() {
 
@@ -668,10 +672,15 @@ upgrade_database() {
         return 0
     fi
 
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
+    DATABASE="$1"
+    if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return 0
+        fi
+    elif [ -z "$DATABASE" ]; then
+        return 127
     fi
 
     psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
@@ -679,6 +688,8 @@ upgrade_database() {
         if ! (whiptail --title "Database not Web-Enabled" --yesno "The selected database is not currently web-enabled. If you continue, this process will update AND web-enable the database. If you prefer to not web-enable the database, exit xTuple Admin Utility and use the xTuple Updater app to apply the desired update package. Continue?" 10 60) then
             return 0
         fi
+    else
+        return 127
     fi
 
     # make sure plv8 is in
@@ -723,7 +734,12 @@ upgrade_database() {
         fi
 
         # get the listening port for the node datasource
-        MWCPORT=$(grep -Po '(?<= port: ")8[0-9]{3}' /etc/xtuple/$MWCVERSION/$MWCNAME/config.js)
+        MWCPORT=$(grep -Po '(?<= port: )8[0-9]{3}' /etc/xtuple/$MWCVERSION/$MWCNAME/config.js)
+        if [ -z "$MWCPORT" ] && [ "$MODE" = "manual" ]; then
+            MWCPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Web Client Port Number" 8 60 3>&1 1>&2 2>&3)
+        elif [ -z "$MWCPORT" ]; then
+            return 127
+        fi
         NGINX_PORT=$MWCPORT
         
         log "Removing files in /etc/xtuple"

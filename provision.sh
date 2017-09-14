@@ -33,6 +33,7 @@ provision_menu() {
         else
             log_exec provision_cluster $POSTVER
         fi
+        nginx_prompt
         configure_nginx
         log_exec create_database
         log_exec install_mwc_menu
