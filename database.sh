@@ -14,7 +14,8 @@ database_menu() {
 			"6" "Create Database" \
             "7" "Drop Database" \
             "8" "Update/Web-enable Database" \
-            "9" "Return to main menu" \
+            "9" "Setup Automated Backup" \
+            "10" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -30,7 +31,8 @@ database_menu() {
 			"6") create_database ;;
             "7") drop_database ;;
             "8") log_exec upgrade_database ;;
-            "9") main_menu ;;
+            "9") source xtnbackup2/xtnbackup.sh ;;
+            "10") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi

@@ -12,6 +12,7 @@ main_menu() {
             "3" "Database Maintenance" \
             "4" "Development Environment Setup" \
             "5" "SSH Connection Manager" \
+            "6" "Generate Github Token" \
             3>&1 1>&2 2>&3)
         
         RET=$?
@@ -25,6 +26,7 @@ main_menu() {
             "3") database_menu ;;
             "4") dev_menu ;;
             "5") selectServer;;
+            "6") generate_github_token;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac
         fi
