@@ -221,13 +221,13 @@ create_database() {
     while read -r line ; do
 	    BACKUPDBS+=("$line" "$line")
     done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
-    CUSTOMDB=("Enter File Name..." "Enter File Name...")
+    CUSTOMDB=("EnterFileName..." "EnterFileName...")
 
     CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
-        ${DOWNLOADABLEDBS[@]} \
         ${EXISTINGDBS[@]} \
         ${BACKUPDBS[@]} \
         ${CUSTOMDB[@]} \
+        ${DOWNLOADABLEDBS[@]} \
         3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -262,7 +262,7 @@ create_database() {
         return $?
 	fi
 
-    if [ "$CHOICE" = "Enter File Name..." ]; then
+    if [ "$CHOICE" = "EnterFileName..." ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Full Database Pathname" 8 60 `pwd` 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
