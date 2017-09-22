@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DATE=`date +%Y.%m.%d-%H.%M`
+DATE=`date +%Y.%m.%d-%H:%M`
 export _REV="1.0"
 export WORKDIR=`pwd`
 export MODE="manual"
@@ -18,7 +18,7 @@ mkdir -p $BACKUPDIR
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
 # d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
+while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
@@ -26,6 +26,9 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
     d)
         DATABASE=$OPTARG
         log "Database name set to $DATABASE via command line argument -d"
+        ;;
+    m)
+        MODE="auto"
         ;;
     p)
         POSTVER=$OPTARG
@@ -179,8 +182,8 @@ if [ $INSTALLALL ]; then
 
     install_postgresql "$POSTVER"
     #drop_cluster $POSTVER main auto
-    provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto" auto
-    download_database "auto" "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+    provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto"
+    download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
     restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
     log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
     install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"

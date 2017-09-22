@@ -152,11 +152,10 @@ list_clusters() {
 # $3 is port
 # $4 is locale
 # $5 if exists, start at boot
-# $6 is mode (auto/manual) manual if not specified
 provision_cluster() {
 
     POSTVER="${1:-$POSTVER}"
-    if [ -z "$POSTVER" ]; then
+    if [ -z "$POSTVER" ] && [ "$MODE" = "manual" ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$POSTVER" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -165,7 +164,7 @@ provision_cluster() {
     fi
 
     POSTNAME="$2"
-    if [ -z "$POSTNAME" ]; then
+    if [ -z "$POSTNAME" ] && [ "$MODE" = "manual" ]; then
         POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\nExisting Clusters:\n$(sudo pg_lsclusters -h | awk '{print $2}')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -174,7 +173,7 @@ provision_cluster() {
     fi
 
     POSTPORT="$3"
-    if [ -z "$POSTPORT" ]; then
+    if [ -z "$POSTPORT" ] && [ "$MODE" = "manual" ]; then
         # choose a free port automatically someday
         new_postgres_port
         POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port" 8 60 "$POSTPORT" 3>&1 1>&2 2>&3)
@@ -185,7 +184,7 @@ provision_cluster() {
     fi
 
     POSTLOCALE="${4:-$POSTLOCALE}"
-    if [ -z "$POSTLOCALE" ]; then
+    if [ -z "$POSTLOCALE" ] && [ "$MODE" = "manual" ]; then
         POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -194,7 +193,7 @@ provision_cluster() {
     fi
 
     POSTSTART="${5:-$POSTSTART}"
-    if [ -z "$POSTSTART" ]; then
+    if [ -z "$POSTSTART" ] && [ "$MODE" = "manual" ]; then
         if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
             POSTSTART="--start-conf=auto"
         else
@@ -214,19 +213,12 @@ provision_cluster() {
         return 1
     fi
 
-    MODE="${6:-$MODE}"
-    MODE="${MODE:-manual}"
-
     log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
 ### PERRY
     log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
-        else
-            log "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
-        fi
+        msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     fi
 
@@ -290,11 +282,7 @@ provision_cluster() {
         msgbox "Creation of database cluster $POSTNAME using version $POSTVER was successful. You will now be asked to set a postgresql password"
         reset_sudo postgres
         if [ $RET -ne 0 ]; then
-            if [ $MODE = "manual" ]; then
-                msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
-            else
-                log "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
-            fi
+            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
             do_exit
         fi
     else
@@ -314,11 +302,7 @@ provision_cluster() {
     VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
     CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
     if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        if [ -z "$1" ] || [ "$1" = "manual" ]; then
-            msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        else
-            log "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        fi
+        msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
         do_exit
     fi
 
@@ -326,22 +310,14 @@ provision_cluster() {
     psql -q -h $PGHOST -U postgres -d postgres -p $POSTPORT -f $WORKDIR/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
-        if [ $MODE = "manual" ]; then
-            msgbox "Error deploying init.sql. Check for errors and try again"
-        else
-            log "Error deploying init.sql. Check for errors and try again"
-        fi
+        msgbox "Error deploying init.sql. Check for errors and try again"
         do_exit
     fi
 
     log "Removing downloaded init scripts..."
     rm $WORKDIR/init.sql{,.md5sum}
 
-    if [ $MODE = "manual" ]; then
-        msgbox "Initializing cluster successful."
-    else
-        log "Initializing cluster successful."
-    fi
+    msgbox "Initializing cluster successful."
 
     return 0
 

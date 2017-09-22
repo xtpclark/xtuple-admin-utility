@@ -37,126 +37,83 @@ install_nginx() {
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Nginx failed to install."
-        return $RET
     fi
+    return $RET
 }
 
-clear_nginx_settings() {
-    unset NGINX_HOSTNAME
-    unset NGINX_DOMAIN
-    unset NGINX_SITE
-    unset NGINX_CERT
-    unset NGINX_KEY
-    unset NGINX_PORT
-}
-
+# Confirm or set all nginx related variables interactively
+# Run this before configure_nginx if interactive
+# Set all variables if headless/automatic
 nginx_prompt() {
 
-type nginx >/dev/null 2>&1 || { echo >&2 "Installing nginx."; install_nginx; }
+type nginx >/dev/null 2>&1 || { echo >&2 "nginx not installed, installing"; install_nginx; }
 
-
-    if [ -z "$NGINX_HOSTNAME" ]; then
-        NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_HOSTNAME
-        fi
+    if [ "$MODE" = "auto" ]; then
+        return 127
     fi
 
-    if [ -z "$NGINX_DOMAIN" ]; then
-        NGINX_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name (example.com)" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_DOMAIN
-        fi
-    fi
-
-    if [ -z "$NGINX_SITE" ]; then
-        NGINX_SITE=$(whiptail --backtitle "$( window_title )" --inputbox "Site name. This will be the name of the config file." 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_SITE
-        fi
-    fi
-
-    if [ -z "$GEN_SSL" ]; then
-        if (whiptail --title "Generate SSL key" --yesno "Would you like to generate a self signed SSL certificate and key?" 10 60) then
-            GEN_SSL=true
-	   else
-	       GEN_SSL=false
-	   fi
-	   export GEN_SSL
-    fi
-
-    if [ -z "$NGINX_CERT" ]; then
-        NGINX_CERT=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Certificate file path" 8 60 "/etc/xtuple/ssl/server.crt" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_CERT
-        fi
-    fi
-
-    if [ -z "$NGINX_KEY" ]; then
-        NGINX_KEY=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Key file path" 8 60 "/etc/xtuple/ssl/server.key" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_KEY
-        fi
-    fi
-
-    if [ -z "$NGINX_PORT" ]; then
-        new_nginx_port
-        NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter port number.\n\nUsed Ports:\n$(head -2 /etc/nginx/sites-available/* | grep -Po '8[0-9]{3}')" 18 60 "$NGINX_PORT" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            clear_nginx_settings
-            return $RET
-        else
-            export NGINX_PORT
-        fi
-    fi
-}
-
-# $1 is hostname for nginx
-# $2 is domain name
-# $3 is the site name to use
-# $4 is to generate an ssl key
-# $5 specifies a cert file
-# $6 specifies a key file
-# $7 is the port to use
-configure_nginx()
-{
-    log "Configuring nginx"
-
-    NGINX_HOSTNAME="${1:-$NGINX_HOSTNAME}"
-    NGINX_DOMAIN="${2:-$NGINX_DOMAIN}"
-    NGINX_SITE="${3:-$NGINX_SITE}"
-    NGINX_CERT="${5:-$NGINX_CERT}"
-    NGINX_KEY="${6:-$NGINX_KEY}"
-    NGINX_PORT="${7:-$NGINX_PORT}"
-
-    nginx_prompt
+    NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 "$NGINX_HOSTNAME" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return $RET
     fi
 
+    NGINX_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name (example.com)" 8 60 "$NGINX_DOMAIN" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    NGINX_SITE=$(whiptail --backtitle "$( window_title )" --inputbox "Site name. This will be the name of the config file." 8 60 "$NGINX_SITE" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    if (whiptail --title "Generate SSL key" --yesno "Would you like to generate a self signed SSL certificate and key?" 10 60) then
+        GEN_SSL=true
+    else
+        GEN_SSL=false
+    fi
+
+    NGINX_CERT=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Certificate file path" 8 60 "/etc/xtuple/ssl/$NGINX_SITE.crt" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    NGINX_KEY=$(whiptail --backtitle "$( window_title )" --inputbox "SSL Key file path" 8 60 "/etc/xtuple/ssl/$NGINX_SITE.key" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+
+    new_nginx_port
+    NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter port number.\n\nUsed Ports:\n$(head -2 /etc/nginx/sites-available/* | grep -Po '8[0-9]{3}')" 18 60 "$NGINX_PORT" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
+}
+
+# run nginx_prompt first if interactive
+#  the return value should be 0 before continuing
+# set variables first if headless/automatic
+# variables:
+#   NGINX_HOSTNAME  - subdomain that points to the specific web client
+#   NGINX_DOMAIN    - domain name of the server
+#   NGINX_SITE      - nginx site name which is also the web client instance name
+#   NGINX_CERT      - website certificate which should be per site and a separate file in /etc/xtuple/ssl
+#   NGINX_KEY       - website key with the same requirements
+#   NGINX_PORT      - nginx port to listen to
+configure_nginx()
+{
+    log "Configuring nginx"
+
+    log "Removing nginx site default"
     [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
+
+    log "Creating site file"
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
     sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_SITE
     RET=$?
@@ -165,41 +122,30 @@ configure_nginx()
         return $RET
     fi
 
+    log "Enabling site"
     sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
 
-    NGINX_CERT="${4:-$NGINX_CERT}"
-    NGINX_CERT="${NGINX_CERT:-true}"
+    sudo mkdir -p /etc/xtuple/ssl
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "SSL DIR creation failed."
+        return $RET
+    fi
 
-#    if [[ -z ${NGINX_CERT} ]]; then
-        # sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
-        sudo mkdir -p /etc/xtuple/ssl
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "SSL DIR creation failed."
-        fi
-
-
-        sudo openssl req -x509 -newkey rsa:2048 -subj /CN=${NGINX_HOSTNAME}.${NGINX_DOMAIN} -days 365 -nodes -keyout $NGINX_KEY -out $NGINX_CERT
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "SSL Certificate creation failed."
-            return $RET
-        fi
-#    fi
+    # LetsEncrypt will go around here
+    log "Generating certificate"
+    sudo openssl req -x509 -newkey rsa:4096 -subj /CN=${NGINX_HOSTNAME}.${NGINX_DOMAIN} -days 365 -nodes -keyout $NGINX_KEY -out $NGINX_CERT
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "SSL Certificate creation failed."
+        return $RET
+    fi
 
     sudo sed -i -e 's#SERVER_CRT#'$NGINX_CERT'#g' -e 's#SERVER_KEY#'$NGINX_KEY'#g' /etc/nginx/sites-available/$NGINX_SITE
     sudo sed -i 's#MWCPORT#'$NGINX_PORT'#g' /etc/nginx/sites-available/${NGINX_SITE}
 
-#   -s signal     : send signal to a master process: stop, quit, reopen, reload
-#    sudo nginx -s start
-
-#Add check for systemd
-
-    sudo service nginx stop
-    sudo service nginx start
-#sudo systemctl stop nginx.service
-#sudo systemctl start nginx.service
-
+    log "Reloading nginx configuration"
+    sudo nginx -s reload
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Reloading nginx configuration failed. Check the log file for errors."
