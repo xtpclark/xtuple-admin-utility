@@ -160,6 +160,8 @@ source nginx.sh
 source mobileclient.sh
 source openrpt.sh
 source devenv.sh
+source conman.sh
+source tokenmanagement.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."

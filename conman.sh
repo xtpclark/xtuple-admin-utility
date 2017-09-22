@@ -1,7 +1,7 @@
 #!/bin/bash
 WORKDIR=`pwd`
-source common.sh
-source logging.sh
+#source common.sh
+#source logging.sh
 menu_title=Conman
 
 MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
@@ -154,7 +154,7 @@ fi
 
 
 
-database_menu() {
+conman_menu() {
 
     #log "Opened server menu"
 
@@ -199,13 +199,13 @@ while read -r line; do
 CONNECTIONS+=("$line" "$line")
 done < <(grep  '^Host ' ~/.ssh/config | grep -v '[?*]' | cut -d ' ' -f 2- | sort)
 
-  CONNECTION=$(whiptail --title "XTN Servers" --menu "Select Server to Connect To" 40 80 30 "${CONNECTIONS[@]}" --notags 3>&1 1>&2 2>&3)
+  CONNECTION=$(whiptail --title "XTN Servers" --menu "Reading ${HOME}/.ssh/config . Select server to connect to" 40 80 30 "${CONNECTIONS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return 0
  fi
-database_menu
+conman_menu
 }
 
 
-selectServer
+# selectServer
