@@ -48,8 +48,10 @@ SRCDIR=/usr/local/src
 
 cd $SRCDIR
 
-wget https://download.qt.io/archive/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
-tar zxvf qt-everywhere-opensource-src-5.5.1.tar.gz
+# wget https://download.qt.io/archive/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+wget https://download.qt.io/archive/qt/5.7/5.7.1/single/qt-everywhere-opensource-src-7.7.1.tar.gz
+tar zxvf qt-everywhere-opensource-src-5.7.1.tar.gz
+
 
 QTSRCDIR=${SRCDIR}/qt-everywhere-opensource-src-5.5.1
 
