@@ -12,7 +12,7 @@ PGNAME=
 PGPORT=
 
 # set these
-POSTVER=9.3
+POSTVER=9.6
 PGHOST=localhost
 
 # postgres user, required for all postgres/database actions
