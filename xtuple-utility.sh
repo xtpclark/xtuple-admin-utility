@@ -14,6 +14,9 @@ source logging.sh
 mkdir -p $DATABASEDIR
 mkdir -p $BACKUPDIR
 
+# sets up sudoer.d
+setup_sudo
+
 # process command line arguments
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
@@ -165,7 +168,13 @@ source tokenmanagement.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
-install_prereqs
+if [[ ! -f .already_ran_update ]]; then
+  install_prereqs
+  touch .already_ran_update
+else
+  log ".already_ran_update exists - skipping."
+  log "Remove the file if you want apt-get to update the system"
+fi
 
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then

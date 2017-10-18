@@ -175,6 +175,25 @@ test_connection() {
         return 1
     fi
 }
+
+setup_sudo() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+if [[ ! -f /etc/sudoers.d/90-xtau-users ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/90-xtau-users; then
+echo "Setting up user: $DEPLOYER_NAME for sudo"
+echo "You might be prompted for your password."
+(echo '
+# User rules for xtau
+
+'${DEPLOYER_NAME}' ALL=(ALL) NOPASSWD:ALL'
+)| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
+
+else
+echo "User: $DEPLOYER_NAME already setup in sudoers.d"
+fi
+}
+
+
 # define some colors if the tty supports it
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
@@ -187,3 +206,5 @@ if [[ -t 1 && ! $COLOR = "NO" ]]; then
   ENDCOLOR='\e[0m' 
   S='\\'
 fi
+
+

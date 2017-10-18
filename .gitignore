@@ -2,3 +2,6 @@
 *.backup
 *.md5sum
 cleansockets.sh
+.already_ran_update
+phpunit.phar.1
+

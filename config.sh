@@ -42,6 +42,20 @@ PRIVATEEXT=
 GITHUBNAME=
 GITHUBPASS=
 
+# Variables for xdruple-server
+if [[ ! -d $(pwd)/xdruple-server ]]; then
+git submodule update --init --recursive
+fi
+
+if [[ -d $(pwd)/xdruple-server ]]; then
+export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
+export CONFIG_DIR=$(pwd)/xdruple-server/config
+fi
+
+export TYPE='server'
+export DEPLOYER_NAME=`whoami`
+export TIMEZONE=$(</etc/timezone)
+
 # get rid of these
 # WORKDIR
 # XTDIR

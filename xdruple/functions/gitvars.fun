@@ -3,6 +3,27 @@
 
 #if type "composer" > /dev/null; then
 # source ../logging.sh
+install_composer() {
+
+if type -p "composer" > /dev/null; then
+
+   echo "composer found"
+
+else 
+   echo "Need to install composer and dependencies"
+
+source ${SCRIPTS_DIR}/php.sh ${TYPE} ${TIMEZONE} ${DEPLOYER_NAME} ${GITHUB_TOKEN} ${CONFIG_DIR}
+
+#composer config --global process-timeout 600
+#composer config --global preferred-install dist
+#composer config --global secure-http false
+#composer config --global github-protocols https git ssh
+#composer config --global github-oauth.github.com ${GITHUB_TOKEN}
+
+
+fi
+}
+
 
 loadadmin_gitconfig() {
 log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -24,7 +45,8 @@ export XDWORKDIR=$xdworkdir
 export XDDREPOURL=$cddrepourl
 export GITXDDIR=$gitxddir
 fi
-composer config --global github-oauth.github.com ${GITHUB_TOKEN}
+
+install_composer
 
 
 }
