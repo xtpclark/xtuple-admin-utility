@@ -48,10 +48,12 @@ SRCDIR=/usr/local/src
 
 cd $SRCDIR
 
-wget https://download.qt.io/archive/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
-tar zxvf qt-everywhere-opensource-src-5.5.1.tar.gz
+# wget https://download.qt.io/archive/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+wget https://download.qt.io/archive/qt/5.7/5.7.1/single/qt-everywhere-opensource-src-7.7.1.tar.gz
+tar zxvf qt-everywhere-opensource-src-5.7.1.tar.gz
 
-QTSRCDIR=${SRCDIR}/qt-everywhere-opensource-src-5.5.1
+
+QTSRCDIR=${SRCDIR}/qt-everywhere-opensource-src-5.7.1
 
 # Need to remove leveldb dir in order to build qt-web etc...
 # See: https://github.com/xtuple/qt-client/wiki/Desktop-Development-Environment-Setup#get-qt
@@ -75,8 +77,8 @@ make install
 # Maybe this should be in the global profile?
 # ubuntu uses .profile, rhel uses .bash_profile by default.
 
-bash -c "echo export PATH=/usr/local/Qt-5.5.1/bin:$PATH >> ~/.bash_profile"
-bash -c "echo export LD_LIBRARY_PATH=/usr/local/Qt-5.5.1/lib:$LD_LIBRARY_PATH >> ~/.bash_profile"
+bash -c "echo export PATH=/usr/local/Qt-5.7.1/bin:$PATH >> ~/.bash_profile"
+bash -c "echo export LD_LIBRARY_PATH=/usr/local/Qt-5.7.1/lib:$LD_LIBRARY_PATH >> ~/.bash_profile"
 
 }
 
