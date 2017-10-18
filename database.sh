@@ -402,7 +402,7 @@ rename_database() {
     fi
 
     SOURCE="$1"
-    if [ -z "$SOURCE" ] && [ "MODE" = "manual"]; then
+    if [ -z "$SOURCE" ] && [ "$MODE" = "manual" ]; then
         SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -413,7 +413,7 @@ rename_database() {
     fi
 
     DEST="$2"
-    if [ -z "$DEST" ] && [ "MODE" = "manual"]; then
+    if [ -z "$DEST" ] && [ "$MODE" = "manual" ]; then
         DEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter new name of database" 8 60 "" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
