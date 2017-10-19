@@ -13,7 +13,7 @@ main_menu() {
             "4" "Development Environment Setup" \
             "5" "SSH Connection Manager" \
             "6" "Generate Github Token" \
-	    "7" "xTupleCommerce Menu" \
+	    "7" "xTupleCommerce Bundle" \
             3>&1 1>&2 2>&3)
         
         RET=$?
@@ -28,7 +28,7 @@ main_menu() {
             "4") dev_menu ;;
             "5") selectServer;;
             "6") generate_github_token;;
-	    "7") xtuplecommerce_menu;;
+	    "7") source CreatePackages.sh build_xtau;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac
         fi
