@@ -329,6 +329,9 @@ if [[ $RET -ne 0 ]]; then
 echo "Bundling MWC Failed"
 exit 2
 else
+export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+
 echo "Bundled MWC as ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
 fi
 
@@ -538,10 +541,33 @@ xtc_only
 writeout_config
 }
 
+xtau_deploy_mwc() {
+# whiptail --title "Packages Downloaded!" --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60
+
+if (whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60) then
+            set_database_info_select
+            RET=$?
+            return $RET
+        else
+            # I specifically need to check for ESC here as I am using the yesno box as a multiple choice question, 
+            # so it chooses no code even during escape which in this case I want to actually escape when someone hits escape. 
+            if [ $? -eq 255 ]; then
+                return 255
+            fi
+            set_database_info_manual
+            RET=$?
+            return $RET
+        fi
+}
+
+
 build_xtau() {
+export ISXTAU=1
 mwc_createdirs_static_mwc
 mwc_build_static_mwc
 mwc_bundle_mwc
+xtau_deploy_mwc
+
 }
 
 if [[ -z $1 ]]; then
