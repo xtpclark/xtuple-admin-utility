@@ -42,13 +42,13 @@ echo "We'll create a sample for you. Please review."
 ( echo "
 export TIMEZONE=America/New_York
 PGVER=9.5
-MWC_VERSION=v4.11.0
+MWC_VERSION=v4.11.1
 ERP_DATABASE_NAME=xtupleerp
 ERP_DATABASE_BACKUP=manufacturing_demo-4.11.0.backup
-ERP_MWC_TARBALL=xTupleREST-v4.11.0.tar.gz
+ERP_MWC_TARBALL=xTupleREST-v4.11.1.tar.gz
 XTC_DATABASE_NAME=xtuplecommerce
-XTC_DATABASE_BACKUP=xTupleCommerce-v4.11.0.backup
-XTC_WWW_TARBALL=xTupleCommerce-v4.11.0.tar.gz
+XTC_DATABASE_BACKUP=xTupleCommerce-v4.11.1.backup
+XTC_WWW_TARBALL=xTupleCommerce-v4.11.1.tar.gz
 # payment-gateway config
 # See https://github.com/bendiy/payment-gateways/tree/initial/gateways
 GATEWAY_NAME='Example'

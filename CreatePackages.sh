@@ -16,6 +16,7 @@ install_npm_node
 
 mwc_createdirs_static_mwc()
 {
+
 check_pgdep
 
 echo "Creating Directories in ${BUILD_XT_TARGET_NAME}-${WORKDATE}"
@@ -40,14 +41,19 @@ mkdir -p ${BUILD_CONFIG_XTUPLE}/private
 mkdir -p ${BUILD_CONFIG_INIT}
 mkdir -p ${BUILD_CONFIG_SYSTEMD}
 
+
+
 }
 
 
 mwc_build_static_mwc()
 {
-
 NODE_ENV=production
-git clone git@github.com:xtuple/xtuple ${BUILD_XT}
+generate_github_token
+
+GITCMD="git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple"
+
+${GITCMD}/xtuple ${BUILD_XT}
 cd ${BUILD_XT} && git fetch --tags
 BUILD_XT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_XT} && git checkout ${BUILD_XT_TAG}
@@ -75,7 +81,7 @@ MWCVERSION=${BUILD_XT_TAG}
 DATABASE=xtupleerp
 MWCNAME=xtupleerp
 
-git clone git@github.com:xtuple/private-extensions ${BUILD_PE}
+${GITCMD}/private-extensions ${BUILD_PE}
 cd ${BUILD_PE} && git fetch --tags
 BUILD_PE_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_PE} && git checkout ${BUILD_PE_TAG}
@@ -97,7 +103,7 @@ RET=$?
 echo "npm install returned: ${RET}"
 fi
 
-git clone git@github.com:xtuple/enhanced-pricing ${BUILD_EP}
+${GITCMD}/enhanced-pricing ${BUILD_EP}
 cd ${BUILD_EP} && git fetch --tags
 BUILD_EP_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_EP} && git checkout ${BUILD_EP_TAG}
@@ -119,7 +125,7 @@ RET=$?
 echo "npm install returned: ${RET}"
 fi
 
-git clone git@github.com:xtuple/nodejsshim ${BUILD_NJ}
+${GITCMD}/nodejsshim ${BUILD_NJ}
 cd ${BUILD_NJ} && git fetch --tags
 BUILD_NJ_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_NJ} && git checkout ${BUILD_NJ_TAG}
@@ -141,7 +147,7 @@ RET=$?
 echo "npm install returned: ${RET}"
 fi
 
-git clone git@github.com:xtuple/xdruple-extension ${BUILD_XD}
+${GITCMD}/xdruple-extension ${BUILD_XD}
 cd ${BUILD_XD} && git fetch --tags
 BUILD_XD_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_XD} && git checkout ${BUILD_XD_TAG}
@@ -163,7 +169,7 @@ RET=$?
 echo "npm install returned: ${RET}"
 fi
 
-git clone git@github.com:xtuple/payment-gateways ${BUILD_PG}
+${GITCMD}/payment-gateways ${BUILD_PG}
 cd ${BUILD_PG} && git fetch --tags
 BUILD_PG_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_PG} && git checkout ${BUILD_PG_TAG}
@@ -185,7 +191,7 @@ RET=$?
 echo "npm install returned: ${RET}"
 fi
 
-git clone git@github.com:xtuple/xtdash ${BUILD_DA}
+${GITCMD}/xtdash ${BUILD_DA}
 cd ${BUILD_DA} && git fetch --tags
 BUILD_DA_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
 cd ${BUILD_DA} && git checkout ${BUILD_DA_TAG}
@@ -518,9 +524,10 @@ EOF
 
 writeout_xtau_config() {
 cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
-NODE_ENV=production
-PGVER=9.6
-MWC_VERSION=${BUILD_XT_TAG}
+export NODE_ENV=production
+export PGVER=9.6
+export MWC_VERSION=${BUILD_XT_TAG}
+export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
 }
 
@@ -572,11 +579,30 @@ writeout_config
 
 build_xtau() {
 export ISXTAU=1
+HAS_MWC_CONFIG=`ls -t1 xtau_mwc*.config |  head -n 1`
+
+if [[ -f  ${HAS_MWC_CONFIG} ]]; then
+  echo "sourcing ${HAS_MWC_CONFIG}"
+  source ${HAS_MWC_CONFIG}
+  if [[ -e ${ERP_MWC_TARBALL}  ]]; then
+     echo "Looks like we have a package already. Skipping any hard work."
+     echo "Tarball: ${BUILD_XT_TARGET_NAME}-${MWC_VERSION}.tar.gz "
+   xtau_deploy_mwc
+
+  fi
+
+else
+
+
+
+
 mwc_createdirs_static_mwc
 mwc_build_static_mwc
 mwc_bundle_mwc
 writeout_xtau_config
 xtau_deploy_mwc
+fi
+
 }
 
 if [[ -z $1 ]]; then

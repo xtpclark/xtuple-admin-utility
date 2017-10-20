@@ -1,6 +1,7 @@
 #!/bin/bash
 
 database_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened database menu"
 
@@ -46,6 +47,7 @@ database_menu() {
 # $3 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
 # $4 is the database name to restore to
 download_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     DBVERSION="$2"
     if [ -z "$DBVERSION" ]; then
@@ -92,6 +94,7 @@ download_database() {
 #  $1 is database to be copied
 #  $2 is name of the new database
 copy_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -152,6 +155,7 @@ copy_database() {
 #  $1 is database file to backup to
 #  $2 is name of database (if not provided, prompt)
 backup_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -191,7 +195,7 @@ backup_database() {
 
     log "Backing up database "$DATABASE" to file "$DEST"."
 
-    pg_dump --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --format custom  --file "$BACKUPDIR/$DEST" "$DATABASE"
+    pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$BACKUPDIR/$DEST" "$DATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
@@ -206,6 +210,7 @@ backup_database() {
 # or restore a local file
 # This can not be run in automatic mode
 create_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     [ "$MODE" = "auto" ] && return 127
 
@@ -281,6 +286,7 @@ create_database() {
 #  $1 is database file to restore
 #  $2 is name of new database (if not provided, prompt)
 restore_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -305,14 +311,14 @@ restore_database() {
     fi
 
     log "Creating database $DATABASE."
-    log_exec createdb -h $PGHOST -p $POSTPORT -U $PGUSER -O "admin" "$DATABASE"
+    log_exec createdb -h $PGHOST -p $PGPORT -U $PGUSER -O "admin" "$DATABASE"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
         return $RET
     else
-        log "Restoring database $DATABASE from file $1 on server $PGHOST:$POSTPORT"
-        pg_restore --username "$PGUSER" --port "$POSTPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
+        log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
+        pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
         RET=$?
         if [ $RET -ne 0 ]; then
             msgbox "$(cat restore_output.log)"
@@ -326,6 +332,7 @@ restore_database() {
 # list the existing databases on the current configured cluster
 # this can not be run in automatic mode
 list_databases() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     [ "$MODE" = "auto" ] && return 127
 
@@ -342,6 +349,7 @@ list_databases() {
 # $1 is name
 # prompt if not provided
 drop_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -366,7 +374,7 @@ drop_database() {
 
         if (whiptail --title "Are you sure?" --yesno "Completely remove database $DATABASE?" 10 60) then
             backup_database "$BACKUPDIR/$DATABASE.$(date +%Y.%m.%d-%H:%M).backup" "$DATABASE"
-            log_exec dropdb -U $PGUSER -h $PGHOST -p $POSTPORT "$DATABASE"
+            log_exec dropdb -U $PGUSER -h $PGHOST -p $PGPORT "$DATABASE"
             RET=$?
             if [ $RET -ne 0 ]; then
                 msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
@@ -387,6 +395,7 @@ drop_database() {
 # $2 is new name
 # prompt if not provided
 rename_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -423,7 +432,7 @@ rename_database() {
         return 127
     fi
 
-    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "ALTER DATABASE $SOURCE RENAME TO $DEST;"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
@@ -437,6 +446,7 @@ rename_database() {
 # display a menu of databases on the currently configured cluster
 # can not be run in automatic mode
 inspect_database_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     [ "MODE" = "auto"] && return 127
 
@@ -466,13 +476,14 @@ inspect_database_menu() {
 # Get a list of databases on the currently configured cluster
 # into the DATABASES array
 get_database_list() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
 
     DATABASES=()
     while read -r line; do
         DATABASES+=("$line" "$line")
-    done < <( psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
+    done < <( psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "SELECT datname FROM pg_database WHERE datname NOT IN ('postgres', 'template0', 'template1');" )
 }
 
 ## remove, kill, and restore are used to stop new connections
@@ -480,6 +491,7 @@ get_database_list() {
 
 # $1 is database name
 remove_connect_priv() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -487,11 +499,12 @@ remove_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -At -U postgres -h $PGHOST -p $POSTPORT -d postgres -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "REVOKE CONNECT ON DATABASE "$1" FROM public, admin, xtrole;"
 }
 
 # $1 is database name
 kill_database_connections() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -499,11 +512,12 @@ kill_database_connections() {
         return $RET
     fi
 
-    log_exec psql -At -U postgres -h $PGHOST -p $POSTPORT -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='"$1"';"
 }
 
 # $1 is database name
 restore_connect_priv() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -511,14 +525,15 @@ restore_connect_priv() {
         return $RET
     fi
 
-    log_exec psql -At -U postgres -h $PGHOST -p $POSTPORT -d postgres -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
+    log_exec psql -At -U postgres -h $PGHOST -p $PGPORT -d postgres -c "GRANT CONNECT ON DATABASE "$1" TO public, admin, xtrole;"
 }
 
 # Display important metrics of an xTuple database in the current configured cluster
 # $1 is database name to inspect
 inspect_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    VAL=`psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $1 -c "SELECT data FROM ( \
+    VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $1 -c "SELECT data FROM ( \
         SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
         UNION \
         SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
@@ -533,6 +548,7 @@ inspect_database() {
 # select a cluster that the functions in this file will use
 # this can not be run in automatic mode, set the variables in script
 set_database_info_select() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     [ "$MODE" = "auto" ] && return 127
 
@@ -543,8 +559,10 @@ set_database_info_select() {
     done < <( sudo pg_lsclusters | tail -n +2 )
 
      if [ -z "$CLUSTERS" ]; then
-        msgbox "No database clusters detected on this system"
-        return 1
+        msgbox "No database clusters detected on this system. Entering setup."
+# Let's try to provision one.
+	provision_cluster
+        check_database_info
     fi
 
     CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
@@ -554,13 +572,14 @@ set_database_info_select() {
     fi
 
     if [ -z "$CLUSTER" ]; then
-        msgbox "No database clusters detected on this system"
-        return 1
+        msgbox "No database clusters detected on this system. Entering setup."
+	provision_cluster
+        check_database_info
     fi
 
-    export POSTVER=`awk  '{print $1}' <<< "$CLUSTER"`
+    export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
     export POSTNAME=`awk  '{print $2}' <<< "$CLUSTER"`
-    export POSTPORT=`awk  '{print $3}' <<< "$CLUSTER"`
+    export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
     export PGHOST=localhost
     export PGUSER=postgres
 
@@ -572,7 +591,7 @@ set_database_info_select() {
         export PGPASSWORD
     fi
 
-    if [ -z "$POSTVER" ] || [ -z "$POSTNAME" ] || [ -z "$POSTPORT" ]; then
+    if [ -z "$PGVER" ] || [ -z "$POSTNAME" ] || [ -z "$PGPORT" ]; then
         msgbox "Could not determine database version or name"
         return 1
     fi
@@ -582,6 +601,7 @@ set_database_info_select() {
 # set the current cluster by entering the parameters manually
 # this can not be run in automatic mode
 set_database_info_manual() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     [ "$MODE" = "auto" ] && return 127
 
@@ -589,27 +609,27 @@ set_database_info_manual() {
         PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset POSTPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
         else
             export PGHOST
         fi
     fi
-    if [ -z "$POSTPORT" ] ; then
-        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
+    if [ -z "$PGPORT" ] ; then
+        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset POSTPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
         else
-            export POSTPORT
+            export PGPORT
         fi
     fi
     if [ -z "$PGUSER" ] ; then
         PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset POSTPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
         else
             export PGUSER
@@ -619,7 +639,7 @@ set_database_info_manual() {
         PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset POSTPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
             return $RET
         else
             export PGPASSWORD
@@ -629,15 +649,19 @@ set_database_info_manual() {
 }
 
 clear_database_info() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     unset PGHOST
     unset PGPASSWORD
-    unset POSTPORT
+    unset PGPORT
     unset PGUSER
 }
 
 # Check that there is a currently selected cluster
 check_database_info() {
-    if [ -z "$PGHOST" ] || [ -z "$POSTPORT" ] || [ -z "$PGUSER" ]; then
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+    if [ -z "$PGHOST" ] || [ -z "$PGPORT" ] || [ -z "$PGUSER" ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
             RET=$?
@@ -660,6 +684,7 @@ check_database_info() {
 # Upgrade an existing database to a Web-Enabled
 # $1 is database
 upgrade_database() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -685,7 +710,7 @@ upgrade_database() {
         return 127
     fi
 
-    psql -At -U $PGUSER -h $PGHOST -p $POSTPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
+    psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT pkghead_name FROM pkghead WHERE pkghead_name='xt';"
 	if [ $? -ne 0 ]; then
         if ! (whiptail --title "Database not Web-Enabled" --yesno "The selected database is not currently web-enabled. If you continue, this process will update AND web-enable the database. If you prefer to not web-enable the database, exit xTuple Admin Utility and use the xTuple Updater app to apply the desired update package. Continue?" 10 60) then
             return 0
@@ -695,10 +720,10 @@ upgrade_database() {
     fi
 
     # make sure plv8 is in
-    log_exec psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
+    log_exec psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
     # find the instance name and version
-    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \; -exec grep -P "(?<=port: \[\")$POSTPORT" {} \;)
+    CONFIG_JS=$(find /etc/xtuple -name 'config.js' -exec grep -Pl "(?<=databases: \[\")$DATABASE" {} \; -exec grep -P "(?<=port: \[\")$PGPORT" {} \;)
     if [ -z "$CONFIG_JS" ]; then
         # no installation exists, just skip to installation
         log "config.js not found. Skipping cleanup of old datasource."
@@ -757,10 +782,10 @@ upgrade_database() {
     fi
 
     # install or update the mobile client
-    PGDATABASE=$DATABASE
+    ERP_DATABASE_NAME=$DATABASE
     install_mwc_menu
 
     # display results
-    NEWVER=`psql -At -U ${PGUSER} -p ${POSTPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
+    NEWVER=`psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;"`
     msgbox "Database $DATABASE\nVersion $NEWVER"
 }

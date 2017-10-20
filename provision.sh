@@ -13,25 +13,25 @@ provision_menu() {
     if [ $RET -ne 0 ]; then
         return 0
     elif [ $ACTION = "1" ]; then
-        log_exec install_postgresql $POSTVER
+        log_exec install_postgresql $PGVER
         
         get_cluster_list
 
         if [ -n "$CLUSTERS" ]; then
             set_database_info_select
         else
-            log_exec provision_cluster $POSTVER
+            log_exec provision_cluster $PGVER
         fi
         log_exec create_database
     else
-        log_exec install_postgresql $POSTVER
+        log_exec install_postgresql $PGVER
         
         get_cluster_list
 
         if [ -n "$CLUSTERS" ]; then
             set_database_info_select
         else
-            log_exec provision_cluster $POSTVER
+            log_exec provision_cluster $PGVER
         fi
         nginx_prompt
         configure_nginx
