@@ -8,7 +8,6 @@ mwcbuild*/
 build.log
 xTupleCommerce*
 xTupleREST*
-*.sql
 *.backup
 *.log
 *.tgz

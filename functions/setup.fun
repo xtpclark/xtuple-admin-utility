@@ -62,6 +62,57 @@ exit 2
 fi
 }
 
+read_xtau_configs() {
+if [[ -f ${WORKDIR}/xtau_mwc-${WORKDAY}.config ]]; then
+
+source ${WORKDIR}/xtau_mwc-${WORKDAY}.config
+fi
+
+ if [[ ${NODE_ENV} ]]; then
+   rm ${WORKDIR}/setup.bak
+   ( echo  "NODE_ENV=${NODE_ENV}" ) | tee -a ${WORKDIR}/setup.bak
+ fi
+
+ if [[ ${PGVER} ]]; then
+   ( echo  "PGVER=${PGVER}" ) | tee -a ${WORKDIR}/setup.bak
+ fi
+
+ if [[ ${MWC_VERSION} ]]; then
+   ( echo "MWC_VERSION=${MWC_VERSION}" ) | tee -a ${WORKDIR}/setup.bak
+ fi
+
+ if [[ ${ERP_MWC_TARBALL} ]]; then
+   ( echo "ERP_MWC_TARBALL=${ERP_MWC_TARBALL}" ) | tee -a ${WORKDIR}/setup.bak
+ fi
+
+if [[ -f ${WORKDIR}/setup.ini ]]; then
+source ${WORKDIR}/setup.ini
+else
+echo "Missing setup.ini file."
+echo "We'll create a sample for you. Please review."
+
+( echo "
+export TIMEZONE=America/New_York
+PGVER=9.6
+MWC_VERSION=v4.11.1
+ERP_DATABASE_NAME=xtupleerp
+ERP_DATABASE_BACKUP=manufacturing_demo-4.11.0.backup
+ERP_MWC_TARBALL=xTupleREST-v4.11.1.tar.gz
+XTC_DATABASE_NAME=xtuplecommerce
+XTC_DATABASE_BACKUP=xTupleCommerce-v4.11.1.backup
+XTC_WWW_TARBALL=xTupleCommerce-v4.11.1.tar.gz
+# payment-gateway config
+# See https://github.com/bendiy/payment-gateways/tree/initial/gateways
+GATEWAY_NAME='Example'
+GATEWAY_HOSTNAME='api.example.com'
+GATEWAY_BASE_PATH='/v1'
+GATEWAY_NODE_LIB_NAME='example' " ) | tee -a ${WORKDIR}/setup.ini
+
+exit 2
+
+fi
+}
+
 setup_sudo() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
@@ -498,10 +549,6 @@ psql -U admin -d xtupleerp -f ${WORKDIR}/sql/preload.sql
 echo "Running build_app for the extensions we preloaded into xt.ext"
 sudo su - xtuple -c "cd /opt/xtuple/${MWC_VERSION}/xtupleerp/xtuple && ./scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/xtupleerp/config.js"
 
-#sudo su - xtuple -c "cd /opt/xtuple/${MWC_VERSION}/xtupleerp/xtuple && ./scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/xtupleerp/config.js -e ../nodejsshim"
-#sudo su - xtuple -c "cd /opt/xtuple/${MWC_VERSION}/xtupleerp/xtuple && ./scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/xtupleerp/config.js -e ../enhanced-pricing"
-#sudo su - xtuple -c "cd /opt/xtuple/${MWC_VERSION}/xtupleerp/xtuple && ./scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/xtupleerp/config.js -e ../payment-gateways"
-#sudo su - xtuple -c "cd /opt/xtuple/${MWC_VERSION}/xtupleerp/xtuple && ./scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/xtupleerp/config.js -e ../xdruple-extension"
 
 RET=$?
 if [[ $RET != 0 ]]; then
@@ -910,4 +957,8 @@ setup_phpnginx
 setup_xtuplecommerce
 clear
 webnotes
+}
+
+xtau_deploy_mwc() {
+read_xtau_configs
 }
