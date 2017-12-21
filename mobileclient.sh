@@ -1,6 +1,7 @@
 #!/bin/bash
 
 mwc_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened Web Client menu"
 
@@ -28,6 +29,7 @@ mwc_menu() {
 }
 
 install_mwc_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z "$DATABASE" ]; then
         check_database_info
@@ -137,6 +139,7 @@ install_mwc_menu() {
 # $6 is github username
 # $7 is github password
 install_mwc() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing web client"
 
@@ -324,5 +327,7 @@ install_mwc() {
 }
 
 remove_mwc() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     msgbox "Uninstalling the mobile client is not yet supported"
 }

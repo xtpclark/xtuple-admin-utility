@@ -37,7 +37,7 @@ else
 log "Creating ~/.ssh/config"
 
 if [ ! -d ~/.ssh  ]; then
-log_exec sudo mkdir -p ~/.ssh
+log_exec mkdir -p ~/.ssh
 
 else
 cat << EOF >> ~/.ssh/config
@@ -55,9 +55,11 @@ fi
 }
 
 
-get_composer_token()
-{
-source  xdruple/functions/gitvars.fun
+get_composer_token() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+# source  xdruple/functions/gitvars.fun
+source  functions/setup.fun
 loadadmin_gitconfig
 
 log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -72,9 +74,10 @@ install_composer
 fi
 }
 
-generate_github_token()
-{
-source  xdruple/functions/gitvars.fun
+generate_github_token() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+source  functions/setup.fun
 loadadmin_gitconfig
 
 log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -113,6 +116,7 @@ if [[ -z ${GITHUB_TOKEN} ]]; then
         curl https://api.github.com/authorizations --user ${GITHUBNAME}:${GITHUBPASS} --data '{"scopes":["user","read:org","repo","public_repo"],"note":"Added Via xTau '${WORKDATE}'"}' -o GITHUB_TOKEN_${WORKDATE}.log
         GITHUB_TOKEN=$(jq --raw-output '.token | select(length > 0)' GITHUB_TOKEN_${WORKDATE}.log)
         OAMSG=$(jq --raw-output '.' GITHUB_TOKEN_${WORKDATE}.log)
+        git config --global github.token ${GITHUB_TOKEN}
 
             if [[ -z "${GITHUB_TOKEN}" ]]; then
             whiptail --backtitle "$( window_title )" --msgbox "Error creating your token. ${OAMSG}" 8 60 3>&1 1>&2 2>&3

@@ -14,9 +14,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "5" "Backup Database" \
 			"6" "Create Database" \
             "7" "Drop Database" \
-            "8" "Update/Web-enable Database" \
-            "9" "Setup Automated Backup" \
-            "10" "Return to main menu" \
+            "8" "Setup Automated Backup" \
+            "9" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -31,9 +30,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "5") log_exec backup_database ;;
 			"6") create_database ;;
             "7") drop_database ;;
-            "8") log_exec upgrade_database ;;
-            "9") source xtnbackup2/xtnbackup.sh ;;
-            "10") main_menu ;;
+            "8") source xtnbackup2/xtnbackup.sh ;;
+            "9") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
             esac
         fi
@@ -583,13 +581,6 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     export PGHOST=localhost
     export PGUSER=postgres
 
-    PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter postgres user password" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return $RET
-    else
-        export PGPASSWORD
-    fi
 
     if [ -z "$PGVER" ] || [ -z "$POSTNAME" ] || [ -z "$PGPORT" ]; then
         msgbox "Could not determine database version or name"
@@ -609,7 +600,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER
             return $RET
         else
             export PGHOST
@@ -619,7 +610,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER
             return $RET
         else
             export PGPORT
@@ -629,22 +620,13 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
+            unset PGHOST && unset PGPORT && unset PGUSER
             return $RET
         else
             export PGUSER
         fi
     fi
-    if [ -z "$PGPASSWORD" ] ; then
-        PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
-            return $RET
-        else
-            export PGPASSWORD
-        fi
-    fi
+
 
 }
 
@@ -652,7 +634,6 @@ clear_database_info() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     unset PGHOST
-    unset PGPASSWORD
     unset PGPORT
     unset PGUSER
 }

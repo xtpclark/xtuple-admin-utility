@@ -91,10 +91,10 @@ git config --global xdruple.xdrepoprefix "${XDREPOPREFIX}"
 fi
     
 #environment - should be ERP_ENVIRONMENT for consistency in this section
-ENVIRONMENT=`git config --get ${WHICHSHIP}.environment`
-if [[ -z ${ENVIRONMENT} ]]; then
-git config --global ${CRMACCT,,}env.environment "{ENVIRONMENT}"
-fi
+#ENVIRONMENT=`git config --get ${WHICHSHIP}.environment`
+#if [[ -z ${ENVIRONMENT} ]]; then
+#git config --global ${CRMACCT,,}env.environment "{ENVIRONMENT}"
+#fi
 
 #application
 ERP_APPLICATION=`git config --get ${WHICHSHIP}.erpapplication`

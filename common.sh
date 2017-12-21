@@ -1,11 +1,15 @@
 #!/bin/bash
 
 do_exit() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Exiting xTuple Admin Utility"
     exit 0
 }
 
 die() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
   TRAPMSG="$@"
   log $@
   exit 1
@@ -22,6 +26,8 @@ ctrlc() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $3 using wget"
     wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
     return ${PIPESTATUS[0]}
@@ -31,6 +37,8 @@ dlf() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf_fast() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $3 using axel"
     axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
     return ${PIPESTATUS[0]}
@@ -39,6 +47,8 @@ dlf_fast() {
 # $1 is the URL
 # $3 is the output file name
 dlf_fast_console() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $2 using axel console output only"
     axel -n 5 "$1" -o "$2" > /dev/null
 }
@@ -56,9 +66,9 @@ latest_version() {
 }
 
 window_title() {
-    if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
+    if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-    elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
+    elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
     else
         echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
@@ -91,7 +101,8 @@ install_prereqs() {
         "ubuntu")
                 install_pg_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic dialog xsltproc
+
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "

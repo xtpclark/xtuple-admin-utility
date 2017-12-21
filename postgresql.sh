@@ -1,6 +1,7 @@
 #!/bin/bash
 
 postgresql_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened PostgreSQL menu"
 
@@ -36,6 +37,7 @@ postgresql_menu() {
 }
 
 password_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened password menu"
 
@@ -69,6 +71,7 @@ password_menu() {
 
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     PGVER="${1:-$PGVER}"
 
@@ -77,24 +80,36 @@ install_postgresql() {
     log_exec sudo apt-get -y install postgresql-common
     sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
 
-    log_exec sudo apt-get -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8 postgresql-server-dev-$PGVER
+    log_exec sudo apt-get -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-server-dev-$PGVER
     RET=$?
     if [ $RET -ne 0 ]; then
+        install_plv8
         return $RET
     elif [ $RET -eq 0 ]; then
         export PGUSER=postgres
-        export PGPASSWORD=postgres
         export PGHOST=localhost
         export PGPORT=5432
+        install_plv8
         return $RET
     fi
 
     provision_cluster
 }
 
+install_plv8()
+{
+#  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
+#  tar xf xtuple_plv8.tgz
+  cd xtuple_plv8
+  log_exec echo '' | sudo ./install_plv8.sh
+#  rm xtuple_plv8.tgz
+}
+
+
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     PGVER="${1:-$PGVER}"
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $PGVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
@@ -111,6 +126,7 @@ remove_postgresql() {
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     PGVER="${1:-$PGVER}"
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $PGVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
@@ -125,6 +141,7 @@ purge_postgresql() {
 }
 
 get_cluster_list() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     CLUSTERS=()
     
@@ -135,6 +152,7 @@ get_cluster_list() {
 }
 
 list_clusters() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     get_cluster_list
 
@@ -153,6 +171,8 @@ list_clusters() {
 # $4 is locale
 # $5 if exists, start at boot
 provision_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    install_plv8
 
     PGVER="${1:-$PGVER}"
     if [ -z "$PGVER" ] && [ "$MODE" = "manual" ]; then
@@ -165,7 +185,7 @@ provision_cluster() {
 
     POSTNAME="$2"
     if [ -z "$POSTNAME" ] && [ "$MODE" = "manual" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\nExisting Clusters:\n$(sudo pg_lsclusters -h | awk '{print $2}')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\n$(sudo pg_lsclusters -h | awk '{ print "Existing Clusters:" $2 } END { if (!NR) print "No Existing Clusters" }')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -225,10 +245,19 @@ provision_cluster() {
     POSTDIR=/etc/postgresql/$PGVER/$POSTNAME
 
     log "Opening pg_hba.conf for internet access with passwords"
-    log_exec sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $POSTDIR/pg_hba.conf"
+    log_exec sudo bash -c "echo  \"hostnossl      all           all             0.0.0.0/0                 reject\" >> $POSTDIR/pg_hba.conf"
+    log_exec sudo bash -c "echo  \"hostssl      all             all             0.0.0.0/0                 md5\" >> $POSTDIR/pg_hba.conf"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
+        do_exit
+    fi
+
+    log "Increasing max_locks_per_transaction to 256"
+    log_exec sudo bash -c "echo  \"#max_locks_per_transaction = 256\" >> $POSTDIR/postgresql.conf"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Increasing max_locks_per_transaction in postgresql.conf failed. Check the log file for any issues."
         do_exit
     fi
 
@@ -239,6 +268,7 @@ provision_cluster() {
         msgbox "Adding plv8.start_proc to postgresql.conf failed. Check the log file for any issues.\nSee https://github.com/xtuple/xtuple/wiki/Installing-PLv8 for more information."
         do_exit
     fi
+
 
     log "Restarting PostgreSQL $PGVER for $POSTNAME"
     # you may wonder why I have this block when the commands are all the same, the reason is that
@@ -276,46 +306,14 @@ provision_cluster() {
 
     export PGHOST=localhost
     export PGUSER=postgres
-    export PGPASSWORD=postgres
-
-    if [ $MODE = "manual" ]; then
-        msgbox "Creation of database cluster $POSTNAME using version $PGVER was successful. You will now be asked to set a postgresql password"
-        reset_sudo postgres
-        if [ $RET -ne 0 ]; then
-            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
-            do_exit
-        fi
-    else
-        log "Creation of database cluster $POSTNAME using version $PGVER was successful."
-    fi
-
-    INIT_URL="http://files.xtuple.org/common/init.sql"
-
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $INIT_URL $WORKDIR/init.sql
-        dlf_fast_console $INIT_URL.md5sum $WORKDIR/init.sql.md5sum
-    else
-        dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
-        dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
-    fi
-
-    VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        do_exit
-    fi
 
     log "Deploying init.sql, creating admin user and xtrole group"
-    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/init.sql
+    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/sql/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deploying init.sql. Check for errors and try again"
         do_exit
     fi
-
-    log "Removing downloaded init scripts..."
-    rm $WORKDIR/init.sql{,.md5sum}
 
     msgbox "Initializing cluster successful."
 
@@ -324,6 +322,7 @@ provision_cluster() {
 }
 
 select_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     set_database_info_select
 
@@ -334,6 +333,7 @@ select_cluster() {
 # $3 is mode (auto/manual)
 # prompt if not provided
 drop_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     PGVER="${1:-$PGVER}"
     POSTAME="${2:-$POSTNAME}"
@@ -380,6 +380,7 @@ true
 }
 
 drop_cluster_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     CLUSTERS=()
 
@@ -417,6 +418,7 @@ drop_cluster_menu() {
 
 # $1 is user to reset
 reset_sudo() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -439,7 +441,6 @@ reset_sudo() {
         return 0
     else
         export PGUSER=$1
-        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
@@ -448,6 +449,7 @@ reset_sudo() {
 
 # $1 is user to reset
 reset_psql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -470,7 +472,6 @@ reset_psql() {
         return 0
     else
         export PGUSER=$1
-        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
@@ -479,6 +480,7 @@ reset_psql() {
 
 #  $1 is globals file to backup to
 backup_globals() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -511,6 +513,7 @@ backup_globals() {
 
 #  $1 is globals file to restore
 restore_globals() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?

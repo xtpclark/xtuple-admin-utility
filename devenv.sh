@@ -1,6 +1,8 @@
 #!/bin/bash
 
 dev_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Opened development menu"
 
     while true; do
@@ -27,6 +29,8 @@ dev_menu() {
 }
 
 install_dev_prereqs() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
 
     log "Installing Development Environment pre-requisites..."
     log_exec sudo apt-get update
@@ -50,6 +54,7 @@ install_dev_prereqs() {
 }
 
 build_qt5() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Building Qt5 from source"
 
@@ -89,6 +94,7 @@ build_qt5() {
 }
 
 build_xtuple() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     cd $WORKDIR
     mkdir xtuple
