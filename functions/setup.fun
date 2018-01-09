@@ -156,7 +156,7 @@ install_npm_node() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 cd $WORKDIR
-sudo apt-get -y install npm
+# sudo apt-get -y install npm
 
 wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
 chmod +x n
