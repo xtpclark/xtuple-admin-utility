@@ -190,14 +190,17 @@ test_connection() {
 setup_sudo() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-if [[ ! -f /etc/sudoers.d/90-xtau-users ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/90-xtau-users; then
- echo "Setting up user: $DEPLOYER_NAME for sudo"
- echo "You might be prompted for your password."
-(echo "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD:ALL" )| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
+if [[ ! -f "/etc/sudoers.d/${DEPLOYER_NAME}" ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/${DEPLOYER_NAME}; then
+ # echo "Setting up user: $DEPLOYER_NAME for sudo"
+ # echo "You might be prompted for your password."
+ # (echo "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD:ALL" )| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
 
+  sudo printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/${DEPLOYER_NAME} && \
+  sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
 else
-echo "User: $DEPLOYER_NAME already setup in sudoers.d"
+  echo "User: $DEPLOYER_NAME already setup in sudoers.d"
 fi
+
 }
 
 
