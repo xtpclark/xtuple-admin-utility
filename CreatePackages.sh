@@ -258,13 +258,21 @@ mwc_remove_git_dirs()
   cd ${BUILD_EP} && rm -rf .git
 }
 
-mwc_bundle_mwc() 
+mwc_bundle_mwc()
 {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 echo "Bundling MWC"
 
 cd ${BUILD_WORKING}
+
+cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
+export NODE_ENV=production
+export PGVER=${PGVER}
+export MWC_VERSION=${BUILD_XT_TAG}
+export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+EOF
 
 cat << EOF >  ${BUILD_XT_ROOT}/versions
 xtuple@${BUILD_XT_TAG}
@@ -367,9 +375,9 @@ echo "We include a p12 key file.  The content matches the sql in oa2client.sql"
 cp ${BUILD_WORKING}/private/${P12_KEY_FILE} ${BUILD_XTC_ROOT}
 RET=$?
 if [[ $RET -ne 0 ]]; then
-echo "There was a problem copying the P12 Key. Continuing..."
+ echo "There was a problem copying the P12 Key. Continuing..."
 else
-echo "Copied ${BUILD_WORKING}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
+ echo "Copied ${BUILD_WORKING}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
 fi
 
 echo "We include a settings.php file.  This is what tells the xTupleCommerce site to connect to which database"
@@ -377,23 +385,29 @@ echo "We include a settings.php file.  This is what tells the xTupleCommerce sit
 cp ${BUILD_WORKING}/private/settings.php ${BUILD_XTC_ROOT}/drupal/core/sites/default/
 RET=$?
 if [[ $RET -ne 0 ]]; then
-echo "There was a problem copying the settings.php file. Continuing..."
+ echo "There was a problem copying the settings.php file. Continuing..."
 else
-echo "Copied ${BUILD_WORKING}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
+ echo "Copied ${BUILD_WORKING}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
 fi
 
 echo "Attempting to create ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
 cp -R ${BUILD_XTC_ROOT} ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
+RET=$?
+if [[ $RET -ne 0 ]]; then
+ echo "There was a problem copying ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
+ exit 2
+else
+ echo "Copied ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
+fi
 
 tar czf ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
 RET=$?
 if [[ $RET -ne 0 ]]; then
-echo "Bundling xTupleCommerce Failed"
-exit 2
-
+ echo "Bundling xTupleCommerce Failed"
+ exit 2
 else
-echo "xTupleCommerce bundling was a success!"
-echo "Created: ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz "
+ echo "xTupleCommerce bundling was a success!"
+ echo "Created: ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz "
 fi
 
 }
@@ -469,7 +483,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 cat << EOF > ${BUILD_WORKING}/CreatePackages-${WORKDATE}.config
 NODE_ENV=production
-PGVER=9.6
+PGVER=${PGVER}
 MWC_VERSION=${BUILD_XT_TAG}
 ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
@@ -481,10 +495,12 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
 export NODE_ENV=production
-export PGVER=9.6
+export PGVER=${PGVER}
 export MWC_VERSION=${BUILD_XT_TAG}
 export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
+echo "Why do we die here?"
 }
 
 xtau_deploy_mwc() {
@@ -579,11 +595,14 @@ writeout_config
 }
 
 
-build_xtau() {
+try_deploy_xtau() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 export ISXTAU=1
-HAS_MWC_CONFIG=$(ls -t1 xtau_mwc*.config |  head -n 1)
+# Alternatively, enter the name of the tar.gz package...
+# and read this config from the tar.gz directly.
+
+HAS_MWC_CONFIG=$(ls -t1 xtau_mwc-*.config |  head -n 1)
   # From functions/setup.fun
   install_npm_node
   check_pgdep
@@ -591,6 +610,7 @@ HAS_MWC_CONFIG=$(ls -t1 xtau_mwc*.config |  head -n 1)
 if [[ -f  ${HAS_MWC_CONFIG} ]]; then
   echo "sourcing ${HAS_MWC_CONFIG}"
   source ${HAS_MWC_CONFIG}
+
   if [[ -e ${ERP_MWC_TARBALL}  ]]; then
      echo "Looks like we have a package already. Skipping any hard work."
      echo "Tarball: ${BUILD_XT_TARGET_NAME}-${MWC_VERSION}.tar.gz "
@@ -599,9 +619,6 @@ if [[ -f  ${HAS_MWC_CONFIG} ]]; then
   fi
 
 else
-
-
-
 
 mwc_createdirs_static_mwc
 mwc_build_static_mwc
@@ -612,14 +629,14 @@ fi
 
 }
 
-if [[ -z $1 ]]; then
+if [[ -z "${1}" ]]; then
 echo "Do one of:
 ./CreatePackages.sh mwc_only
 ./CreatePackages.sh xtc_only
-./CreatePackages.sh build_xtau
+./CreatePackages.sh try_deploy_xtau
 ./CreatePackages.sh build_all"
 else
-$1
+${1}
 fi
 
 exit

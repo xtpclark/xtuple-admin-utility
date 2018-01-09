@@ -1,7 +1,7 @@
 #!/bin/bash
 
 database_menu() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $*"
 
     log "Opened database menu"
 
@@ -563,17 +563,14 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         check_database_info
     fi
 
+while true; do
     CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return $RET
     fi
-
-    if [ -z "$CLUSTER" ]; then
-        msgbox "No database clusters detected on this system. Entering setup."
-	provision_cluster
-        check_database_info
-    fi
+ break
+done
 
     export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
     export POSTNAME=`awk  '{print $2}' <<< "$CLUSTER"`

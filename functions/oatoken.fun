@@ -21,8 +21,7 @@ openssl pkcs12 -in ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} -passin pass:notasecret -n
 openssl rsa -in ${KEYTMP}/private.pem -passin pass:notasecret -pubout -passout pass:notasecret > ${KEYTMP}/public.pem
 cp ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} ${KEY_P12_PATH}
 
-OAPUBKEY=$(<${KEYTMP}/public.pem)
-export OAPUBKEY=${OAPUBKEY}
+export OAPUBKEY=$(<${KEYTMP}/public.pem)
 echo "Created OAPUBKEY"
 }
 
@@ -30,17 +29,19 @@ echo "Created OAPUBKEY"
 generateoasql()
 {
 cat << EOF >> ${WORKDIR}/sql/oa2client.sql
-UPDATE xt.oa2client SET oa2client_client_id='xTupleCommerceSite_${WORKDATE}' WHERE oa2client_client_id='xTupleCommerceSite' AND oa2client_client_x509_pub_cert != '${OAPUBKEY}';
+UPDATE xt.oa2client SET oa2client_client_id='xTupleCommerceSite_${WORKDATE}' 
+   WHERE oa2client_client_id='xTupleCommerceSite' 
+  AND oa2client_client_x509_pub_cert != '${OAPUBKEY}';
 
-INSERT INTO xt.oa2client(oa2client_client_id, oa2client_client_secret, oa2client_client_name, \
-oa2client_client_email, oa2client_client_web_site, oa2client_client_type, oa2client_active, \
-oa2client_issued, oa2client_delegated_access, oa2client_client_x509_pub_cert, oa2client_org) \
-SELECT 'xTupleCommerceSite' AS oa2client_client_id, xt.uuid_generate_v4() AS oa2client_client_secret, \
-'${NGINX_ECOM_DOMAIN}' AS oa2client_client_name, '${ECOMM_ADMIN_EMAIL}' AS oa2client_client_email, \
-'${ERP_SITE_URL}' AS oa2client_client_web_site, 'jwt bearer' AS oa2client_client_type, TRUE AS oa2client_active,  \
-now() AS oa2client_issued , TRUE AS oa2client_delegated_access, '${OAPUBKEY}' AS oa2client_client_x509_pub_cert, current_database()
-AS  oa2client_org
-WHERE NOT EXISTS ( SELECT 1 FROM xt.oa2client WHERE oa2client_client_x509_pub_cert='${OAPUBKEY}');
+INSERT INTO xt.oa2client(oa2client_client_id, oa2client_client_secret, oa2client_client_name,
+                         oa2client_client_email, oa2client_client_web_site, oa2client_client_type, 
+                         oa2client_active, oa2client_issued, oa2client_delegated_access, oa2client_client_x509_pub_cert, oa2client_org)
+
+SELECT                   'xTupleCommerceSite', xt.uuid_generate_v4(), '${NGINX_ECOM_DOMAIN}', 
+                         '${ECOMM_ADMIN_EMAIL}', '${ERP_SITE_URL}', 'jwt bearer',
+                         TRUE, now(), TRUE, '${OAPUBKEY}', current_database()
+   WHERE NOT EXISTS 
+     ( SELECT 1 FROM xt.oa2client WHERE oa2client_client_x509_pub_cert='${OAPUBKEY}');
 EOF
 
 }

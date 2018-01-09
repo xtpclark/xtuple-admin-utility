@@ -3,8 +3,10 @@
 export WORKDIR=`pwd`
 export DEPLOYER_NAME=`whoami`
 
+# WORKDAY=`date "+%m%d%y"`
+# WORKDATE=`date "+%m%d%y-%s"`
+WORKDATE=`date "+%m%d%y"`
 WORKDAY=`date "+%m%d%y"`
-WORKDATE=`date "+%m%d%y-%s"`
 GITHUB_TOKEN=`git config --get github.token`
 
 read_configs() {
@@ -115,23 +117,6 @@ GATEWAY_NODE_LIB_NAME='example' " ) | tee -a ${WORKDIR}/setup.ini
 fi
 }
 
-setup_sudo() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-
-if [[ ! -f /etc/sudoers.d/90-xtau-users ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/90-xtau-users; then
-echo "Setting up user: $DEPLOYER_NAME for sudo"
-echo "You might be prompted for your password."
-(echo '
-# User rules for xtau
-
-'${DEPLOYER_NAME}' ALL=(ALL) NOPASSWD:ALL'
-)| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
-
-else
-echo "User: $DEPLOYER_NAME already setup in sudoers.d"
-fi
-}
-
 initial_update() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
@@ -171,41 +156,7 @@ install_npm_node() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 cd $WORKDIR
-
-if type -p "n" > /dev/null; then
-    echo "Found n"
-    sudo n 0.10.40
-else
-    echo "Need to install npm dependencies"
-
-wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
-chmod +x n
-sudo mv n /usr/bin/n
-sudo n 0.10.40
-sudo npm install -g npm@2.x.x
-sudo npm install -g browserify
-fi
-
-if type -p "npm" > /dev/null; then
-    sudo npm install -g npm@2.x.x
-    sudo npm install -g browserify
-fi
-
-}
-
-check_npm() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-
-cd $WORKDIR
-
-if type -p "n" > /dev/null; then
-    echo "Found n"
-    sudo n 0.10.40
-    sudo npm install -g npm@2.x.x
-    sudo npm install -g browserify
-
-else
-    echo "Need to install npm dependencies"
+sudo apt-get -y install npm
 
 wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
 chmod +x n
@@ -214,20 +165,13 @@ sudo n 0.10.40
 sudo npm install -g npm@2.x.x
 sudo npm install -g browserify
 
-fi
-
 }
-
-
-
-
-
 
 
 install_postgresql() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-if [[ -z ${PGVER} ]]; then
+if [[ -z "${PGVER}" ]]; then
 echo "Need to set PGVER before running"
 echo "i.e.: export PGVER=9.6"
 exit 0
@@ -1113,16 +1057,10 @@ if [[ ! -f ${WORKDIR}/${XTC_WWW_TARBALL} ]]; then
     echo "Looking for: ${XTC_WWW_TARBALL}"
     echo "Can't find it... This is important"
     exit 2
-else
+fi
 
-if [ ! -d "/var/www" ]; then
-echo "Directory /var/www does not exist."
 sudo mkdir -p /var/www
 echo "Directory /var/www created."
-
-else
-echo "/var/www already exists"
-fi
 
 cd $WORKDIR
 XTCTARDIR=`tar -tzf ${XTC_WWW_TARBALL} | head -1 | cut -f1 -d"/"`
@@ -1136,7 +1074,6 @@ fi
 
 sudo mv $WORKDIR/${XTCTARDIR} /var/www/xTupleCommerce
 sudo chown -R www-data:www-data /var/www/xTupleCommerce
-fi
 
 }
 
@@ -1215,34 +1152,6 @@ echo "About to delete the following"
 }
 
 
-# Uncomment for testing specific functions.
-# if [[ -z $1 ]]; then
-# echo "OK"
-#else
-#  $1
-#  exit 0
-#fi
-
-dont_touch() {
-read_configs
-setup_sudo
-# initial_update
-add_mwc_user
-install_npm_node
-install_postgresql
-setup_postgresql_cluster
-setup_erp_db
-setup_xtuplecommerce_db
-install_mwc
-# install_example_gateway
-setup_phpunit
-setup_compass
-setup_phpnginx
-setup_xtuplecommerce
-clear
-webnotes
-}
-
 xtau_deploy_mwc() {
 read_xtau_configs
 }
@@ -1251,16 +1160,9 @@ read_xtau_configs
 
 install_composer() {
 
-#if type -p "composer" > /dev/null; then
-#   echo "composer found"
-#else
-#   msgbox "Need to install composer and dependencies, this may prompt for your github user and password."
-# Variables for xdruple-server
-#if [[ ! -d $(pwd)/xdruple-server/scripts ]]; then
-git submodule update --init --recursive
-#rm -rf $(pwd)/xdruple-server
-#git clone https://github.com/xtuple/xdruple-server
-#fi
+mkdir -p ~/.composer
+
+git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple/xdruple-server
 
 export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
 export CONFIG_DIR=$(pwd)/xdruple-server/config
@@ -1277,5 +1179,4 @@ sudo timedatectl set-timezone ${TIMEZONE}
 
 source ${SCRIPTS_DIR}/php.sh ${TYPE} ${TIMEZONE} ${DEPLOYER_NAME} ${GITHUB_TOKEN} ${CONFIG_DIR}
 
-#fi
 }

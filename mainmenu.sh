@@ -28,7 +28,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "3") database_menu ;;
             "4") selectServer;;
             "5") generate_github_token;;
-	    "6") source CreatePackages.sh build_xtau;;
+	    "6") source CreatePackages.sh try_deploy_xtau;;
             "7") source CreatePackages.sh xtau_deploy_ecommerce;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac

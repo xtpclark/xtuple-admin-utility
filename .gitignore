@@ -17,3 +17,5 @@ private/*
 *.bak
 *.config
 sql/oa2client.sql
+*composer.phar*
+*phpunit.phar*

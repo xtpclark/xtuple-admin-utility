@@ -14,11 +14,11 @@ PGNAME=
 PGPORT=
 
 # set these
-PGVER=9.6
-PGHOST=localhost
+PGVER=${PGVER:-9.6}
+PGHOST=${PGHOST:-localhost}
 
 # postgres user, required for all postgres/database actions
-PGUSER=postgres
+PGUSER=${PGUSER:-postgres}
 
 # usually set to $LANG
 POSTLOCALE=$LANG
@@ -45,36 +45,22 @@ GITHUBNAME=
 GITHUBPASS=
 
 # Variables for xdruple-server
-THISDIR=$(pwd)
-if [[ ! -d $(pwd)/xdruple-server/scripts ]]; then
-git submodule update --init --recursive
-cd $(pwd)/xdruple-server
-git checkout master
-#rm -rf $(pwd)/xdruple-server
-#git clone https://github.com/xtuple/xdruple-server
-cd ${THISDIR}
-fi
+# Everything below here should be re-worked into it's
+# own script because asking for git credentials at first init of xtau is ugly.
+# git submodule update --init --recursive
+# git submodule foreach git pull origin master
 
-export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
-export CONFIG_DIR=$(pwd)/xdruple-server/config
+# export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
+# export CONFIG_DIR=$(pwd)/xdruple-server/config
 
-export TYPE='server'
-export DEPLOYER_NAME=`whoami`
-export TIMEZONE=America/New_York
+# export TYPE='server'
+# export DEPLOYER_NAME=`whoami`
+# export TIMEZONE=America/New_York
 
 #sudo locale-gen en_US.UTF-8 && \
 #export DEBIAN_FRONTEND=noninteractive
 #sudo dpkg-reconfigure locales && \
 #sudo echo ${TIMEZONE} > /etc/timezone
-sudo timedatectl set-timezone ${TIMEZONE}
+# sudo timedatectl set-timezone ${TIMEZONE}
 
-
-# get rid of these
-# WORKDIR
-# XTDIR
-# XTVERSION
-# INSTANCE
-# DEMODEST
-# DEST
-# SOURCE
-mkdir -p ~/.composer
+# mkdir -p ~/.composer
