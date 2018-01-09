@@ -2,6 +2,14 @@
 
 export WORKDIR=`pwd`
 export DEPLOYER_NAME=`whoami`
+export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
+export CONFIG_DIR=$(pwd)/xdruple-server/config
+export KEY_P12_PATH=${WORKDIR}/private
+export KEYTMP=${KEY_P12_PATH}/tmp
+
+export TYPE='server'
+export TIMEZONE=America/New_York
+
 
 # WORKDAY=`date "+%m%d%y"`
 # WORKDATE=`date "+%m%d%y-%s"`
@@ -248,8 +256,6 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # ECOMM_ADMIN_EMAIL="admin@xtuple.xd"
 # ERP_SITE_URL='xtuple.xd'
 
-KEY_P12_PATH=${WORKDIR}/private
-KEYTMP=${KEY_P12_PATH}/tmp
 mkdir -p ${KEY_P12_PATH}
 mkdir -p ${KEYTMP}
 rm -rf ${KEYTMP}/*.key
@@ -779,20 +785,18 @@ log_exec sudo su - ${DEPLOYER_NAME} -c "cd /opt/xtuple/${MWC_VERSION}/${ERP_DATA
    fi
 
 # We can check for the private extensions dir...
-if [ -d /opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/private-extensions ] && [ ${APPLY_FOUNDATION} == '-f' ]; then
-log_exec sudo su - ${DEPOLYER_NAME} -c "cd /opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/xtuple && ./scripts/build_app.js -c /etc/xtuple/$MWC_VERSION/${ERP_DATABASE_NAME}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION}" 2>&1 | tee buildapp_output.log
-  RET=$?
-   if [[ $RET -ne 0 ]]; then
-   msgbox "$(cat buildapp_output.log)"
-   main_menu
- else
-   msgbox "$(cat buildapp_output.log)"
-   fi
-
-
+if [[ -d "/opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/private-extensions" ]] ; then
+     log_exec sudo su - ${DEPOLYER_NAME} -c "cd /opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/xtuple && ./scripts/build_app.js -c /etc/xtuple/$MWC_VERSION/${ERP_DATABASE_NAME}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION}" 2>&1 | tee buildapp_output.log
+     RET=$?
+       if [[ $RET -ne 0 ]]; then
+          msgbox "$(cat buildapp_output.log)"
+          main_menu
+        else
+          msgbox "$(cat buildapp_output.log)"
+       fi
 else
-msgbox "Private-Extensions does not exists. You need to contact xTuple for access on github."
-main_menu
+  msgbox "Private-Extensions does not exists. You need to contact xTuple for access on github."
+  main_menu
 fi
 
 echo " NEED STATUS HERE if build app succeeded or not, then load preload.sql..."
@@ -1082,6 +1086,7 @@ setup_xdruple_nginx() {
 
 echo "Running: source ${SCRIPTS_DIR}/nginx-server.sh ${DEPLOYER_NAME} ${DOMAIN} ${DOMAIN_ALIAS} ${HTTP_AUTH_NAME} ${HTTP_AUTH_PASS} ${CONFIG_DIR}"
 source ${SCRIPTS_DIR}/nginx-server.sh ${DEPLOYER_NAME} ${DOMAIN} ${DOMAIN_ALIAS} ${HTTP_AUTH_NAME} ${HTTP_AUTH_PASS} ${CONFIG_DIR}
+source ${SCRIPTS_DIR}/cron.sh ${CONFIG_DIR}
 
 }
 
@@ -1164,13 +1169,6 @@ mkdir -p ~/.composer
 
 git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple/xdruple-server
 
-export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
-export CONFIG_DIR=$(pwd)/xdruple-server/config
-
-export TYPE='server'
-export DEPLOYER_NAME=`whoami`
-export TIMEZONE=America/New_York
-
 #sudo locale-gen en_US.UTF-8 && \
 #export DEBIAN_FRONTEND=noninteractive
 #sudo dpkg-reconfigure locales && \
@@ -1178,5 +1176,4 @@ export TIMEZONE=America/New_York
 sudo timedatectl set-timezone ${TIMEZONE}
 
 source ${SCRIPTS_DIR}/php.sh ${TYPE} ${TIMEZONE} ${DEPLOYER_NAME} ${GITHUB_TOKEN} ${CONFIG_DIR}
-
 }

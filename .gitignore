@@ -19,3 +19,5 @@ private/*
 sql/oa2client.sql
 *composer.phar*
 *phpunit.phar*
+backups/*.backup
+backups/*.sql

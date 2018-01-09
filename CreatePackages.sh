@@ -512,11 +512,11 @@ Public IP: ${WAN_IP}
 Private IP: ${LAN_IP}
 Port: ${PGPORT}
 Database: ${ERP_DATABASE_NAME}
-User: <Your User> 
+User: <Your User>
 Pass: <Your Pass>
-URL: http://${WAN_IP}:8443
-URL: http://${LAN_IP}:8443
-URL: http://${DOMAIN}:8443
+URL: https://${WAN_IP}:8443
+URL: https://${LAN_IP}:8443
+URL: https://${DOMAIN}:8443
 
 You may need to configure your firewall or router to forward incoming traffic from
 ${WAN_IP} to ${LAN_IP}:${PGPORT} if you cannot connect from outside 

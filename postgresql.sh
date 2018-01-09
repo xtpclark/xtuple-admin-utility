@@ -254,7 +254,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     fi
 
     log "Increasing max_locks_per_transaction to 256"
-    log_exec sudo bash -c "echo  \"#max_locks_per_transaction = 256\" >> $POSTDIR/postgresql.conf"
+    log_exec sudo bash -c "echo  \"max_locks_per_transaction = 256\" >> $POSTDIR/postgresql.conf"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Increasing max_locks_per_transaction in postgresql.conf failed. Check the log file for any issues."
