@@ -344,18 +344,6 @@ RET=$?
 echo "console prepare:dir returned $RET"
 
 
-#cd ${BUILD_XTC_ROOT}
-#echo "Running composer install"
-#cd ${BUILD_XTC_ROOT}
-#composer install
-#RET=$?
-#echo "composer install returned $RET"
-#echo "Running console.php install:prepare:directories"
-#./console.php install:prepare:directories
-#RET=$?
-#echo "console prepare:dir returned $RET"
-
-
 }
 
 xtc_bundle_xtuplecommerce() {
