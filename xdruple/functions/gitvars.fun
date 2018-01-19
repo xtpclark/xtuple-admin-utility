@@ -3,6 +3,37 @@
 
 #if type "composer" > /dev/null; then
 # source ../logging.sh
+install_composer() {
+
+if type -p "composer" > /dev/null; then
+   echo "composer found"
+else
+   msgbox "Need to install composer and dependencies, this may prompt for your github user and password."
+# Variables for xdruple-server
+if [[ ! -d $(pwd)/xdruple-server/scripts ]]; then
+git submodule update --init --recursive
+#rm -rf $(pwd)/xdruple-server
+#git clone https://github.com/xtuple/xdruple-server
+fi
+
+export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
+export CONFIG_DIR=$(pwd)/xdruple-server/config
+
+export TYPE='server'
+export DEPLOYER_NAME=`whoami`
+export TIMEZONE=America/New_York
+
+#sudo locale-gen en_US.UTF-8 && \
+#export DEBIAN_FRONTEND=noninteractive
+#sudo dpkg-reconfigure locales && \
+#sudo echo ${TIMEZONE} > /etc/timezone
+sudo timedatectl set-timezone ${TIMEZONE}
+
+source ${SCRIPTS_DIR}/php.sh ${TYPE} ${TIMEZONE} ${DEPLOYER_NAME} ${GITHUB_TOKEN} ${CONFIG_DIR}
+
+fi
+}
+
 
 loadadmin_gitconfig() {
 log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -24,7 +55,8 @@ export XDWORKDIR=$xdworkdir
 export XDDREPOURL=$cddrepourl
 export GITXDDIR=$gitxddir
 fi
-composer config --global github-oauth.github.com ${GITHUB_TOKEN}
+
+install_composer
 
 
 }

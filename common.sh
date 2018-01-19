@@ -1,11 +1,15 @@
 #!/bin/bash
 
 do_exit() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Exiting xTuple Admin Utility"
     exit 0
 }
 
 die() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
   TRAPMSG="$@"
   log $@
   exit 1
@@ -22,6 +26,8 @@ ctrlc() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $3 using wget"
     wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
     return ${PIPESTATUS[0]}
@@ -31,6 +37,8 @@ dlf() {
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf_fast() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $3 using axel"
     axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
     return ${PIPESTATUS[0]}
@@ -39,6 +47,8 @@ dlf_fast() {
 # $1 is the URL
 # $3 is the output file name
 dlf_fast_console() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Downloading $1 to file $2 using axel console output only"
     axel -n 5 "$1" -o "$2" > /dev/null
 }
@@ -56,12 +66,12 @@ latest_version() {
 }
 
 window_title() {
-    if [ -z "$PGHOST" ] && [ -z "$POSTPORT" ] && [ -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
+    if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ]; then
         echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-    elif [ ! -z "$PGHOST" ] && [ ! -z "$POSTPORT" ] && [ ! -z "$PGUSER" ] && [ -z "$PGPASSWORD" ]; then
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Not Set"
+    elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ]; then
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
     else
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$POSTPORT -=- Password Is Set"
+        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
     fi
 }
 
@@ -91,7 +101,8 @@ install_prereqs() {
         "ubuntu")
                 install_pg_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$POSTVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic dialog xsltproc
+
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -112,7 +123,7 @@ install_prereqs() {
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$POSTVER
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -157,7 +168,7 @@ is_port_open() {
 }
 
 new_postgres_port() {
-    POSTPORT=$(for i in $(seq 5432 5500) $(sudo pg_lsclusters -h | awk '{print $3}') ; do echo $i; done | sort | uniq -u | head -1)
+    PGPORT=$(for i in $(seq 5432 5500) $(sudo pg_lsclusters -h | awk '{print $3}') ; do echo $i; done | sort | uniq -u | head -1)
 }
 
 new_nginx_port() {
@@ -175,6 +186,24 @@ test_connection() {
         return 1
     fi
 }
+
+setup_sudo() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+if [[ ! -f "/etc/sudoers.d/${DEPLOYER_NAME}" ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/${DEPLOYER_NAME}; then
+ # echo "Setting up user: $DEPLOYER_NAME for sudo"
+ # echo "You might be prompted for your password."
+ # (echo "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD:ALL" )| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
+
+  sudo printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/${DEPLOYER_NAME} && \
+  sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
+else
+  echo "User: $DEPLOYER_NAME already setup in sudoers.d"
+fi
+
+}
+
+
 # define some colors if the tty supports it
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
@@ -187,3 +216,5 @@ if [[ -t 1 && ! $COLOR = "NO" ]]; then
   ENDCOLOR='\e[0m' 
   S='\\'
 fi
+
+

@@ -1,12 +1,13 @@
 #!/bin/bash
 
 postgresql_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened PostgreSQL menu"
 
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Install PostgreSQL $POSTVER" \
+            "1" "Install PostgreSQL $PGVER" \
             "2" "List provisioned clusters" \
             "3" "Select Cluster" \
             "4" "Create new cluster" \
@@ -21,7 +22,7 @@ postgresql_menu() {
             break
         elif [ $RET -eq 0 ]; then
             case "$PGM" in
-            "1") log_exec install_postgresql $POSTVER ;;
+            "1") log_exec install_postgresql $PGVER ;;
             "2") log_exec list_clusters ;;
             "3") log_exec select_cluster ;;
             "4") log_exec provision_cluster ;;
@@ -36,6 +37,7 @@ postgresql_menu() {
 }
 
 password_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened password menu"
 
@@ -69,37 +71,50 @@ password_menu() {
 
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    POSTVER="${1:-$POSTVER}"
+    PGVER="${1:-$PGVER}"
 
 # Let's not install the main cluster by default just to drop it...
 
     log_exec sudo apt-get -y install postgresql-common
     sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
 
-    log_exec sudo apt-get -y install postgresql-$POSTVER postgresql-client-$POSTVER postgresql-contrib-$POSTVER postgresql-$POSTVER-plv8 postgresql-server-dev-$POSTVER
+    log_exec sudo apt-get -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-server-dev-$PGVER
     RET=$?
     if [ $RET -ne 0 ]; then
+        install_plv8
         return $RET
     elif [ $RET -eq 0 ]; then
         export PGUSER=postgres
-        export PGPASSWORD=postgres
         export PGHOST=localhost
-        export POSTPORT=5432
+        export PGPORT=5432
+        install_plv8
         return $RET
     fi
 
     provision_cluster
 }
 
+install_plv8()
+{
+#  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
+#  tar xf xtuple_plv8.tgz
+  cd xtuple_plv8
+  log_exec echo '' | sudo ./install_plv8.sh
+#  rm xtuple_plv8.tgz
+}
+
+
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    POSTVER="${1:-$POSTVER}"
-    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $POSTVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
-        log "Uninstalling PostgreSQL "$POSTVER"..."
-        log_exec sudo apt-get -y remove postgresql-$POSTVER postgresql-contrib-$POSTVER postgresql-$POSTVER-plv8 postgresql-server-dev-$POSTVER
+    PGVER="${1:-$PGVER}"
+    if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $PGVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
+        log "Uninstalling PostgreSQL "$PGVER"..."
+        log_exec sudo apt-get -y remove postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8 postgresql-server-dev-$PGVER
         RET=$?
         return $RET
     else
@@ -111,11 +126,12 @@ remove_postgresql() {
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    POSTVER="${1:-$POSTVER}"
-    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $POSTVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
-        log "Purging PostgreSQL "$POSTVER"..."
-        log_exec sudo apt-get -y purge postgresql-$POSTVER postgresql-contrib-$POSTVER postgresql-$POSTVER-plv8
+    PGVER="${1:-$PGVER}"
+    if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $PGVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
+        log "Purging PostgreSQL "$PGVER"..."
+        log_exec sudo apt-get -y purge postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8
         RET=$?
         return $RET
     else
@@ -125,6 +141,7 @@ purge_postgresql() {
 }
 
 get_cluster_list() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     CLUSTERS=()
     
@@ -135,6 +152,7 @@ get_cluster_list() {
 }
 
 list_clusters() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     get_cluster_list
 
@@ -153,10 +171,12 @@ list_clusters() {
 # $4 is locale
 # $5 if exists, start at boot
 provision_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    install_plv8
 
-    POSTVER="${1:-$POSTVER}"
-    if [ -z "$POSTVER" ] && [ "$MODE" = "manual" ]; then
-        POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$POSTVER" 3>&1 1>&2 2>&3)
+    PGVER="${1:-$PGVER}"
+    if [ -z "$PGVER" ] && [ "$MODE" = "manual" ]; then
+        PGVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$PGVER" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -165,18 +185,18 @@ provision_cluster() {
 
     POSTNAME="$2"
     if [ -z "$POSTNAME" ] && [ "$MODE" = "manual" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\nExisting Clusters:\n$(sudo pg_lsclusters -h | awk '{print $2}')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
+        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\n$(sudo pg_lsclusters -h | awk '{ print "Existing Clusters:" $2 } END { if (!NR) print "No Existing Clusters" }')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
         fi
     fi
 
-    POSTPORT="$3"
-    if [ -z "$POSTPORT" ] && [ "$MODE" = "manual" ]; then
+    PGPORT="$3"
+    if [ -z "$PGPORT" ] && [ "$MODE" = "manual" ]; then
         # choose a free port automatically someday
         new_postgres_port
-        POSTPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port" 8 60 "$POSTPORT" 3>&1 1>&2 2>&3)
+        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port" 8 60 "$PGPORT" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -207,28 +227,37 @@ provision_cluster() {
         return 2
     fi
 
-    sudo pg_lsclusters -h | awk '{print $3}' | grep $POSTPORT 2>&1 > /dev/null
+    sudo pg_lsclusters -h | awk '{print $3}' | grep $PGPORT 2>&1 > /dev/null
     if [ "$?" -eq 0 ]; then
-        msgbox "Port $POSTPORT is already in use."
+        msgbox "Port $PGPORT is already in use."
         return 1
     fi
 
-    log "Creating database cluster $POSTNAME using version $POSTVER on port $POSTPORT encoded with $POSTLOCALE"
+    log "Creating database cluster $POSTNAME using version $PGVER on port $PGPORT encoded with $POSTLOCALE"
 ### PERRY
-    log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $POSTPORT --start $POSTSTART $POSTVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
+    log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $PGPORT --start $POSTSTART $PGVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
         do_exit
     fi
 
-    POSTDIR=/etc/postgresql/$POSTVER/$POSTNAME
+    POSTDIR=/etc/postgresql/$PGVER/$POSTNAME
 
     log "Opening pg_hba.conf for internet access with passwords"
-    log_exec sudo bash -c "echo  \"host    all             all             0.0.0.0/0                 md5\" >> $POSTDIR/pg_hba.conf"
+    log_exec sudo bash -c "echo  \"hostnossl      all           all             0.0.0.0/0                 reject\" >> $POSTDIR/pg_hba.conf"
+    log_exec sudo bash -c "echo  \"hostssl      all             all             0.0.0.0/0                 md5\" >> $POSTDIR/pg_hba.conf"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
+        do_exit
+    fi
+
+    log "Increasing max_locks_per_transaction to 256"
+    log_exec sudo bash -c "echo  \"max_locks_per_transaction = 256\" >> $POSTDIR/postgresql.conf"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "Increasing max_locks_per_transaction in postgresql.conf failed. Check the log file for any issues."
         do_exit
     fi
 
@@ -240,82 +269,51 @@ provision_cluster() {
         do_exit
     fi
 
-    log "Restarting PostgreSQL $POSTVER for $POSTNAME"
+
+    log "Restarting PostgreSQL $PGVER for $POSTNAME"
     # you may wonder why I have this block when the commands are all the same, the reason is that
     # we only support ubuntu derivatives currently, but in the near future that will not be the
     # case, and I will lose access to pg_ctlcluster and its friends.
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
             "trusty")
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" stop --force
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" start
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
                 ;;
             "utopic")
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" stop --force
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" start
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
                 ;;
             "vivid") ;&
             "xenial")
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" stop --force
-                log_exec sudo systemctl enable postgresql@$POSTVER-"$POSTNAME"
-                log_exec sudo systemctl start postgresql@$POSTVER-"$POSTNAME"
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
+                log_exec sudo systemctl enable postgresql@$PGVER-"$POSTNAME"
+                log_exec sudo systemctl start postgresql@$PGVER-"$POSTNAME"
                 ;;
         esac
     elif [ $DISTRO = "debian" ]; then
         case "$CODENAME" in
             "wheezy")
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" restart
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" restart
                 ;;
             "jessie")
-                log_exec sudo pg_ctlcluster $POSTVER "$POSTNAME" stop
-                log_exec sudo systemctl enable postgresql@$POSTVER-"$POSTNAME"
-                log_exec sudo systemctl start postgresql@$POSTVER-"$POSTNAME"
+                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop
+                log_exec sudo systemctl enable postgresql@$PGVER-"$POSTNAME"
+                log_exec sudo systemctl start postgresql@$PGVER-"$POSTNAME"
                 ;;
         esac
     fi
 
     export PGHOST=localhost
     export PGUSER=postgres
-    export PGPASSWORD=postgres
-
-    if [ $MODE = "manual" ]; then
-        msgbox "Creation of database cluster $POSTNAME using version $POSTVER was successful. You will now be asked to set a postgresql password"
-        reset_sudo postgres
-        if [ $RET -ne 0 ]; then
-            msgbox "Error setting the postgres password. Correct any errors on the console. \nYou can try setting the password via another method using the Password Reset menu."
-            do_exit
-        fi
-    else
-        log "Creation of database cluster $POSTNAME using version $POSTVER was successful."
-    fi
-
-    INIT_URL="http://files.xtuple.org/common/init.sql"
-
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $INIT_URL $WORKDIR/init.sql
-        dlf_fast_console $INIT_URL.md5sum $WORKDIR/init.sql.md5sum
-    else
-        dlf_fast $INIT_URL "Downloading init.sql. Please Wait." $WORKDIR/init.sql
-        dlf_fast $INIT_URL.md5sum "Downloading init.sql.md5sum. Please Wait." $WORKDIR/init.sql.md5sum
-    fi
-
-    VALID=`cat $WORKDIR/init.sql.md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum $WORKDIR/init.sql | awk '{printf $1}'`
-    if [ "$VALID" != "$CURRENT" ] || [ -z "$VALID" ]; then
-        msgbox "There was an error verifying the init.sql that was downloaded. Utility will now exit."
-        do_exit
-    fi
 
     log "Deploying init.sql, creating admin user and xtrole group"
-    psql -q -h $PGHOST -U postgres -d postgres -p $POSTPORT -f $WORKDIR/init.sql
+    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/sql/init.sql
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error deploying init.sql. Check for errors and try again"
         do_exit
     fi
-
-    log "Removing downloaded init scripts..."
-    rm $WORKDIR/init.sql{,.md5sum}
 
     msgbox "Initializing cluster successful."
 
@@ -324,6 +322,7 @@ provision_cluster() {
 }
 
 select_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     set_database_info_select
 
@@ -334,15 +333,16 @@ select_cluster() {
 # $3 is mode (auto/manual)
 # prompt if not provided
 drop_cluster() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    POSTVER="${1:-$POSTVER}"
+    PGVER="${1:-$PGVER}"
     POSTAME="${2:-$POSTNAME}"
     MODE="${3:-$MODE}"
     MODE="${MODE:-manual}"
 
     if [ $MODE = "manual" ]; then
-        if [ -z "$POSTVER" ]; then
-            POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
+        if [ -z "$PGVER" ]; then
+            PGVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
             RET=$?
             if [ $RET -ne 0 ]; then
                 return 0
@@ -357,15 +357,15 @@ drop_cluster() {
             fi
         fi
 
-        if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $POSTNAME - $POSTVER?" --yes-button "No" --no-button "Yes" 10 60) then
+        if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $POSTNAME - $PGVER?" --yes-button "No" --no-button "Yes" 10 60) then
             return 0
         fi
     fi
 
-    log "Dropping PostgreSQL cluster $POSTNAME version $POSTVER"
+    log "Dropping PostgreSQL cluster $POSTNAME version $PGVER"
 
    # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
-  # log_exec sudo su - postgres -c "pg_dropcluster --stop $POSTVER $POSTNAME"
+  # log_exec sudo su - postgres -c "pg_dropcluster --stop $PGVER $POSTNAME"
 true
     RET=$?
     if [ $MODE = "manual" ]; then
@@ -373,13 +373,14 @@ true
             msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
             do_exit
         else
-            msgbox "Dropping PostgreSQL cluster $POSTNAME version $POSTVER completed successfully."
+            msgbox "Dropping PostgreSQL cluster $POSTNAME version $PGVER completed successfully."
         fi
     fi
     return $RET
 }
 
 drop_cluster_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     CLUSTERS=()
 
@@ -417,6 +418,7 @@ drop_cluster_menu() {
 
 # $1 is user to reset
 reset_sudo() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -432,14 +434,13 @@ reset_sudo() {
 
     log "Resetting PostgreSQL password for user $1 using psql via su - postgres"
 
-    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $POSTPORT -d postgres -c "ALTER USER $1 WITH PASSWORD '$NEWPASS';"
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d postgres -c "ALTER USER $1 WITH PASSWORD '$NEWPASS';"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via sudo. Try using psql, or opening up pg_hba.conf"
         return 0
     else
         export PGUSER=$1
-        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
@@ -448,6 +449,7 @@ reset_sudo() {
 
 # $1 is user to reset
 reset_psql() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -463,14 +465,13 @@ reset_psql() {
     
     log "Resetting PostgreSQL password for user $1 using psql directly"
     
-    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $POSTPORT -c "ALTER USER $1 WITH PASSWORD '$NEWPASS';"
+    log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -c "ALTER USER $1 WITH PASSWORD '$NEWPASS';"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Looks like something went wrong resetting the password via psql. Try using sudo psql, or opening up pg_hba.conf"
         return 0
     else
         export PGUSER=$1
-        export PGPASSWORD=$NEWPASS
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
@@ -479,6 +480,7 @@ reset_psql() {
 
 #  $1 is globals file to backup to
 backup_globals() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -498,7 +500,7 @@ backup_globals() {
     
     log "Backing up globals to file "$DEST"."
 
-    log_exec pg_dumpall --host "$PGHOST" --port "$POSTPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
+    log_exec pg_dumpall --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."
@@ -511,6 +513,7 @@ backup_globals() {
 
 #  $1 is globals file to restore
 restore_globals() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -530,7 +533,7 @@ restore_globals() {
 
     log "Restoring globals from file $SOURCE"
 
-    log_exec psql -h $PGHOST -p $POSTPORT -U $PGUSER -d postgres -q -f "$SOURCE"
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -f "$SOURCE"
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check output and correct any issues."

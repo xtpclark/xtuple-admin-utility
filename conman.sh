@@ -6,8 +6,9 @@ menu_title=Conman
 
 MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
 
-connectSSH()
-{
+connectSSH() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
 ssh $CONNECTION
 RET=$?
 if [ $RET -ne 0 ]; then

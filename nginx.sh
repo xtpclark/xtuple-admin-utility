@@ -1,6 +1,7 @@
 #!/bin/bash
 
 nginx_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened nginx menu"
 
@@ -30,6 +31,7 @@ nginx_menu() {
 }
 
 install_nginx() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing nginx"
 
@@ -45,6 +47,7 @@ install_nginx() {
 # Run this before configure_nginx if interactive
 # Set all variables if headless/automatic
 nginx_prompt() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 type nginx >/dev/null 2>&1 || { echo >&2 "nginx not installed, installing"; install_nginx; }
 
@@ -106,8 +109,9 @@ type nginx >/dev/null 2>&1 || { echo >&2 "nginx not installed, installing"; inst
 #   NGINX_CERT      - website certificate which should be per site and a separate file in /etc/xtuple/ssl
 #   NGINX_KEY       - website key with the same requirements
 #   NGINX_PORT      - nginx port to listen to
-configure_nginx()
-{
+configure_nginx() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Configuring nginx"
 
     log "Removing nginx site default"
@@ -156,6 +160,7 @@ configure_nginx()
 }
 
 remove_nginx() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if (whiptail --title "Are you sure?" --yesno "Uninstall nginx?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling nginx..."

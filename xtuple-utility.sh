@@ -14,6 +14,9 @@ source logging.sh
 mkdir -p $DATABASEDIR
 mkdir -p $BACKUPDIR
 
+# sets up sudoer.d
+setup_sudo
+
 # process command line arguments
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
@@ -31,8 +34,8 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
         MODE="auto"
         ;;
     p)
-        POSTVER=$OPTARG
-        log "PostgreSQL Version set to $POSTVER via command line argument -p"
+        PGVER=$OPTARG
+        log "PostgreSQL Version set to $PGVER via command line argument -p"
         ;;
     H)
         # Hostname
@@ -165,7 +168,13 @@ source tokenmanagement.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
-install_prereqs
+if [[ ! -f .already_ran_update ]]; then
+  install_prereqs
+  touch .already_ran_update
+else
+  log ".already_ran_update exists - skipping."
+  log "Remove the file if you want apt-get to update the system"
+fi
 
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
@@ -176,15 +185,15 @@ if [ $INSTALLALL ]; then
     EDITION="${EDITION:-demo}"
     DATABASE="${DATABASE:-xtuple}"
     MWCNAME="${MWCNAME:-xtuple-web}"
-    POSTPORT=5432
+    PGPORT=5432
     PGUSER=postgres
 
     NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
     NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
-    install_postgresql "$POSTVER"
-    #drop_cluster $POSTVER main auto
-    provision_cluster "$POSTVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto"
+    install_postgresql "$PGVER"
+    #drop_cluster $PGVER main auto
+    provision_cluster "$PGVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto"
     download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
     restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
     log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 mwc_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened Web Client menu"
 
@@ -28,6 +29,7 @@ mwc_menu() {
 }
 
 install_mwc_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z "$DATABASE" ]; then
         check_database_info
@@ -137,6 +139,7 @@ install_mwc_menu() {
 # $6 is github username
 # $7 is github password
 install_mwc() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing web client"
 
@@ -152,8 +155,8 @@ install_mwc() {
         PRIVATEEXT=true
     fi
 
-    PGDATABASE="${5:-$PGDATABASE}"
-    if [ -z "$PGDATABASE" ]; then
+    ERP_DATABASE_NAME="${5:-$ERP_DATABASE_NAME}"
+    if [ -z "$ERP_DATABASE_NAME" ]; then
         log "No database name passed to install_mwc... exiting."
         do_exit
     fi
@@ -184,7 +187,7 @@ install_mwc() {
     log "Cloning xTuple Web Client Source Code to /opt/xtuple/$MWCVERSION/xtuple"
     log "Using version $MWCVERSION with the given name $MWCNAME"
     log_exec sudo mkdir -p /opt/xtuple/$MWCVERSION/"$MWCNAME"
-    log_exec sudo chown -R xtuple.xtuple /opt/xtuple
+    log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple
 
     # main code
     log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
@@ -210,7 +213,7 @@ install_mwc() {
     # setup encryption details
     log_exec sudo touch /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt
     log_exec sudo touch /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/encryption_key.txt
-    log_exec sudo chown -R xtuple.xtuple /etc/xtuple/$MWCVERSION/"$MWCNAME"
+    log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /etc/xtuple/$MWCVERSION/"$MWCNAME"
     # temporarily so we can cat to them since bash is being a bitch about quoting the trim string below
     log_exec sudo chmod 777 /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/encryption_key.txt
     log_exec sudo chmod 777 /etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt
@@ -233,13 +236,13 @@ install_mwc() {
     log_exec sudo sed -i  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
     log_exec sudo sed -i  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    log "Using database $PGDATABASE"
-    log_exec sudo sed -i  "/databases:/c\      databases: [\"$PGDATABASE\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
-    log_exec sudo sed -i  "/port: 5432/c\      port: $POSTPORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log "Using database $ERP_DATABASE_NAME"
+    log_exec sudo sed -i  "/databases:/c\      databases: [\"$ERP_DATABASE_NAME\"]," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
+    log_exec sudo sed -i  "/port: 5432/c\      port: $PGPORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
     log_exec sudo sed -i  "/port: 8443/c\      port: $NGINX_PORT," /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js
 
-    log_exec sudo chown -R xtuple.xtuple /etc/xtuple
+    log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /etc/xtuple
 
     if [ $DISTRO = "ubuntu" ]; then
         case "$CODENAME" in
@@ -324,5 +327,7 @@ install_mwc() {
 }
 
 remove_mwc() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     msgbox "Uninstalling the mobile client is not yet supported"
 }

@@ -1,6 +1,8 @@
 # Actions to take when the utility is run
 ACTIONS=()
 
+WORKING=$(pwd)
+
 # default configurations
 LOG_FILE=$(pwd)/install-$DATE.log
 
@@ -12,11 +14,11 @@ PGNAME=
 PGPORT=
 
 # set these
-POSTVER=9.6
-PGHOST=localhost
+PGVER=${PGVER:-9.6}
+PGHOST=${PGHOST:-localhost}
 
 # postgres user, required for all postgres/database actions
-PGUSER=postgres
+PGUSER=${PGUSER:-postgres}
 
 # usually set to $LANG
 POSTLOCALE=$LANG
@@ -42,11 +44,23 @@ PRIVATEEXT=
 GITHUBNAME=
 GITHUBPASS=
 
-# get rid of these
-# WORKDIR
-# XTDIR
-# XTVERSION
-# INSTANCE
-# DEMODEST
-# DEST
-# SOURCE
+# Variables for xdruple-server
+# Everything below here should be re-worked into it's
+# own script because asking for git credentials at first init of xtau is ugly.
+# git submodule update --init --recursive
+# git submodule foreach git pull origin master
+
+# export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
+# export CONFIG_DIR=$(pwd)/xdruple-server/config
+
+# export TYPE='server'
+# export DEPLOYER_NAME=`whoami`
+# export TIMEZONE=America/New_York
+
+#sudo locale-gen en_US.UTF-8 && \
+#export DEBIAN_FRONTEND=noninteractive
+#sudo dpkg-reconfigure locales && \
+#sudo echo ${TIMEZONE} > /etc/timezone
+# sudo timedatectl set-timezone ${TIMEZONE}
+
+# mkdir -p ~/.composer

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 openrpt_menu() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Opened openrpt menu"
 
     while true; do
@@ -35,6 +37,7 @@ openrpt_menu() {
 }
 
 install_openrpt() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing OpenRPT from apt..."
     log_exec sudo apt-get -y -qq install openrpt
@@ -47,6 +50,7 @@ install_openrpt() {
 }
 
 build_openrpt() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     cd $WORKDIR || die "Couldn't cd $WORKDIR"
 
@@ -68,6 +72,8 @@ build_openrpt() {
 }
 
 install_xtuple_xvfb() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     case "$CODENAME" in
         "trusty") ;&
         "utopic") ;&
@@ -90,6 +96,8 @@ install_xtuple_xvfb() {
 }
 
 setup_webprint() {
+echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     install_openrpt
     install_xtuple_xvfb
 }
