@@ -45,12 +45,12 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 }
 
 # $1 is the URL
-# $3 is the output file name
+# $2 is the output file name
 dlf_fast_console() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
     log "Downloading $1 to file $2 using axel console output only"
-    axel -n 5 "$1" -o "$2" > /dev/null
+    axel --num-connections=5 --output="$2" "$1" > /dev/null
 }
 
 # $1 is the msg
