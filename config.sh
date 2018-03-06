@@ -54,7 +54,7 @@ GITHUBPASS=
 # export CONFIG_DIR=$(pwd)/xdruple-server/config
 
 # export TYPE='server'
-# export DEPLOYER_NAME=`whoami`
+export DEPLOYER_NAME=$(whoami)
 # export TIMEZONE=America/New_York
 
 #sudo locale-gen en_US.UTF-8 && \

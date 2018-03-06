@@ -39,7 +39,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         fi
 
         get_database_list
-    
+
         if [ -z "$DATABASES" ]; then
             msgbox "No databases detected on this system"
             return 1
@@ -139,9 +139,9 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # $6 is github username
 # $7 is github password
 install_mwc() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    log "Installing web client"
+    log "Web enabling"
 
     MWCVERSION="${1:-$MWCVERSION}"
     MWCREFSPEC="${2:-$MWCREFSPEC}"
@@ -151,14 +151,12 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     PRIVATEEXT="${PRIVATEEXT:-false}"
     if [ ! "$PRIVATEEXT" = "true" ]; then
         PRIVATEEXT=false
-    else
-        PRIVATEEXT=true
     fi
 
     ERP_DATABASE_NAME="${5:-$ERP_DATABASE_NAME}"
     if [ -z "$ERP_DATABASE_NAME" ]; then
         log "No database name passed to install_mwc... exiting."
-        do_exit
+        die
     fi
 
     GITHUBNAME="${6:-$GITHUBNAME}"
@@ -166,43 +164,51 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     setup_webprint
 
-    log "Creating xtuple user..."
-    log_exec sudo useradd xtuple -m -s /bin/bash
-
     log "Installing n..."
-    cd $WORKDIR    
+    cd $WORKDIR
     wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
-    log_exec chmod +x n
-    log_exec sudo mv n /usr/bin/n
+    log_exec chmod +x n                                                         || die
+    log_exec sudo mv n /usr/bin/n                                               || die
     # use it to set node to 0.10
     log "Installing node 0.10.40..."
-    log_exec sudo n 0.10.40
+    log_exec sudo n 0.10.40                                                     || die
 
     # need to install npm of course...why doesn't 2.3.14 exist?
-    log_exec sudo npm install -g npm@1.4.28
+    log_exec sudo npm install -g npm@1.4.28                                     || die
 
     # cleanup existing folder or git will throw a hissy fit
     sudo rm -rf /opt/xtuple/$MWCVERSION/"$MWCNAME"
 
     log "Cloning xTuple Web Client Source Code to /opt/xtuple/$MWCVERSION/xtuple"
     log "Using version $MWCVERSION with the given name $MWCNAME"
-    log_exec sudo mkdir -p /opt/xtuple/$MWCVERSION/"$MWCNAME"
-    log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple
+    log_exec sudo mkdir -p /opt/xtuple/$MWCVERSION/"$MWCNAME"                   || die
+    log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple        || die
 
     # main code
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
-#    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive"
+    git clone https://github.com/xtuple/xtuple.git \
+                                   /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple      || die
+    cd /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple                                  || die
+    git checkout $MWCREFSPEC                                                    || die
+    git submodule update --init --recursive                                     || die
+    npm install bower                                                           || die
+    npm install                                                                 || die
+
     # private extensions
-    if [ $PRIVATEEXT = "true" ]; then
+    if $PRIVATEEXT ; then
         log "Installing the commercial extensions"
-        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUBNAME":"$GITHUBPASS"@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install"
+        git clone https://$GITHUBNAME:$GITHUBPASS@github.com/xtuple/private-extensions.git \
+                            /opt/xtuple/$MWCVERSION/$MWCNAME/private-extensions || die
+        cd /opt/xtuple/$MWCVERSION/$MWCNAME/private-extensions                  || die
+        git checkout $MWCREFSPEC                                                || die
+        git submodule update --init --recursive                                 || die
+        npm install                                                             || die
     else
         log "Not installing the commercial extensions"
     fi
 
     if [ ! -f /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource/sample_config.js ]; then
         log "Hrm, sample_config.js doesn't exist.. something went wrong. check the output/log and try again"
-        do_exit
+        die
     fi
 
     export XTDIR=/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple
@@ -282,15 +288,11 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         esac
     else
         log "Seriously? We made it all the way to where I need to write out the init script and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
-        do_exit
+        die
     fi
 
-    log_exec sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        log "buildapp failed to run. Check output and try again"
-        do_exit
-    fi
+    log_exec cd $XTDIR                                                               || die
+    log_exec ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js  || die
 
     # now that we have the script, start the server!
     if [ $DISTRO = "ubuntu" ]; then
@@ -317,7 +319,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         esac
     else
         log "Seriously? We made it all the way to where I need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
-        do_exit
+        die
     fi
 
     # assuming etho for now... hostname -I will give any non-local address if we wanted
