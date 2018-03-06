@@ -110,7 +110,9 @@ type nginx >/dev/null 2>&1 || { echo >&2 "nginx not installed, installing"; inst
 #   NGINX_KEY       - website key with the same requirements
 #   NGINX_PORT      - nginx port to listen to
 configure_nginx() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+    local CURRENTDIR=$(pwd)
 
     log "Configuring nginx"
 
@@ -118,9 +120,11 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
 
     log "Creating site file"
+    cd "$WORKING"
     sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
     sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_SITE
     RET=$?
+    cd "$CURRENTDIR"
     if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx.  Check site file in /etc/nginx/sites-available"
         return $RET

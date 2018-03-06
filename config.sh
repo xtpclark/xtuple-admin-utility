@@ -28,7 +28,7 @@ NGINX_SITE=
 # auto populated if site exists, otherwise can be used to create a site
 NGINX_DOMAIN=
 NGINX_HOSTNAME=
-NGINX_PORT=
+NGINX_PORT=${NGINX_PORT:-8443}
 NGINX_CERT=
 NGINX_KEY=
 # generate new certs if the specified ones don't exist

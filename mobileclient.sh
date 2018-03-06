@@ -292,6 +292,8 @@ install_mwc() {
     fi
 
     log_exec cd $XTDIR                                                               || die
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $ERP_DATABASE_NAME -f lib/orm/source/create_xt_schema.sql
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $ERP_DATABASE_NAME -f lib/orm/source/create_plv8.sql
     log_exec ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js  || die
 
     # now that we have the script, start the server!

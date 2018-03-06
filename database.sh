@@ -311,6 +311,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         msgbox "Something has gone wrong. Check log and correct any issues."
         return $RET
     else
+        log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -f "$XTDIR"/lib/orm/source/create_xt_schema.sql.sql
+        log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -f "$XTDIR"/lib/orm/source/create_plv8.sql
         log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
         pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
         RET=$?
