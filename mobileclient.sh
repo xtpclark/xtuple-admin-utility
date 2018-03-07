@@ -1,5 +1,39 @@
 #!/bin/bash
 
+gitco() {
+  local DESTDIR="$1"
+  local REPO="$(basename $2 .git)"
+  local REFSPEC="$3"
+  local GITHUBNAME="${4:-$GITHUBNAME}"
+  local GITHUBPASS="${5:-$GITHUBPASS}"
+
+  local STARTDIR=$(pwd)
+  local GHUSERSPEC=
+
+  if [ -n "$GITHUBPASS" ] ; then
+    GHUSERSPEC="$GITHUBNAME:$GITHUBPASS@"
+  elif [ -n "$GITHUBNAME" ] ; then
+    GHUSERSPEC="$GITHUBNAME@"
+  fi
+
+  mkdir -p "$DESTDIR"
+  cd "$DESTDIR"
+  ls $REPO || echo "$REPO not found"
+  if [ ! -d $REPO/.git ] ; then
+    git clone https://${GHUSERSPEC}github.com/xtuple/$REPO.git || die
+  fi
+  cd $REPO
+  if ! git remote -v | grep -q xtuple/$REPO ; then
+    git remote add XTUPLE https://github.com/xtuple/$REPO.git
+    git fetch https://${GHUSERSPEC}github.com/xtuple/$REPO.git
+  fi
+
+  git checkout $REFSPEC                           || die
+  git submodule update --init --recursive         || die
+  npm install                                     || die
+  cd "$STARTDIR"
+}
+
 mwc_menu() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
@@ -25,7 +59,6 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             esac
         fi
     done
-
 }
 
 install_mwc_menu() {
@@ -173,11 +206,7 @@ install_mwc() {
     log "Installing node 0.10.40..."
     log_exec sudo n 0.10.40                                                     || die
 
-    # need to install npm of course...why doesn't 2.3.14 exist?
-    log_exec sudo npm install -g npm@1.4.28                                     || die
-
-    # cleanup existing folder or git will throw a hissy fit
-    sudo rm -rf /opt/xtuple/$MWCVERSION/"$MWCNAME"
+    log_exec sudo npm install -g npm@2.x.x                                      || die
 
     log "Cloning xTuple Web Client Source Code to /opt/xtuple/$MWCVERSION/xtuple"
     log "Using version $MWCVERSION with the given name $MWCNAME"
@@ -185,23 +214,13 @@ install_mwc() {
     log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple        || die
 
     # main code
-    git clone https://github.com/xtuple/xtuple.git \
-                                   /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple      || die
-    cd /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple                                  || die
-    git checkout $MWCREFSPEC                                                    || die
-    git submodule update --init --recursive                                     || die
+    gitco /opt/xtuple/$MWCVERSION/$MWCNAME xtuple $MWCREFSPEC
+    cd /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple
     npm install bower                                                           || die
-    npm install                                                                 || die
-
     # private extensions
     if $PRIVATEEXT ; then
         log "Installing the commercial extensions"
-        git clone https://$GITHUBNAME:$GITHUBPASS@github.com/xtuple/private-extensions.git \
-                            /opt/xtuple/$MWCVERSION/$MWCNAME/private-extensions || die
-        cd /opt/xtuple/$MWCVERSION/$MWCNAME/private-extensions                  || die
-        git checkout $MWCREFSPEC                                                || die
-        git submodule update --init --recursive                                 || die
-        npm install                                                             || die
+        gitco /opt/xtuple/$MWCVERSION/$MWCNAME private-extensions $MWCREFSPEC $GITHUBNAME $GITHUBPASS
     else
         log "Not installing the commercial extensions"
     fi
@@ -292,8 +311,6 @@ install_mwc() {
     fi
 
     log_exec cd $XTDIR                                                               || die
-    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $ERP_DATABASE_NAME -f lib/orm/source/create_xt_schema.sql
-    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $ERP_DATABASE_NAME -f lib/orm/source/create_plv8.sql
     log_exec ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js  || die
 
     # now that we have the script, start the server!

@@ -310,19 +310,24 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
         return $RET
-    else
-        log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -f "$XTDIR"/lib/orm/source/create_xt_schema.sql.sql
-        log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -f "$XTDIR"/lib/orm/source/create_plv8.sql
-        log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
-        pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "$(cat restore_output.log)"
-            return $RET
-        else
-            return 0
-        fi
     fi
+    # XTDIR/lib/orm/source/create_{xt_schema,plv8}.sql but XTDIR isn't installed yet
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE <<EOSCRIPT
+      CREATE SCHEMA IF NOT EXISTS xt;
+      GRANT ALL ON SCHEMA xt TO GROUP xtrole;
+      CREATE OR REPLACE FUNCTION xt.js_init(debug BOOLEAN DEFAULT false, initialize BOOLEAN DEFAULT false)
+      RETURNS VOID AS 'BEGIN RETURN; END;' LANGUAGE plpgsql;
+      CREATE EXTENSION IF NOT EXISTS plv8;
+EOSCRIPT
+    log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
+    pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "$(cat restore_output.log)"
+        return $RET
+    fi
+
+    return 0
 }
 
 # list the existing databases on the current configured cluster
