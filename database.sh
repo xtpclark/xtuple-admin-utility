@@ -42,50 +42,50 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $*"
 # manual, prompt for location, don't delete
 # $1 where to save database to
 # $2 is version to grab
-# $3 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
-# $4 is the database name to restore to
+# $3 is type of database: empty, demo, manufacturing, distribution, masterref, ...
 download_database() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    DBVERSION="$2"
+    local DESTFILE="$1"
+    local DBVERSION="$2"
+    local DBTYPE="${3:-$DBTYPE}"
+
     if [ -z "$DBVERSION" ]; then
         msgbox "Database version not specified."
         return 1
     fi
 
-    DBTYPE="${3:-$DBTYPE}"
     DBTYPE="${DBTYPE:-demo}"
 
-    DEMODEST="$1"
-    if [ -z "$DEMODEST" ] && [ "$MODE" = "manual" ]; then
-        DEMODEST=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+    if [ -z "$DESTFILE" ] && [ "$MODE" = "manual" ]; then
+        DESTFILE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
-    elif [ -z "$DEMODEST" ]; then
+    elif [ -z "$DESTFILE" ]; then
         return 127
     fi
 
-    DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
-    MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
+    local DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
+    local MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
 
-    log "Saving "$DB_URL" as "$DEMODEST"."
+    log "Saving $DB_URL as $DESTFILE."
+    mkdir -p $(dirname $DESTFILE)
     if [ $MODE = "auto" ]; then
-        dlf_fast_console $DB_URL "$DEMODEST"
-        dlf_fast_console $MD5_URL "$DEMODEST".md5sum
+        dlf_fast_console $DB_URL "$DESTFILE"
+        dlf_fast_console $MD5_URL "$DESTFILE".md5sum
     else
-        dlf_fast $DB_URL "Downloading Demo Database. Please Wait." "$DEMODEST"
-        dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DEMODEST".md5sum
+        dlf_fast $DB_URL  "Downloading $DBTYPE Database. Please Wait." "$DESTFILE"
+        dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DESTFILE".md5sum
     fi
 
-    VALID=`cat "$DEMODEST".md5sum | awk '{printf $1}'`
-    CURRENT=`md5sum "$DEMODEST" | awk '{printf $1}'`
+    local VALID=$(cat "$DESTFILE".md5sum | awk '{printf $1}')
+    local CURRENT=$(md5sum "$DESTFILE" | awk '{printf $1}')
     if [ "$VALID" != "$CURRENT" ]; then
         msgbox "There was an error verifying the downloaded database."
         return 1
     fi
-
 }
 
 # Copies database $1 to $2 by backing up $1 and restoring to $2
@@ -208,7 +208,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # or restore a local file
 # This can not be run in automatic mode
 create_database() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
     [ "$MODE" = "auto" ] && return 127
 
@@ -222,7 +222,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     done < <( ls -t "${DATABASEDIR}/*.backup" | tr ' ' '_' )
     BACKUPDBS=()
     while read -r line ; do
-	    BACKUPDBS+=("$line" "$line")
+        BACKUPDBS+=("$line" "$line")
     done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
     CUSTOMDB=("EnterFileName..." "EnterFileName...")
 
@@ -237,9 +237,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return $RET
     fi
 
-    echo $CHOICE | grep '^Download'
-	if [ $? -eq 0 ]; then
-	    DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
+    if echo $CHOICE | grep '^Download' ; then
+        DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
         EDITIONS=()
         while read line ; do
             EDITIONS+=("$line" "$line")
@@ -253,19 +252,16 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         fi
 
         EDITION=$(echo $CHOICE | cut -f1 -d'.')
-	    download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
-        restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup"
-	    return $?
-	fi
-
-	echo $CHOICE | grep '^Backup db'
-	if [ $? -eq 0 ]; then
-	    DATABASE=$(echo $CHOICE | sed 's/Backup db //')
-	    restore_database "$BACKUPDIR/$DATABASE"
+        download_database "$DATABASEDIR/$DBVERSION/$EDITION.backup" "$DBVERSION" "$EDITION"
+        restore_database  "$DATABASEDIR/$DBVERSION/$EDITION.backup"
         return $?
-	fi
 
-    if [ "$CHOICE" = "EnterFileName..." ]; then
+    elif echo $CHOICE | grep '^Backup db' ; then
+        DATABASE=$(echo $CHOICE | sed 's/Backup db //')
+        restore_database "$BACKUPDIR/$DATABASE"
+        return $?
+
+    elif [ "$CHOICE" = "EnterFileName..." ]; then
         DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Full Database Pathname" 8 60 `pwd` 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -276,8 +272,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return $?
     fi
 
-	restore_database "$DATABASEDIR/$CHOICE"
-	return $?
+    restore_database "$DATABASEDIR/$CHOICE"
+    return $?
 
 }
 
@@ -314,17 +310,24 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     if [ $RET -ne 0 ]; then
         msgbox "Something has gone wrong. Check log and correct any issues."
         return $RET
-    else
-        log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
-        pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            msgbox "$(cat restore_output.log)"
-            return $RET
-        else
-            return 0
-        fi
     fi
+    # XTDIR/lib/orm/source/create_{xt_schema,plv8}.sql but XTDIR isn't installed yet
+    log_exec psql -qAt -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE <<EOSCRIPT
+      CREATE SCHEMA IF NOT EXISTS xt;
+      GRANT ALL ON SCHEMA xt TO GROUP xtrole;
+      CREATE OR REPLACE FUNCTION xt.js_init(debug BOOLEAN DEFAULT false, initialize BOOLEAN DEFAULT false)
+      RETURNS VOID AS 'BEGIN RETURN; END;' LANGUAGE plpgsql;
+      CREATE EXTENSION IF NOT EXISTS plv8;
+EOSCRIPT
+    log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
+    pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        msgbox "$(cat restore_output.log)"
+        return $RET
+    fi
+
+    return 0
 }
 
 # list the existing databases on the current configured cluster

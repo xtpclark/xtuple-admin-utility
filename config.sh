@@ -28,7 +28,7 @@ NGINX_SITE=
 # auto populated if site exists, otherwise can be used to create a site
 NGINX_DOMAIN=
 NGINX_HOSTNAME=
-NGINX_PORT=
+NGINX_PORT=${NGINX_PORT:-8443}
 NGINX_CERT=
 NGINX_KEY=
 # generate new certs if the specified ones don't exist
@@ -54,7 +54,7 @@ GITHUBPASS=
 # export CONFIG_DIR=$(pwd)/xdruple-server/config
 
 # export TYPE='server'
-# export DEPLOYER_NAME=`whoami`
+export DEPLOYER_NAME=$(whoami)
 # export TIMEZONE=America/New_York
 
 #sudo locale-gen en_US.UTF-8 && \

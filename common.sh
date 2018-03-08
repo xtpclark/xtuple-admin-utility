@@ -1,14 +1,14 @@
 #!/bin/bash
 
 do_exit() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
 
     log "Exiting xTuple Admin Utility"
     exit 0
 }
 
 die() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
 
   TRAPMSG="$@"
   log $@
@@ -45,12 +45,12 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 }
 
 # $1 is the URL
-# $3 is the output file name
+# $2 is the output file name
 dlf_fast_console() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
     log "Downloading $1 to file $2 using axel console output only"
-    axel -n 5 "$1" -o "$2" > /dev/null
+    axel --num-connections=5 --output="$2" "$1" > /dev/null
 }
 
 # $1 is the msg
@@ -188,19 +188,14 @@ test_connection() {
 }
 
 setup_sudo() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
 
-if [[ ! -f "/etc/sudoers.d/${DEPLOYER_NAME}" ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/${DEPLOYER_NAME}; then
- # echo "Setting up user: $DEPLOYER_NAME for sudo"
- # echo "You might be prompted for your password."
- # (echo "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD:ALL" )| sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
-
-  sudo printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/${DEPLOYER_NAME} && \
-  sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
-else
-  echo "User: $DEPLOYER_NAME already setup in sudoers.d"
-fi
-
+  if [[ ! -f "/etc/sudoers.d/${DEPLOYER_NAME}" ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/${DEPLOYER_NAME}; then
+    printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" | sudo tee -a /etc/sudoers.d/${DEPLOYER_NAME}
+    sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
+  else
+    echo "User: $DEPLOYER_NAME already setup in sudoers.d"
+  fi
 }
 
 
