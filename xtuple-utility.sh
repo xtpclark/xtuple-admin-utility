@@ -200,7 +200,7 @@ if [ $INSTALLALL ]; then
     install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
     install_nginx
     log_exec sudo mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" true /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
+    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
     setup_webprint
 fi
 
