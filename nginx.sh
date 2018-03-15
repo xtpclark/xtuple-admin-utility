@@ -111,13 +111,21 @@ type nginx >/dev/null 2>&1 || { echo >&2 "nginx not installed, installing"; inst
 #   NGINX_PORT      - nginx port to listen to
 configure_nginx() {
     echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+    NGINX_HOSTNAME="${1:-$NGINX_HOSTNAME}"
+    NGINX_SITE="${2:-$NGINX_DOMAIN}"
+    NGINX_SITE="${3:-$NGINX_SITE}"
+    NGINX_CERT="${4:-$NGINX_CERT}"
+    NGINX_KEY="${5:-$NGINX_KEY}"
+    NGINX_PORT="${6:-$NGINX_PORT}"
+
+    [ -n "$NGINX_SITE" ] || die The NGINX_SITE variable has not been set
 
     local CURRENTDIR=$(pwd)
 
     log "Configuring nginx"
 
     log "Removing nginx site default"
-    [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
+    sudo rm -f /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
     log "Creating site file"
     cd "$WORKING"
@@ -131,7 +139,7 @@ configure_nginx() {
     fi
 
     log "Enabling site"
-    sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
+    sudo ln --symbolic --force /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
 
     sudo mkdir -p /etc/xtuple/ssl
     RET=$?
