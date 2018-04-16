@@ -2,6 +2,7 @@
 ACTIONS=()
 
 WORKING=$(pwd)
+TMPDIR=${TMPDIR:-/tmp}
 
 # default configurations
 LOG_FILE=$(pwd)/install-$DATE.log

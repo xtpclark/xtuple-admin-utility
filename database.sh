@@ -208,73 +208,75 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # or restore a local file
 # This can not be run in automatic mode
 create_database() {
-    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    [ "$MODE" = "auto" ] && return 127
+  [ "$MODE" = "auto" ] && return 127
+  local BACKUPFILE=
 
-    DOWNLOADABLEDBS=()
-    while read -r line ; do
-        DOWNLOADABLEDBS+=("$line" "$line")
-    done < <( curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1#g' |  sort --version-sort -r | tr ' ' '_' )
-    EXISTINGDBS=()
-    while read -r line ; do
-        EXISTINGDBS+=("$line" "$line")
-    done < <( ls -t "${DATABASEDIR}/*.backup" | tr ' ' '_' )
-    BACKUPDBS=()
-    while read -r line ; do
-        BACKUPDBS+=("$line" "$line")
-    done < <( ls -t $BACKUPDIR | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
-    CUSTOMDB=("EnterFileName..." "EnterFileName...")
+  local DOWNLOADABLEDBS=()
+  while read -r line ; do
+    DOWNLOADABLEDBS+=("$line" "$line")
+  done < <( curl http://files.xtuple.org/ | grep -oP '/\d\.\d\d?\.\d/' | sed 's#/\(.*\)/#Download \1#g' |  sort --version-sort -r | tr ' ' '_' )
 
-    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
-        ${EXISTINGDBS[@]} \
-        ${BACKUPDBS[@]} \
-        ${CUSTOMDB[@]} \
-        ${DOWNLOADABLEDBS[@]} \
-        3>&1 1>&2 2>&3)
+  local EXISTINGDBS=()
+  while read -r line ; do
+    EXISTINGDBS+=("$line" "$line")
+  done < <( ls -t "${DATABASEDIR}/*.backup" 2>/dev/null | tr ' ' '_' )
+
+  local BACKUPDBS=()
+  while read -r line ; do
+    BACKUPDBS+=("$line" "$line")
+  done < <( ls -t $BACKUPDIR 2>/dev/null | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
+  CUSTOMDB=("EnterFileName..." "EnterFileName...")
+
+  CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 \
+                    --cancel-button "Cancel" --ok-button "Select" --notags \
+                    ${EXISTINGDBS[@]} \
+                    ${BACKUPDBS[@]} \
+                    ${CUSTOMDB[@]} \
+                    ${DOWNLOADABLEDBS[@]} \
+                    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    return $RET
+  fi
+
+  if echo $CHOICE | grep '^Download' ; then
+    local DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
+    local EDITIONS=()
+    while read line ; do
+      EDITIONS+=("$line" "$line")
+    done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
+    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Starting Database" 15 60 7 \
+                      --cancel-button "Cancel" --ok-button "Select" --notags \
+                      ${EDITIONS[@]} \
+                      3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        return $RET
+      return $RET
     fi
 
-    if echo $CHOICE | grep '^Download' ; then
-        DBVERSION=$(echo $CHOICE | grep -oP '\d\.\d\d?\.\d')
-        EDITIONS=()
-        while read line ; do
-            EDITIONS+=("$line" "$line")
-        done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
-        CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database Edition" 15 60 7 --cancel-button "Cancel" --ok-button "Select" --notags \
-            ${EDITIONS[@]} \
-            3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
+    EDITION=$(echo $CHOICE | cut -f1 -d'.')
+    BACKUPFILE="$DATABASEDIR/$DBVERSION/$EDITION.backup"
+    download_database "$BACKUPFILE" "$DBVERSION" "$EDITION"
 
-        EDITION=$(echo $CHOICE | cut -f1 -d'.')
-        download_database "$DATABASEDIR/$DBVERSION/$EDITION.backup" "$DBVERSION" "$EDITION"
-        restore_database  "$DATABASEDIR/$DBVERSION/$EDITION.backup"
-        return $?
+  elif echo $CHOICE | grep '^Backup db' ; then
+    DATABASE=$(echo $CHOICE | sed 's/Backup db //')
+    BACKUPFILE="$BACKUPDIR/$DATABASE"
 
-    elif echo $CHOICE | grep '^Backup db' ; then
-        DATABASE=$(echo $CHOICE | sed 's/Backup db //')
-        restore_database "$BACKUPDIR/$DATABASE"
-        return $?
-
-    elif [ "$CHOICE" = "EnterFileName..." ]; then
-        DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Full Database Pathname" 8 60 `pwd` 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-
-        restore_database "$DATABASE"
-        return $?
+  elif [ "$CHOICE" = "EnterFileName..." ]; then
+    DATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "Full Database Pathname" 8 60 `pwd` 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      return $RET
     fi
+    BACKUPFILE="$DATABASE"
 
-    restore_database "$DATABASEDIR/$CHOICE"
-    return $?
+  else
+    BACKUPFILE="$DATABASEDIR/$CHOICE"
+  fi
 
+  restore_database "$BACKUPFILE"
 }
 
 #  $1 is database file to restore
@@ -665,7 +667,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # Upgrade an existing database to a Web-Enabled
 # $1 is database
 upgrade_database() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
     check_database_info
     RET=$?

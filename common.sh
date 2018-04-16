@@ -1,10 +1,10 @@
 #!/bin/bash
 
 do_exit() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
 
-    log "Exiting xTuple Admin Utility"
-    exit 0
+  log "Exiting xTuple Admin Utility"
+  exit 0
 }
 
 die() {
@@ -22,63 +22,110 @@ ctrlc() {
   do_exit
 }
 
+safecp() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local USAGE="$FUNCNAME[0] [ -U username | --username=username ] source target"
+  local USER=
+  if [[ "$1" =~ ^-U(.*) ]] ; then
+    USER=$BASH_REMATCH[1]
+    shift
+    if [ -z "$USER" ] ; then
+      USER="$1"
+    fi
+    shift
+  elif [[ "$1" =~ ^--username=(.*) ]] ; then
+    USER="$1"
+    shift
+  fi
+
+  if [ $# -lt 2 ] ; then
+    die "$USAGE\n$FUNCNAME[0]: needs a source and target"
+  elif [ $# -gt 2 ] ; then
+    die "$USAGE\n$FUNCNAME[0]: cannot handle more than one source"
+  fi
+
+  local SRC="$1"
+  local TGT="$2"
+  if [ -d "$TGT" ] ; then
+    TGT="$TGT/$(basename $SRC)"
+  fi
+
+  if [ -e "${TGT}" ] ; then
+    sudo mv "${TGT}" "${TGT}.${WORKDATE}"
+  fi
+  sudo cp "${SRC}" "${TGT}" || die "Error copying ${SRC} to ${TGT}; look for ${TGT}.${WORKDATE}"
+  if [ -n "$USER" ] ; then
+    sudo chown ${USER} "${TGT}"
+  fi
+}
+
 # $1 is the URL
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    log "Downloading $1 to file $3 using wget"
-    wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
-    return ${PIPESTATUS[0]}
+  log "Downloading $1 to file $3 using wget"
+  wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
+  return ${PIPESTATUS[0]}
 }
 
 # $1 is the URL
 # $2 is the name of what is downloading to show on the window
 # $3 is the output file name
 dlf_fast() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    log "Downloading $1 to file $3 using axel"
-    axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
-    return ${PIPESTATUS[0]}
+  log "Downloading $1 to file $3 using axel"
+  axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
+  return ${PIPESTATUS[0]}
 }
 
 # $1 is the URL
 # $2 is the output file name
 dlf_fast_console() {
-    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  if [ $# -lt 2 ] ; then
+    die "$FUNCNAME[0]: url dest [ file-mode ]"
+  fi
+  local URL="$1"
+  local FILE="$(basename $URL)"
+  local DEST="$2"
+  local MODE="$3"
 
-    log "Downloading $1 to file $2 using axel console output only"
-    axel --num-connections=5 --output="$2" "$1" > /dev/null
+  # TODO: why axel?
+  #wget "$URL" && chmod +x "$FILE" && sudo mv "$FILE" "$DEST"
+  log "Downloading $URL to file $DEST"
+  sudo axel --num-connections=5 --output="$DEST" "$URL" > /dev/null
+  [ -z "$MODE" ] || chmod "$MODE" ${DEST}
 }
 
 # $1 is the msg
 msgbox() {
-    log "MessageBox >> ""$1"
-    [ $MODE = "manual" ] && whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0
+  log "MessageBox >> ""$1"
+  [ $MODE = "manual" ] && whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0
 }
 
 # $1 is the product
 latest_version() {
-    VER=`curl -s http://files.xtuple.org/latest_$1`
-    echo $VER
+  VER=`curl -s http://files.xtuple.org/latest_$1`
+  echo $VER
 }
 
 window_title() {
-    if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ]; then
-        echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-    elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ]; then
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
-    else
-        echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
-    fi
+  if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ]; then
+    echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
+  elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ]; then
+    echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
+  else
+    echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
+  fi
 }
 
 # $1 is text to display
 menu_title() {
-    cat "$WORKDIR"/xtuple.asc
-    echo "$1"
+  cat "$WORKDIR"/xtuple.asc
+  echo "$1"
 }
 
 # used whenever a command needs elevated privileges as we can't always rely on sudo
@@ -162,29 +209,33 @@ install_pg_repo() {
 # $1 is the port
 # $2 is protocol
 is_port_open() {
-
-    (echo >/dev/$2/localhost/$1) &>/dev/null && return 0 || return 1
-
+  (echo >/dev/$2/localhost/$1) &>/dev/null && return 0 || return 1
 }
 
 new_postgres_port() {
-    PGPORT=$(for i in $(seq 5432 5500) $(sudo pg_lsclusters -h | awk '{print $3}') ; do echo $i; done | sort | uniq -u | head -1)
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  PGPORT=$((seq 5432 5500 ; sudo pg_lsclusters -h | awk '{print $3}') | \
+           sort --numeric-sort | head --lines 1)
 }
 
 new_nginx_port() {
-    NGINX_PORT=$(for i in $(seq 8443 8500) $(head -2 /etc/nginx/sites-available/* | grep -Po '8[0-9]{3}') ; do echo $i; done | sort | uniq -u | head -1)
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  NGINX_PORT=$((seq 8443 8500 ; \
+                sudo head --lines 2 /etc/nginx/sites-available/* | \
+                   grep --only-matching '8[0-9]{3}') | \
+               sort --numeric-sort | head --lines 1)
 }
 
 test_connection() {
-    log "Testing internet connectivity..."
-    wget -q --tries=5 --timeout=10 -O - http://files.xtuple.org > /dev/null
-    if [[ $? -eq 0 ]]; then
-        log "Internet connectivity detected."
-        return 0
-    else
-        log "Internet connectivity not detected."
-        return 1
-    fi
+  log "Testing internet connectivity..."
+  wget --quiet --tries=5 --timeout=10 -O - http://files.xtuple.org > /dev/null
+  if [[ $? -eq 0 ]]; then
+    log "Internet connectivity detected."
+    return 0
+  else
+    log "Internet connectivity not detected."
+    return 1
+  fi
 }
 
 setup_sudo() {
@@ -198,7 +249,6 @@ setup_sudo() {
   fi
 }
 
-
 # define some colors if the tty supports it
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
@@ -211,5 +261,4 @@ if [[ -t 1 && ! $COLOR = "NO" ]]; then
   ENDCOLOR='\e[0m' 
   S='\\'
 fi
-
 

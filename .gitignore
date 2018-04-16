@@ -11,7 +11,7 @@ xTupleREST*
 *.backup
 *.log
 *.tgz
-*.ini
+/*.ini
 private/*
 *.tar.gz
 *.bak

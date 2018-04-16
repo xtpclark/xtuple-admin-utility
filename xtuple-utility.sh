@@ -6,11 +6,10 @@ export WORKDIR=`pwd`
 export MODE="manual"
 
 #set some defaults
-source config.sh
-# import supporting scripts
-source common.sh
-source logging.sh
-# make directories
+source config.sh        || die
+source common.sh        || die
+source logging.sh       || die
+
 mkdir -p $DATABASEDIR
 mkdir -p $BACKUPDIR
 
@@ -156,15 +155,18 @@ case "$_DISTRO" in
 esac
 
 # Load the rest of the scripts
-source postgresql.sh
-source database.sh
-source provision.sh
-source nginx.sh
-source mobileclient.sh
-source openrpt.sh
-source devenv.sh
-source conman.sh
-source tokenmanagement.sh
+source postgresql.sh            || die
+source database.sh              || die
+source drupal.sh                || die
+source provision.sh             || die
+source nginx.sh                 || die
+source mobileclient.sh          || die
+source openrpt.sh               || die
+source devenv.sh                || die
+source conman.sh                || die
+source tokenmanagement.sh       || die
+source functions/setup.fun      || die
+source functions/gitvars.fun    || die
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."

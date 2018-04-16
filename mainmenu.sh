@@ -13,7 +13,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "3" "Database Maintenance" \
             "4" "SSH Connection Manager" \
             "5" "Generate Github Token" \
-	    "6" "Web Enable A Database" \
+	    "6" "Web Enable a Database" \
 	    "7" "Install xTupleCommerce" \
             3>&1 1>&2 2>&3)
         
@@ -28,8 +28,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "3") database_menu ;;
             "4") selectServer;;
             "5") generate_github_token;;
-	    "6") source CreatePackages.sh try_deploy_xtau;;
-            "7") source CreatePackages.sh xtau_deploy_ecommerce;;
+	    "6") source ${WORKDIR:-.}/CreatePackages.sh try_deploy_xtau;;
+            "7") source ${WORKDIR:-.}/CreatePackages.sh xtau_deploy_ecommerce;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
             esac
         fi

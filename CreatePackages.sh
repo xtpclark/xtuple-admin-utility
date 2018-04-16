@@ -1,14 +1,13 @@
 #!/bin/bash
-WORKDATE=$(date "+%m%d%y")
-BUILD_WORKING=$(pwd)
-BUILD_XT_TARGET_NAME=xTupleREST
-P12_KEY_FILE=xTupleCommerce.p12
+export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
+export BUILD_WORKING=${BUILD_WORKING:-$(pwd)}
+export BUILD_XT_TARGET_NAME=${BUILD_XT_TARGET_NAME:-xTupleREST}
+export P12_KEY_FILE=${P12_KEY_FILE:-xTupleCommerce.p12}
 
 source ${BUILD_WORKING}/functions/gitvars.fun
 source ${BUILD_WORKING}/functions/setup.fun
 
-export NODE_ENV=production
-
+export NODE_ENV=${NODE_ENV:-production}
 
 # Create Packages for bundling xTuple REST-API and xTupleCommerce
 
@@ -43,143 +42,77 @@ mwc_createdirs_static_mwc()
 }
 
 
-mwc_build_static_mwc() 
-{
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  NODE_ENV=production
-  generate_github_token
-  
-  local GITCMD="git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple"
-  
-  ${GITCMD}/xtuple ${BUILD_XT}
-  cd ${BUILD_XT} && git fetch --tags
-  BUILD_XT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_XT} && git checkout ${BUILD_XT_TAG} && git submodule update --init --recursive
-  
-  if [[ -f ${BUILD_XT}/package.json ]]; then
-    echo "package.json found for ${BUILD_XT}"
-    echo "Running npm install"
-    cd ${BUILD_XT}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
-  fi
-  
-  # We need to get the latest xtuple tags before.
-  MWCVERSION=${BUILD_XT_TAG}
-  
-  DATABASE=xtupleerp
-  MWCNAME=xtupleerp
-  
-  ${GITCMD}/private-extensions ${BUILD_PE}
-  cd ${BUILD_PE} && git fetch --tags
-  BUILD_PE_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_PE} && git checkout ${BUILD_PE_TAG} && git submodule update --init --recursive
+mwc_build_static_mwc() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  if [[ -f ${BUILD_PE}/package.json ]]; then
-    echo "package.json found for ${BUILD_PE}"
-    echo "Running npm install"
-    cd ${BUILD_PE}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
-  fi
+  local BUILDTAG REPOS
+  local STARTDIR=$(pwd)
 
-  ${GITCMD}/enhanced-pricing ${BUILD_EP}
-  cd ${BUILD_EP} && git fetch --tags
-  BUILD_EP_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_EP} && git checkout ${BUILD_EP_TAG} && git submodule update --init --recursive
+  [ -n "$GITHUB_TOKEN" ] || generate_github_token
 
-  if [[ -f ${BUILD_EP}/package.json ]]; then
-   echo "package.json found for ${BUILD_EP}"
-   echo "Running npm install"
-   cd ${BUILD_EP}
-   npm install
-   RET=$?
-   echo "npm install returned: ${RET}"
+  # TODO: find a smart way to build this list that's not specific to xTupleCommerce
+  REPOS=" xtuple
+          private-extensions
+          enhanced-pricing
+          nodejsshim
+          payment-gateways
+          xdruple-extension
+          xtdash
+        "
+
+  for REPO in $REPOS ; do
+    if git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple/$REPO ${BUILD_XT_ROOT}/$REPO ; then
+      cd ${BUILD_XT_ROOT}/$REPO
+      git fetch --tags
+      # TODO: read the BUILDTAG from an external source
+      BUILDTAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+      git checkout ${BUILDTAG}
+      git submodule update --init --recursive
+
+      if [[ -f package.json ]] ; then
+        echo "package.json found for ${REPO} => running npm install"
+        npm install
+        RET=$?
+        echo "npm install returned: ${RET}"
+        [ "$RET" -eq 0 ] || die
+      fi
+      cd ${STARTDIR}
+    fi
+  done
+
+  # some repos require special treatment
+  if [ -d xtuple ] ; then
+    cd xtuple
+    export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+    cd $STARTDIR
   fi
 
-  ${GITCMD}/nodejsshim ${BUILD_NJ}
-  cd ${BUILD_NJ} && git fetch --tags
-  BUILD_NJ_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_NJ} && git checkout ${BUILD_NJ_TAG} && git submodule update --init --recursive
-
-  if [[ -f ${BUILD_NJ}/package.json ]]; then
-    echo "package.json found for ${BUILD_NJ}"
-    echo "Running npm install"
-    cd ${BUILD_NJ}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
+  if [ -d payment-gateways ] ; then
+    cd payment-gateways
+    make
+    cd $STARTDIR
   fi
-
-  ${GITCMD}/xdruple-extension ${BUILD_XD}
-  cd ${BUILD_XD} && git fetch --tags
-  BUILD_XD_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_XD} && git checkout ${BUILD_XD_TAG} && git submodule update --init --recursive
- 
-
-  if [[ -f ${BUILD_XD}/package.json ]]; then
-    echo "package.json found for ${BUILD_XD}"
-    echo "Running npm install"
-    cd ${BUILD_XD}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
-  fi
-
-  ${GITCMD}/payment-gateways ${BUILD_PG}
-  cd ${BUILD_PG} && git fetch --tags
-  BUILD_PG_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_PG} && git checkout ${BUILD_PG_TAG} && git submodule update --init --recursive
-
-  if [[ -f ${BUILD_PG}/package.json ]]; then
-    echo "package.json found for ${BUILD_PG}"
-    echo "Running npm install"
-    cd ${BUILD_PG}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
-  fi
-
-  ${GITCMD}/xtdash ${BUILD_DA}
-  cd ${BUILD_DA} && git fetch --tags
-  BUILD_DA_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-  cd ${BUILD_DA} && git checkout ${BUILD_DA_TAG} && git submodule update --init --recursive
-
-  if [[ -f ${BUILD_DA}/package.json ]]; then
-    echo "package.json found for ${BUILD_DA}"
-    echo "Running npm install"
-    cd ${BUILD_DA}
-    npm install
-    RET=$?
-    echo "npm install returned: ${RET}"
-  fi
-
-
-
 }
 
-mwc_createconf_static_mwc() 
+mwc_createconf_static_mwc()
 {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  
-  
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
    # setup encryption details
    touch ${BUILD_CONFIG_XTUPLE}/private/salt.txt
    touch ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
-  
+
    cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > ${BUILD_CONFIG_XTUPLE}/private/salt.txt
    cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
-  
+
    chmod 660 ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
    chmod 660 ${BUILD_CONFIG_XTUPLE}/private/salt.txt
-  
+
    openssl genrsa -des3 -out ${BUILD_CONFIG_XTUPLE}/private/server.key -passout pass:xtuple 1024
    openssl rsa -in ${BUILD_CONFIG_XTUPLE}/private/server.key -passin pass:xtuple -out ${BUILD_CONFIG_XTUPLE}/private/key.pem -passout pass:xtuple
    openssl req -batch -new -key ${BUILD_CONFIG_XTUPLE}/private/key.pem -out ${BUILD_CONFIG_XTUPLE}/private/server.csr -subj '/CN='$(hostname)
    openssl x509 -req -days 365 -in ${BUILD_CONFIG_XTUPLE}/private/server.csr -signkey ${BUILD_CONFIG_XTUPLE}/private/key.pem -out ${BUILD_CONFIG_XTUPLE}/private/server.crt
-  
+
    sed -s  "/encryptionKeyFile/c\      encryptionKeyFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/encryption_key.txt\"," \
        -s  "/keyFile/c\      keyFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/key.pem\"," \
        -s  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," \
@@ -245,10 +178,10 @@ EOF
 
 }
 
-mwc_remove_git_dirs() 
+mwc_remove_git_dirs()
 {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
   echo "Removing Git Directories"
   cd ${BUILD_XT} && rm -rf .git
   cd ${BUILD_PE} && rm -rf .git
@@ -260,28 +193,28 @@ mwc_remove_git_dirs()
 
 mwc_bundle_mwc()
 {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-echo "Bundling MWC"
+  echo "Bundling MWC"
 
-cd ${BUILD_WORKING}
+  cd ${BUILD_WORKING}
 
-cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
-export NODE_ENV=production
-export PGVER=${PGVER}
-export MWC_VERSION=${BUILD_XT_TAG}
-export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
-export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+  cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
+  export NODE_ENV=production
+  export PGVER=${PGVER}
+  export MWC_VERSION=${BUILD_XT_TAG}
+  export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+  export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
 
-cat << EOF >  ${BUILD_XT_ROOT}/versions
-xtuple@${BUILD_XT_TAG}
-private-extensions@${BUILD_PE_TAG}
-nodejsshim@${BUILD_NJ_TAG}
-xtdash@${BUILD_DA_TAG}
-payment-gateways@${BUILD_PG_TAG}
-enhanced-pricing@${BUILD_EP_TAG}
-xdruple-extension@${BUILD_XD_TAG}
+  cat << EOF >  ${BUILD_XT_ROOT}/versions
+  xtuple@${BUILD_XT_TAG}
+  private-extensions@${BUILD_PE_TAG}
+  nodejsshim@${BUILD_NJ_TAG}
+  xtdash@${BUILD_DA_TAG}
+  payment-gateways@${BUILD_PG_TAG}
+  enhanced-pricing@${BUILD_EP_TAG}
+  xdruple-extension@${BUILD_XD_TAG}
 EOF
 
   mv ${BUILD_XT_ROOT} ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}
@@ -290,60 +223,47 @@ EOF
   tar czf ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}
   RET=$?
   if [[ $RET -ne 0 ]]; then
-    echo "Bundling MWC Failed"
-    exit 2
+    die "Bundling MWC Failed"
   else
     export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
-    ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
     echo "Bundled MWC as ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
   fi
-
 }
 
-
-
 xtc_build_static_xtuplecommerce() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-echo "Building Static xTupleCommerce"
+  echo "Building Static xTupleCommerce"
 
-BUILD_XTC_TARGET_NAME=xTupleCommerce
-BUILD_XTC_ROOT=${BUILD_WORKING}/${BUILD_XTC_TARGET_NAME}-${WORKDATE}
-BUILD_XTC_CONF_DIR=${BUILD_XTC_ROOT}/config
+  BUILD_XTC_TARGET_NAME=xTupleCommerce
+  BUILD_XTC_ROOT=${BUILD_WORKING}/${BUILD_XTC_TARGET_NAME}-${WORKDATE}
+  BUILD_XTC_CONF_DIR=${BUILD_XTC_ROOT}/config
 
-#if [[ $NOT_FLYWHEEL ]]; then
-# git clone git@github.com:xtuple/prodiem.git ${BUILD_XTC_ROOT}
+  CDDREPOURL=http://satis.codedrivendrupal.com
+  GITXDDIR=xtuple/xdruple-drupal
+  XDENV=dev
 
-# else
-CDDREPOURL=http://satis.codedrivendrupal.com
-#GITXDDIR=xtuple/xdruple-drupal
-GITXDDIR=xtuple/xdruple-drupal
-# GITXDDIR=xtuple/prodiem
-XDENV=dev
+  echo "Running: composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}"
 
-## IGNORE
-## IGNORE if creating project:
-echo "Running: composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}"
+  composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}
+  RET=$?
+  [ $? -eq 0 ] || die "composer create-project returned $RET"
 
-composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}
+  echo "Running composer install"
+  cd ${BUILD_XTC_ROOT}
+  composer install
+  RET=$?
+  [ $? -eq 0 ] || die "composer install returned $RET"
 
-echo "Running composer install"
-cd ${BUILD_XTC_ROOT}
-composer install
-RET=$?
-echo "composer install returned $RET"
+  echo "Running console.php update:distributions -f (flywheel flag)"
+  ./console.php update:distributions -f
+  RET=$?
+  [ $? -eq 0 ] || die "console.php update:distributions returned $RET"
 
-echo "Running console.php update:distributions -f (flywheel flag)"
-./console.php update:distributions -f
-RET=$?
-echo "console update dist returned $RET"
-
-echo "Running console.php install:prepare:directories"
-./console.php install:prepare:directories
-RET=$?
-echo "console prepare:dir returned $RET"
-
-
+  echo "Running console.php install:prepare:directories"
+  ./console.php install:prepare:directories
+  RET=$?
+  [ $? -eq 0 ] || die "console.php install:prepare:directories returned $RET"
 }
 
 xtc_bundle_xtuplecommerce() {
@@ -402,19 +322,19 @@ fi
 
 
 xtc_build_xtuplecommerce_envphp() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-cd ${BUILD_WORKING}
-CRMACCT=xTupleBuild
+  cd ${BUILD_WORKING}
+  CRMACCT=xTupleBuild
 
-loadcrm_gitconfig
-checkcrm_gitconfig
+  loadcrm_gitconfig
+  checkcrm_gitconfig
 
-echo "Populating the environment.php file with settings for ${CRMACCT}"
-echo "See loadcrm_gitconfig() and checkcrm_gitconfig()"
-echo "Values are from ${HOME}/.gitconfig"
+  echo "Populating the environment.php file with settings for ${CRMACCT}"
+  echo "See loadcrm_gitconfig() and checkcrm_gitconfig()"
+  echo "Values are from ${HOME}/.gitconfig"
 
-cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.xml
+  cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.xml || die
 <?xml version="1.0" encoding="UTF-8" ?>
 <environment type="${ENVIRONMENT}"
              xmlns="https://xdruple.xtuple.com/schema/environment"
@@ -429,7 +349,7 @@ cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.xml
 </environment>
 EOF
 
-cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.php
+  cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.php || die
 <?php
 
 \$configuration = [
@@ -463,47 +383,48 @@ cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.php
   'xdruple_shipping' => [],
 ];
 EOF
+
 }
 
-
 writeout_config() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-cat << EOF > ${BUILD_WORKING}/CreatePackages-${WORKDATE}.config
-NODE_ENV=production
-PGVER=${PGVER}
-MWC_VERSION=${BUILD_XT_TAG}
-ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
-XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+  cat << EOF > ${BUILD_WORKING}/CreatePackages-${WORKDATE}.config
+    NODE_ENV=production
+    PGVER=${PGVER}
+    MWC_VERSION=${BUILD_XT_TAG}
+    ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+    XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
 }
 
 writeout_xtau_config() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
-export NODE_ENV=production
-export PGVER=${PGVER}
-export MWC_VERSION=${BUILD_XT_TAG}
-export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
-export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+  cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
+    export NODE_ENV=production
+    export PGVER=${PGVER}
+    export MWC_VERSION=${BUILD_XT_TAG}
+    export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
+    export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
-echo "Why do we die here?"
 }
 
 xtau_deploy_mwc() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-WAN_IP=$(curl ipv4.icanhazip.com)
-LAN_IP=$(hostname -I)
+  WAN_IP=$(curl ipv4.icanhazip.com)
+  LAN_IP=$(hostname -I)
 
-if (whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60) then
-	    install_mwc
-	    config_mwc_scripts
-            sudo systemctl daemon-reload
-	    start_mwc
+  whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60
+  RET=$?
+  if [ $RET -eq 0 ] ; then
+    install_mwc
+    config_mwc_scripts
+    sudo systemctl daemon-reload
+    start_mwc
 
-msgbox "Web Client Setup Complete!
+    msgbox "Web Client Setup Complete!
 Here is where you can login:
 
 xTuple Desktop Client: ${MWC_VERSION}
@@ -519,102 +440,89 @@ URL: https://${LAN_IP}:8443
 URL: https://${DOMAIN}:8443
 
 You may need to configure your firewall or router to forward incoming traffic from
-${WAN_IP} to ${LAN_IP}:${PGPORT} if you cannot connect from outside 
+${WAN_IP} to ${LAN_IP}:${PGPORT} if you cannot connect from outside
 your network. See your Administrator."
 
-            main_menu
+    main_menu
 
-	    #setup_xdruple_nginx
-#    	    load_oauth_site
-	    #setup_flywheel
-# start service
-#            set_database_info_select
-            RET=$?
-            return $RET
-        else
-            # I specifically need to check for ESC here as I am using the yesno box as a multiple choice question, 
-            # so it chooses no code even during escape which in this case I want to actually escape when someone hits escape. 
-            if [ $? -eq 255 ]; then
-                return 255
-            fi
-            install_mwc
-            RET=$?
-            return $RET
-        fi
+    RET=$?
+    return $RET
+  elif [ $RET -eq 255 ] ; then
+    # specifically check for ESC here as we're using a yesno box for a multiple choice question.
+    # it chooses no code even during escape, while in this case we want to actually escape when
+    # someone hits escape.
+    return 255
+  else
+    install_mwc
+    RET=$?
+    return $RET
+  fi
 }
 
 xtau_deploy_ecommerce() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-#	    setup_xdruple_nginx
-    	    #load_oauth_site
-	    setup_flywheel
-	    main_menu
+  setup_xdruple_nginx
+  #load_oauth_site
+  setup_flywheel || die
+  main_menu      || die
 }
 
 mwc_only() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-mwc_createdirs_static_mwc
-mwc_build_static_mwc
-mwc_createconf_static_mwc
-mwc_createinit_static_mwc
-mwc_createsystemd_static_mwc
-mwc_remove_git_dirs
-mwc_bundle_mwc
-
+  mwc_createdirs_static_mwc
+  mwc_build_static_mwc
+  mwc_createconf_static_mwc
+  mwc_createinit_static_mwc
+  mwc_createsystemd_static_mwc
+  mwc_remove_git_dirs
+  mwc_bundle_mwc
 }
 
 xtc_only() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-xtc_build_static_xtuplecommerce
-xtc_build_xtuplecommerce_envphp
-xtc_bundle_xtuplecommerce
-writeout_config
+  xtc_build_static_xtuplecommerce
+  xtc_build_xtuplecommerce_envphp
+  xtc_bundle_xtuplecommerce
+  writeout_config
 }
 
 build_all() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-mwc_only
-xtc_only
-writeout_config
+  mwc_only
+  xtc_only
+  writeout_config
 }
 
 
 try_deploy_xtau() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-export ISXTAU=1
-# Alternatively, enter the name of the tar.gz package...
-# and read this config from the tar.gz directly.
+  export ISXTAU=1
+  # Alternatively, enter the name of the tar.gz package...
+  # and read this config from the tar.gz directly.
 
-HAS_MWC_CONFIG=$(ls -t1 xtau_mwc-*.config |  head -n 1)
-  # From functions/setup.fun
+  local MWC_CONFIG=$(ls -t1 xtau_mwc-*.config 2>/dev/null | head -n 1)
   install_npm_node
   check_pgdep
 
-if [[ -f  ${HAS_MWC_CONFIG} ]]; then
-  echo "sourcing ${HAS_MWC_CONFIG}"
-  source ${HAS_MWC_CONFIG}
-
-  if [[ -e ${ERP_MWC_TARBALL}  ]]; then
-     echo "Looks like we have a package already. Skipping any hard work."
-     echo "Tarball: ${BUILD_XT_TARGET_NAME}-${MWC_VERSION}.tar.gz "
-   xtau_deploy_mwc
-
+  if [[ -f ${MWC_CONFIG} ]]; then
+    echo "sourcing ${MWC_CONFIG}"
+    source ${MWC_CONFIG}
   fi
-
-else
-
-mwc_createdirs_static_mwc
-mwc_build_static_mwc
-mwc_bundle_mwc
-writeout_xtau_config
-xtau_deploy_mwc
-fi
-
+  if [[ -e ${ERP_MWC_TARBALL}  ]]; then
+    echo "Looks like we have a package already. Skipping any hard work."
+    echo "Tarball: ${BUILD_XT_TARGET_NAME}-${MWC_VERSION}.tar.gz "
+  else
+    mwc_createdirs_static_mwc
+    mwc_build_static_mwc
+    mwc_bundle_mwc
+    writeout_xtau_config
+  fi
+  xtau_deploy_mwc
 }
 
 if [[ -z "${1}" ]]; then
