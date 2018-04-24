@@ -7,6 +7,7 @@ TMPDIR=${TMPDIR:-/tmp}
 # default configurations
 LOG_FILE=$(pwd)/install-$DATE.log
 
+ISDEVELOPMENTENV=${ISDEVELOPMENTENV:-false}
 DATABASEDIR=$(pwd)/databases
 BACKUPDIR=$(pwd)/backups
 
@@ -24,44 +25,48 @@ PGUSER=${PGUSER:-postgres}
 # usually set to $LANG
 POSTLOCALE=$LANG
 
-# default nginx site to select
 NGINX_SITE=
-# auto populated if site exists, otherwise can be used to create a site
 NGINX_DOMAIN=
 NGINX_HOSTNAME=
 NGINX_PORT=${NGINX_PORT:-8443}
 NGINX_CERT=
 NGINX_KEY=
+
 # generate new certs if the specified ones don't exist
 GEN_SSL=false
 
 # default mobile web instance to use
 MWCNAME=
-# version tag
 MWCVERSION=
 # switch for private extensions to be installed
 PRIVATEEXT=
+
 # optional, but will prompt if missing
 GITHUBNAME=
 GITHUBPASS=
 
-# Variables for xdruple-server
-# Everything below here should be re-worked into it's
-# own script because asking for git credentials at first init of xtau is ugly.
-# git submodule update --init --recursive
-# git submodule foreach git pull origin master
+# return values from `dialog`
+DIALOG_OK=0
+DIALOG_CANCEL=1
+DIALOG_HELP=2
+DIALOG_EXTRA=3
+DIALOG_ITEM_HELP=4
+DIALOG_ESC=255
 
-# export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
-# export CONFIG_DIR=$(pwd)/xdruple-server/config
-
-# export TYPE='server'
+# server | vagrant
+export RUNTIMEENV=${RUNTIMEENV:-server}
 export DEPLOYER_NAME=$(whoami)
-# export TIMEZONE=America/New_York
 
-#sudo locale-gen en_US.UTF-8 && \
-#export DEBIAN_FRONTEND=noninteractive
-#sudo dpkg-reconfigure locales && \
-#sudo echo ${TIMEZONE} > /etc/timezone
-# sudo timedatectl set-timezone ${TIMEZONE}
+export DEBIAN_FRONTEND=noninteractive
 
-# mkdir -p ~/.composer
+[ -z "$TZ" -a -e ${WORKDIR}/.timezone ] && source ${WORKDIR}/.timezone
+if [ -z "${TZ}" ] ; then
+  export TZ=$(tzselect) || die
+  echo "export TZ=${TZ}" > ${WORKDIR}/.timezone
+  if ! grep --quiet --word-regexp --no-messages TZ= \
+            ${HOME}/.bashrc ${HOME}/.bash_profile ${HOME}/.profile ${HOME}/.zprofile ; then
+    echo "export TZ=${TZ}" > ${HOME}/.profile
+  fi
+  echo "Remove ${WORKDIR}/.timezone and unset TZ to reset the timezone"
+  sudo timedatectl set-timezone ${TZ}
+fi

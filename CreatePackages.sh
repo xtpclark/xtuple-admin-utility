@@ -41,6 +41,21 @@ mwc_createdirs_static_mwc()
   mkdir -p ${BUILD_CONFIG_SYSTEMD}
 }
 
+repo_setup() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local REPO="${1}"
+
+  case "$REPO" in
+    xtuple)
+      export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+      ;;
+    payment-gateways)
+      log_exec make
+      ;;
+    *) echo $REPO does not need special treatment
+      ;;
+  esac
+}
 
 mwc_build_static_mwc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -50,7 +65,7 @@ mwc_build_static_mwc() {
 
   [ -n "$GITHUB_TOKEN" ] || generate_github_token
 
-  # TODO: find a smart way to build this list that's not specific to xTupleCommerce
+  # TODO: build this list so it's not specific to xTupleCommerce
   REPOS=" xtuple
           private-extensions
           enhanced-pricing
@@ -76,62 +91,12 @@ mwc_build_static_mwc() {
         echo "npm install returned: ${RET}"
         [ "$RET" -eq 0 ] || die
       fi
+
+      repo_setup $REPO
       cd ${STARTDIR}
     fi
   done
-
-  # some repos require special treatment
-  if [ -d xtuple ] ; then
-    cd xtuple
-    export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-    cd $STARTDIR
-  fi
-
-  if [ -d payment-gateways ] ; then
-    cd payment-gateways
-    make
-    cd $STARTDIR
-  fi
 }
-
-mwc_createconf_static_mwc()
-{
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-   # setup encryption details
-   touch ${BUILD_CONFIG_XTUPLE}/private/salt.txt
-   touch ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
-
-   cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > ${BUILD_CONFIG_XTUPLE}/private/salt.txt
-   cat /dev/urandom | tr -dc '0-9a-zA-Z!@#$%^&*_+-'| head -c 64 > ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
-
-   chmod 660 ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
-   chmod 660 ${BUILD_CONFIG_XTUPLE}/private/salt.txt
-
-   openssl genrsa -des3 -out ${BUILD_CONFIG_XTUPLE}/private/server.key -passout pass:xtuple 1024
-   openssl rsa -in ${BUILD_CONFIG_XTUPLE}/private/server.key -passin pass:xtuple -out ${BUILD_CONFIG_XTUPLE}/private/key.pem -passout pass:xtuple
-   openssl req -batch -new -key ${BUILD_CONFIG_XTUPLE}/private/key.pem -out ${BUILD_CONFIG_XTUPLE}/private/server.csr -subj '/CN='$(hostname)
-   openssl x509 -req -days 365 -in ${BUILD_CONFIG_XTUPLE}/private/server.csr -signkey ${BUILD_CONFIG_XTUPLE}/private/key.pem -out ${BUILD_CONFIG_XTUPLE}/private/server.crt
-
-   sed -s  "/encryptionKeyFile/c\      encryptionKeyFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/encryption_key.txt\"," \
-       -s  "/keyFile/c\      keyFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/key.pem\"," \
-       -s  "/certFile/c\      certFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/server.crt\"," \
-       -s  "/saltFile/c\      saltFile: \"/etc/xtuple/$MWCVERSION/"$MWCNAME"/private/salt.txt\"," \
-       -s  "/databases:/c\      databases: [\"$DATABASE\"]," ${BUILD_XT}/node-datasource/sample_config.js > ${BUILD_CONFIG_XTUPLE}/config.js
-   # sed -i  "/port: 5432/c\      port: \"$PGPORT\"," ${BUILD_CONFIG_XTUPLE}/config.js
-
-echo "Wrote out keys for MWC:
- ${BUILD_CONFIG_XTUPLE}/private/salt.txt
- ${BUILD_CONFIG_XTUPLE}/private/encryption_key.txt
- ${BUILD_CONFIG_XTUPLE}/private/server.key
- ${BUILD_CONFIG_XTUPLE}/private/key.pem
- ${BUILD_CONFIG_XTUPLE}/private/server.csr
- ${BUILD_CONFIG_XTUPLE}/private/server.crt
-
-Wrote out config for MWC:
- ${BUILD_CONFIG_XTUPLE}/config.js"
-
- }
 
 mwc_createinit_static_mwc() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -178,17 +143,12 @@ EOF
 
 }
 
-mwc_remove_git_dirs()
+remove_git_dirs()
 {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   echo "Removing Git Directories"
-  cd ${BUILD_XT} && rm -rf .git
-  cd ${BUILD_PE} && rm -rf .git
-  cd ${BUILD_XD} && rm -rf .git
-  cd ${BUILD_PG} && rm -rf .git
-  cd ${BUILD_NJ} && rm -rf .git
-  cd ${BUILD_EP} && rm -rf .git
+  [ -n "$BUILD_XT_ROOT" ] && rm -rf ${BUILD_XT_ROOT}/*/.git
 }
 
 mwc_bundle_mwc()
@@ -419,8 +379,7 @@ xtau_deploy_mwc() {
   whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60
   RET=$?
   if [ $RET -eq 0 ] ; then
-    install_mwc
-    config_mwc_scripts
+    install_webclient
     sudo systemctl daemon-reload
     start_mwc
 
@@ -453,7 +412,7 @@ your network. See your Administrator."
     # someone hits escape.
     return 255
   else
-    install_mwc
+    install_webclient
     RET=$?
     return $RET
   fi
@@ -473,10 +432,10 @@ mwc_only() {
 
   mwc_createdirs_static_mwc
   mwc_build_static_mwc
-  mwc_createconf_static_mwc
+  encryption_setup ${BUILD_CONFIG_XTUPLE} ${BUILD_XT}
   mwc_createinit_static_mwc
   mwc_createsystemd_static_mwc
-  mwc_remove_git_dirs
+  remove_git_dirs
   mwc_bundle_mwc
 }
 

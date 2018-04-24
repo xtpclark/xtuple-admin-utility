@@ -2,20 +2,20 @@
 shopt extdebug
 set -o errexit
 
-export TYPE=${1:-${RUNTIMEENV:-vagrant}}
-export TIMEZONE=${2:-${TIMEZONE:-$(get local timezone)}}
+export RUNTIMEENV=${1:-${RUNTIMEENV:-vagrant}}
+export TZ=${2:-${TZ:-$(tzselect)}}
 export DEPLOYER_NAME=${3:-${DEPLOYER_NAME:-$(whoami)}}
 export GITHUB_TOKEN=${4:-${GITHUB_TOKEN:-$(git config --get github.token)}}
 
 export MAX_EXECUTION_TIME=60
-if [ ${TYPE} = 'vagrant' ]; then
+if [ ${RUNTIMEENV} = 'vagrant' ]; then
     export MAX_EXECUTION_TIME=600
 fi
 
 sudo add-apt-repository -y ppa:ondrej/php && \
-sudo apt-get -q -y update       || die
-sudo apt-get -q -y upgrade      || die
-sudo apt-get -q -y install \
+sudo apt-get --quiet -y update       || die
+sudo apt-get --quiet -y upgrade      || die
+sudo apt-get --quiet -y install \
   php-common \
   php7.1-common \
   php7.1-json \
@@ -35,21 +35,21 @@ sudo apt-get -q -y install \
   php7.1-mbstring \
   php7.1-soap                   || die
 
-if [ ${TYPE} = 'vagrant' ]; then
-  sudo apt-get -q -y install php-xdebug || die
+if [ ${RUNTIMEENV} = 'vagrant' ]; then
+  sudo apt-get --quiet -y install php-xdebug || die
   safecp ${WORKDIR}/templates/php/mods/xdebug.ini /etc/php/7.1/mods-available || die
 fi
 
 safecp ${WORKDIR}/templates/php/fpm/php-fpm.conf.ini /etc/php/7.1/fpm
 safecp ${WORKDIR}/templates/php/fpm/www.conf.ini /etc/php/7.1/fpm/pool.d
 
-ESCAPED_TIMEZONE=$(echo ${TIMEZONE} | sed -e 's/[]\/$*.^|[]/\\&/g')
+ESCAPED_TIMEZONE=$(echo ${TZ} | sed -e 's/[]\/$*.^|[]/\\&/g')
 safecp ${WORKDIR}/templates/php/fpm/php.ini /etc/php/7.1/fpm
-sudo sed -i -e "s/{TIMEZONE}/${ESCAPED_TIMEZONE}/g" \
+sudo sed -i -e "s/{TZ}/${ESCAPED_TIMEZONE}/g" \
             -e "s/{MAX_EXECUTION_TIME}/${MAX_EXECUTION_TIME}/g" /etc/php/7.1/fpm/php.ini
 
 safecp ${WORKDIR}/templates/php/cli/php.ini /etc/php/7.1/cli
-sudo sed -i "s/{TIMEZONE}/${ESCAPED_TIMEZONE}/g" /etc/php/7.1/cli/php.ini
+sudo sed -i "s/{TZ}/${ESCAPED_TIMEZONE}/g" /etc/php/7.1/cli/php.ini
 
 # Composer
 php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -58,7 +58,7 @@ php composer-setup.php && \
 php -r "unlink('composer-setup.php');" && \
 sudo mv composer.phar /usr/local/bin/composer && \
 sudo mkdir -p /home/${DEPLOYER_NAME}/.composer && \
-safecp ${WORKDIR}/templates/php/composer/config-${TYPE}.json /home/${DEPLOYER_NAME}/.composer/config.json
+safecp ${WORKDIR}/templates/php/composer/config-${RUNTIMEENV}.json /home/${DEPLOYER_NAME}/.composer/config.json
 sudo sed -i "s/{GITHUB_TOKEN}/${GITHUB_TOKEN}/g" /home/${DEPLOYER_NAME}/.composer/config.json
 sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
 

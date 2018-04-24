@@ -9,9 +9,9 @@ WantedBy=multi-user.target
 Restart=always
 StandardOutput=syslog
 StandardError=syslog
-#User=${DEPLOYER_NAME}
-#Group=${DEPLOYER_NAME}
+User={DEPLOYER_NAME}
+Group={DEPLOYER_NAME}
 Environment=NODE_ENV=production
 ExecStop=/bin/kill -9 $MAINPID
-#SyslogIdentifier=xtuple-$MWCNAME
-#ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple/node-datasource/main.js -c /etc/xtuple/$VMWCVERSION/$MWCNAME/config.js
+SyslogIdentifier={SYSLOGID}
+ExecStart=/usr/local/bin/node {XTDIR}/node-datasource/main.js -c {CONFIGDIR}/config.js

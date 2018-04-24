@@ -6,7 +6,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     log "Opened PostgreSQL menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install PostgreSQL $PGVER" \
             "2" "List provisioned clusters" \
             "3" "Select Cluster" \
@@ -42,7 +42,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     log "Opened password menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 7 --cancel-button "Cancel" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Reset postgres via sudo postgres" \
             "2" "Reset postgres via psql" \
             "3" "Reset admin via sudo postgres" \
@@ -68,43 +68,41 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 }
 
-
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  PGVER="${1:-$PGVER}"
 
-    PGVER="${1:-$PGVER}"
+  sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main"
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  sudo apt-get --quiet -y update
+  log_exec sudo apt-get --quiet -y install postgresql-common
 
-# Let's not install the main cluster by default just to drop it...
+  # Let's not install the main cluster by default just to drop it...
+  sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
 
-    log_exec sudo apt-get -y install postgresql-common
-    sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
+  log_exec sudo apt-get --quiet -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-server-dev-$PGVER
+  RET=$?
+  if [ $RET -eq 0 ]; then
+    export PGUSER=postgres
+    export PGHOST=localhost
+    export PGPORT=5432
+  fi
 
-    log_exec sudo apt-get -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-server-dev-$PGVER
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        install_plv8
-        return $RET
-    elif [ $RET -eq 0 ]; then
-        export PGUSER=postgres
-        export PGHOST=localhost
-        export PGPORT=5432
-        install_plv8
-        return $RET
-    fi
-
-    provision_cluster
+  install_plv8
 }
 
-install_plv8()
-{
-#  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
-#  tar xf xtuple_plv8.tgz
+install_plv8() {
+  local STARTDIR=$(pwd)
+  cd "${WORKDIR}"
+  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
+  tar xf xtuple_plv8.tgz
   cd xtuple_plv8
-  log_exec echo '' | sudo ./install_plv8.sh
-#  rm xtuple_plv8.tgz
+  log_exec echo '' | sudo ./install_plv8.sh || die
+  cd "${WORKDIR}"
+  rm -f xtuple_plv8.tgz
+  cd "${STARTDIR}"
 }
-
 
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
@@ -114,7 +112,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     PGVER="${1:-$PGVER}"
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $PGVER? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling PostgreSQL "$PGVER"..."
-        log_exec sudo apt-get -y remove postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8 postgresql-server-dev-$PGVER
+        log_exec sudo apt-get --quiet -y remove postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8 postgresql-server-dev-$PGVER
         RET=$?
         return $RET
     else
@@ -131,7 +129,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     PGVER="${1:-$PGVER}"
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $PGVER and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Purging PostgreSQL "$PGVER"..."
-        log_exec sudo apt-get -y purge postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8
+        log_exec sudo apt-get --quiet -y purge postgresql-$PGVER postgresql-contrib-$PGVER postgresql-$PGVER-plv8
         RET=$?
         return $RET
     else
@@ -171,161 +169,90 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # $4 is locale
 # $5 if exists, start at boot
 provision_cluster() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-    install_plv8
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  install_plv8
 
-    PGVER="${1:-$PGVER}"
-    if [ -z "$PGVER" ] && [ "$MODE" = "manual" ]; then
-        PGVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$PGVER" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return 0
-        fi
+  PGVER="${1:-$PGVER}"
+  local POSTNAME="$2"
+  PGPORT="$3"
+  local POSTLOCALE="${4:-$POSTLOCALE}"
+  local POSTSTART="${5:-$POSTSTART}"
+
+  if [ -z "$PGVER" ] && [ "$MODE" = "manual" ]; then
+    PGVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$PGVER" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      return 0
     fi
+  fi
 
-    POSTNAME="$2"
-    if [ -z "$POSTNAME" ] && [ "$MODE" = "manual" ]; then
-        POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Cluster Name\n\n$(sudo pg_lsclusters -h | awk '{ print "Existing Clusters:" $2 } END { if (!NR) print "No Existing Clusters" }')" 15 60 "xtuple" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return 0
-        fi
-    fi
-
-    PGPORT="$3"
-    if [ -z "$PGPORT" ] && [ "$MODE" = "manual" ]; then
-        # choose a free port automatically someday
-        new_postgres_port
-        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Database Port" 8 60 "$PGPORT" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return 0
-        fi
-    fi
-
-    POSTLOCALE="${4:-$POSTLOCALE}"
-    if [ -z "$POSTLOCALE" ] && [ "$MODE" = "manual" ]; then
-        POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return 0
-        fi
-    fi
-
-    POSTSTART="${5:-$POSTSTART}"
-    if [ -z "$POSTSTART" ] && [ "$MODE" = "manual" ]; then
-        if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
-            POSTSTART="--start-conf=auto"
-        else
-            POSTSTART=""
-        fi
+  local CLUSTERS="$(sudo pg_lsclusters -h | \
+                    awk '{ print "Existing Clusters:" $2 }
+                     END { if (!NR) print "No Existing Clusters" }')"
+  local ERRMSG=
+  while [ -z "$POSTNAME" ] && [ "$MODE" = "manual" ] ; do
+    POSTNAME=$(whiptail --backtitle "$( window_title )" \
+                       --inputbox "${ERRMSG}Enter Cluster Name\n\n$CLUSTERS" 15 60 "xtuple" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      return 0
     fi
 
     sudo pg_lsclusters -h | awk '{print $2}' | grep $POSTNAME 2>&1 > /dev/null
-    if [ "$?" -eq 0 ]; then
-        log "Cluster $POSTNAME already exists."
-        return 2
+    if [ "$?" -ne 0 ]; then
+      break
+    fi
+    ERRMSG="$POSTNAME already exists.\n"
+    log $ERRMSG
+    POSTNAME=
+  done
+
+  ERRMSG=
+  while [ -z "$PGPORT" ] && [ "$MODE" = "manual" ] ; do
+    new_postgres_port
+    PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "${ERRMSG}Enter Database Port" 8 60 "$PGPORT" 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      return 0
     fi
 
     sudo pg_lsclusters -h | awk '{print $3}' | grep $PGPORT 2>&1 > /dev/null
-    if [ "$?" -eq 0 ]; then
-        msgbox "Port $PGPORT is already in use."
-        return 1
+    if [ "$?" -ne 0 ]; then
+      break;
     fi
+    ERRMSG="$PGPORT is already in use\n"
+    log $ERRMSG
+    PGPORT=
+  done
 
-    log "Creating database cluster $POSTNAME using version $PGVER on port $PGPORT encoded with $POSTLOCALE"
-### PERRY
-    log_exec sudo bash -c "su - root -c \"pg_createcluster --locale $POSTLOCALE -p $PGPORT --start $POSTSTART $PGVER $POSTNAME -o listen_addresses='*' -o log_line_prefix='%t %d %u ' -- --auth=trust --auth-host=trust --auth-local=trust\""
+  if [ -z "$POSTLOCALE" ] && [ "$MODE" = "manual" ]; then
+    POSTLOCALE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter Locale" 8 60 "$LANG" 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
-        do_exit
+      return 0
     fi
+  fi
 
-    POSTDIR=/etc/postgresql/$PGVER/$POSTNAME
-
-    log "Opening pg_hba.conf for internet access with passwords"
-    log_exec sudo bash -c "echo  \"hostnossl      all           all             0.0.0.0/0                 reject\" >> $POSTDIR/pg_hba.conf"
-    log_exec sudo bash -c "echo  \"hostssl      all             all             0.0.0.0/0                 md5\" >> $POSTDIR/pg_hba.conf"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
-        do_exit
+  if [ -z "$POSTSTART" ] && [ "$MODE" = "manual" ]; then
+    if (whiptail --title "Autostart" --yes-button "Yes" --no-button "No"  --yesno "Would you like the cluster to start at boot?" 10 60) then
+      POSTSTART="--start-conf=auto"
+    else
+      POSTSTART=""
     fi
+  fi
 
-    log "Increasing max_locks_per_transaction to 256"
-    log_exec sudo bash -c "echo  \"max_locks_per_transaction = 256\" >> $POSTDIR/postgresql.conf"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Increasing max_locks_per_transaction in postgresql.conf failed. Check the log file for any issues."
-        do_exit
-    fi
-
-    log "Adding plv8.start_proc='xt.js_init' to postgresql.conf"
-    log_exec sudo bash -c "echo  \"plv8.start_proc='xt.js_init'\" >> $POSTDIR/postgresql.conf"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Adding plv8.start_proc to postgresql.conf failed. Check the log file for any issues.\nSee https://github.com/xtuple/xtuple/wiki/Installing-PLv8 for more information."
-        do_exit
-    fi
-
-
-    log "Restarting PostgreSQL $PGVER for $POSTNAME"
-    # you may wonder why I have this block when the commands are all the same, the reason is that
-    # we only support ubuntu derivatives currently, but in the near future that will not be the
-    # case, and I will lose access to pg_ctlcluster and its friends.
-    if [ $DISTRO = "ubuntu" ]; then
-        case "$CODENAME" in
-            "trusty")
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
-                ;;
-            "utopic")
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
-                ;;
-            "vivid") ;&
-            "xenial")
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
-                log_exec sudo systemctl enable postgresql@$PGVER-"$POSTNAME"
-                log_exec sudo systemctl start postgresql@$PGVER-"$POSTNAME"
-                ;;
-        esac
-    elif [ $DISTRO = "debian" ]; then
-        case "$CODENAME" in
-            "wheezy")
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" restart
-                ;;
-            "jessie")
-                log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop
-                log_exec sudo systemctl enable postgresql@$PGVER-"$POSTNAME"
-                log_exec sudo systemctl start postgresql@$PGVER-"$POSTNAME"
-                ;;
-        esac
-    fi
-
-    export PGHOST=localhost
-    export PGUSER=postgres
-
-    log "Deploying init.sql, creating admin user and xtrole group"
-    psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/sql/init.sql
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Error deploying init.sql. Check for errors and try again"
-        do_exit
-    fi
-
-    msgbox "Initializing cluster successful."
-
-    return 0
-
+  setup_postgresql_cluster "$PGVER" "$POSTNAME" "$PGPORT" "$POSTLOCALE" "$POSTSTART"
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
+    do_exit
+  fi
 }
 
 select_cluster() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    set_database_info_select
-
+  set_database_info_select
 }
 
 # $1 is version
@@ -393,7 +320,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return 0
     fi
 
-    CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+    CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 10 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return 0

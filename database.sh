@@ -1,41 +1,40 @@
 #!/bin/bash
 
 database_menu() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $*"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    log "Opened database menu"
-
-    while true; do
-        DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60 8 --cancel-button "Cancel" --ok-button "Select" \
+  log "Opened database menu"
+  while true; do
+    DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60  7 --cancel-button "Cancel" --ok-button "Select" \
             "1" "List Databases" \
             "2" "Inspect Database" \
             "3" "Rename Database" \
-			"4" "Copy database" \
+            "4" "Copy database" \
             "5" "Backup Database" \
-			"6" "Create Database" \
+            "6" "Create Database" \
             "7" "Drop Database" \
             "8" "Setup Automated Backup" \
             "9" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            break
-        else
-            case "$DBM" in
-            "1") log_exec list_databases ;;
-            "2") inspect_database_menu ;;
-            "3") rename_database ;;
-			"4") copy_database ;;
-            "5") log_exec backup_database ;;
-			"6") create_database ;;
-            "7") drop_database ;;
-            "8") source xtnbackup2/xtnbackup.sh ;;
-            "9") main_menu ;;
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      break
+    else
+      case "$DBM" in
+          "1") log_exec list_databases ;;
+          "2") inspect_database_menu ;;
+          "3") rename_database ;;
+          "4") copy_database ;;
+          "5") log_exec backup_database ;;
+          "6") create_database ;;
+          "7") drop_database ;;
+          "8") source xtnbackup2/xtnbackup.sh ;;
+          "9") main_menu ;;
             *) msgbox "How did you get here?" && break ;;
-            esac
-        fi
-    done
+        esac
+    fi
+  done
 }
 
 # auto, (no prompt for demo location, delete when done)
@@ -92,62 +91,61 @@ download_database() {
 #  $1 is database to be copied
 #  $2 is name of the new database
 copy_database() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    check_database_info
+  check_database_info
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    return $RET
+  fi
+
+  get_database_list
+
+  if [ -z "$DATABASES" ]; then
+    msgbox "No databases detected on this system"
+    return 0
+  fi
+
+  OLDDATABASE="$1"
+  if [ -z "$OLDDATABASE" ] && [ "$MODE" = "manual" ]; then
+    OLDDATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to copy" 16 60  7 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        return $RET
+      return $RET
     fi
+  elif [ -z "$OLDDATABASE" ]; then
+    return 127
+  fi
 
-    get_database_list
-
-    if [ -z "$DATABASES" ]; then
-        msgbox "No databases detected on this system"
-        return 0
-    fi
-
-
-    OLDDATABASE="$1"
-	if [ -z "$OLDDATABASE" ] && [ "$MODE" = "manual" ]; then
-        OLDDATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to copy" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    elif [ -z "$OLDDATABASE" ]; then
-        return 127
-	fi
-
-    NEWDATABASE="$2"
-    if [ -z "$NEWDATABASE" ] && [ "$MODE" = "manual" ]; then
-        NEWDATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    elif [ -z "$NEWDATABASE" ]; then
-        return 127
-    fi
-
-    log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
-
-    backup_database "$OLDDATABASE-copy.backup" "$OLDDATABASE"
+  NEWDATABASE="$2"
+  if [ -z "$NEWDATABASE" ] && [ "$MODE" = "manual" ]; then
+    NEWDATABASE=$(whiptail --backtitle "$( window_title )" --inputbox "New database name" 8 60 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Backup of $OLDDATABASE failed."
-        return $RET
+      return $RET
     fi
+  elif [ -z "$NEWDATABASE" ]; then
+    return 127
+  fi
 
-    restore_database "$BACKUPDIR/$OLDDATABASE-copy.backup" "$NEWDATABASE"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        msgbox "Restore of $NEWDATABASE failed."
-        return $RET
-    else
-        msgbox "Database $OLDDATABASE successfully copied up to $NEWDATABASE"
-        return 0
-    fi
+  log "Copying database "$OLDDATABASE" to "$NEWDATABASE"."
+
+  backup_database "$OLDDATABASE-copy.backup" "$OLDDATABASE"
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    msgbox "Backup of $OLDDATABASE failed."
+    return $RET
+  fi
+
+  restore_database "$BACKUPDIR/$OLDDATABASE-copy.backup" "$NEWDATABASE"
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    msgbox "Restore of $NEWDATABASE failed."
+    return $RET
+  else
+    msgbox "Database $OLDDATABASE successfully copied up to $NEWDATABASE"
+    return 0
+  fi
 }
 
 #  $1 is database file to backup to
@@ -173,7 +171,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         if [ "$MODE" = "auto" ]; then
             return 127
         fi
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to back up" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to back up" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
@@ -229,7 +227,7 @@ create_database() {
   done < <( ls -t $BACKUPDIR 2>/dev/null | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
   CUSTOMDB=("EnterFileName..." "EnterFileName...")
 
-  CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Database" 15 60 7 \
+  CHOICE=$(whiptail --backtitle "$(window_title)" --menu "Choose Database" 15 60 7 \
                     --cancel-button "Cancel" --ok-button "Select" --notags \
                     ${EXISTINGDBS[@]} \
                     ${BACKUPDBS[@]} \
@@ -247,7 +245,7 @@ create_database() {
     while read line ; do
       EDITIONS+=("$line" "$line")
     done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
-    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Starting Database" 15 60 7 \
+    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Starting Database" 15 60  7 \
                       --cancel-button "Cancel" --ok-button "Select" --notags \
                       ${EDITIONS[@]} \
                       3>&1 1>&2 2>&3)
@@ -346,7 +344,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return 0
     fi
 
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
 }
 
 # $1 is name
@@ -369,7 +367,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     DATABASE="$1"
     if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to drop" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
@@ -415,7 +413,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     SOURCE="$1"
     if [ -z "$SOURCE" ] && [ "$MODE" = "manual" ]; then
-        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        SOURCE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to rename" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
@@ -466,7 +464,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return 0
     fi
 
-    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to inspect" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+    DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to inspect" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
         return 0
@@ -551,43 +549,40 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # select a cluster that the functions in this file will use
 # this can not be run in automatic mode, set the variables in script
 set_database_info_select() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    [ "$MODE" = "auto" ] && return 127
+  [ "$MODE" = "auto" ] && return 127
 
-    CLUSTERS=()
+  CLUSTERS=()
 
-    while read -r line; do 
-        CLUSTERS+=("$line" "$line")
-    done < <( sudo pg_lsclusters | tail -n +2 )
+  while read -r line; do 
+    CLUSTERS+=("$line" "$line")
+  done < <( sudo pg_lsclusters | tail -n +2 )
 
-     if [ -z "$CLUSTERS" ]; then
-        msgbox "No database clusters detected on this system. Entering setup."
-# Let's try to provision one.
-	provision_cluster
-        check_database_info
-    fi
+  if [ -z "$CLUSTERS" ]; then
+    msgbox "No database clusters detected on this system."
+    return
+  fi
 
-while true; do
-    CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 5 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+  while true; do
+    CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" 16 120 10 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
-        return $RET
+      return $RET
     fi
- break
-done
+    break
+  done
 
-    export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
-    export POSTNAME=`awk  '{print $2}' <<< "$CLUSTER"`
-    export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
-    export PGHOST=localhost
-    export PGUSER=postgres
+  export PGVER=`awk  '{print $1}' <<< "$CLUSTER"`
+  export POSTNAME=`awk  '{print $2}' <<< "$CLUSTER"`
+  export PGPORT=`awk  '{print $3}' <<< "$CLUSTER"`
+  export PGHOST=localhost
+  export PGUSER=postgres
 
-
-    if [ -z "$PGVER" ] || [ -z "$POSTNAME" ] || [ -z "$PGPORT" ]; then
-        msgbox "Could not determine database version or name"
-        return 1
-    fi
+  if [ -z "$PGVER" ] || [ -z "$POSTNAME" ] || [ -z "$PGPORT" ]; then
+    msgbox "Could not determine database version or name"
+    return 1
+  fi
 }
 
 
@@ -684,7 +679,7 @@ upgrade_database() {
 
     DATABASE="$1"
     if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 5 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
+        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "Select database to upgrade" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return 0
@@ -714,35 +709,10 @@ upgrade_database() {
     else
         MWCNAME=$(echo $CONFIG_JS | cut -d'/' -f5)
         MWCVERSION=$(echo $CONFIG_JS | cut -d'/' -f4)
-    
-        # shutdown node datasource
-        if [ $DISTRO = "ubuntu" ]; then
-            case "$CODENAME" in
-                "trusty") ;&
-                "utopic")
-                    log_exec sudo service xtuple-"$MWCNAME" stop
-                    ;;
-                "vivid") ;&
-                "xenial")
-                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
-                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
-                    ;;
-            esac
-        elif [ $DISTRO = "debian" ]; then
-            case "$CODENAME" in
-                "wheezy")
-                    log_exec sudo /etc/init.d/xtuple-"$MWCNAME" stop
-                    ;;
-                "jessie")
-                    log_exec sudo systemctl stop xtuple-"$MWCNAME".service
-                    log_exec sudo systemctl disable xtuple-"$MWCNAME".service
-                    ;;
-            esac
-        else
-            log "Seriously? We made it all the way to where we need to start the server and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
-            do_exit
-        fi
 
+        # shutdown node datasource
+        service_stop xtuple-"$MWCNAME"
+    
         # get the listening port for the node datasource
         MWCPORT=$(grep -Po '(?<= port: )8[0-9]{3}' /etc/xtuple/$MWCVERSION/$MWCNAME/config.js)
         if [ -z "$MWCPORT" ] && [ "$MODE" = "manual" ]; then

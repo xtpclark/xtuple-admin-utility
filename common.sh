@@ -22,6 +22,27 @@ ctrlc() {
   do_exit
 }
 
+back_up_file() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local TGT="$1"
+  [ -e $TGT ] || die "$FUNCNAME[0] needs a file to back up"
+
+  local SUFFIX="${WORKDATE}"
+
+  # move then copy back preserves the file timestamp
+  eval $(stat --printf 'OWNER=%U
+                        GROUP=%G' ${TGT})
+  while [ -e ${TGT}.${SUFFIX} -o -d ${TGT}.${SUFFIX} ] ; do
+    sleep 10
+    SUFFIX="${WORKDATE}-$(date +'%H-%M')"
+  done
+
+  log_exec sudo mv    "${TGT}"           "${TGT}.${SUFFIX}"        || die
+  log_exec sudo cp -R "${TGT}.${SUFFIX}" "${TGT}"                  || die
+  log_exec sudo chmod a-w "${TGT}.${SUFFIX}"
+  log_exec sudo chown -R $OWNER:$GROUP "${TGT}" "${TGT}.${SUFFIX}" || die
+}
+
 safecp() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local USAGE="$FUNCNAME[0] [ -U username | --username=username ] source target"
@@ -34,7 +55,7 @@ safecp() {
     fi
     shift
   elif [[ "$1" =~ ^--username=(.*) ]] ; then
-    USER="$1"
+    USER="${BASH_REMATCH[1]}"
     shift
   fi
 
@@ -52,10 +73,11 @@ safecp() {
 
   if [ -e "${TGT}" ] ; then
     sudo mv "${TGT}" "${TGT}.${WORKDATE}"
+    sudo chmod a-w "${TGT}.${WORKDATE}"
   fi
   sudo cp "${SRC}" "${TGT}" || die "Error copying ${SRC} to ${TGT}; look for ${TGT}.${WORKDATE}"
   if [ -n "$USER" ] ; then
-    sudo chown ${USER} "${TGT}"
+    sudo chown -R ${USER} "${TGT}"
   fi
 }
 
@@ -128,82 +150,61 @@ menu_title() {
   echo "$1"
 }
 
-# used whenever a command needs elevated privileges as we can't always rely on sudo
-runasroot() {
-  if [[ $UID -eq 0 ]]; then
-    "$@"
-  elif sudo -v &>/dev/null && sudo -l "$@" &>/dev/null; then
-    sudo -E "$@"
-  else
-    echo -n "root "
-    su -c "$(printf '%q ' "$@")"
-  fi
-}
-
-# these are both the same currently, but the structure may change eventually
-# as we add more supported distros
 install_prereqs() {
-
-    case "$DISTRO" in
-        "ubuntu")
-                install_pg_repo
-                sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic dialog xsltproc
-
-                RET=$?
-                if [ $RET -ne 0 ]; then
-                    msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
-                    do_exit
-                fi
-
-                # Install LE prerequsites
-                source letsencrypt/installLE.sh
-
-                # fix the background color
-                sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
-                ;;
-        "debian")
-                install_pg_repo
-                sudo apt-get update
-                sudo apt-get -y install python-software-properties software-properties-common xvfb
-                if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
-                    sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
-                    sudo apt-get update
-                fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVER
-                RET=$?
-                if [ $RET -ne 0 ]; then
-                    msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
-                    do_exit
-                fi
-                ;;
-         "centos")
-                log "Maybe one day we will support CentOS..."
-                do_exit
-                ;;
-        *)
-        log "Shouldn't reach here! Please report this on GitHub. install_prereqs"
+  case "$DISTRO" in
+    "ubuntu")
+      if $ISDEVELOPMENTENV ; then
+        install_dev_prereqs
+      fi
+      install_pg_repo
+      sudo apt-get --quiet update
+      # TODO: prune this list if possible (e.g. build-essential?)
+      sudo apt-get --quiet -y install \
+                              axel build-essential bzip2 cups curl dialog git jq       \
+                              libauthen-pam-perl libavahi-compat-libdnssd-dev libc++1  \
+                              libc++1 libio-pty-perl libnet-ssleay-perl libpam-runtime \
+                              libssl-dev openssl perl postgresql-client-$PGVER python  \
+                              python-magic python-software-properties s3cmd unzip wget \
+                              whiptail xsltproc xvfb
+      RET=$?
+      if [ $RET -ne 0 ]; then
+        msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
         do_exit
-        ;;
-    esac
+      fi
 
+      if $ISDEVELPMENTENV ; then
+        sudo apt-get --quiet -y install g++ gcc make ntp vim zsh
+      fi
+
+      # Install LE prerequsites
+      source letsencrypt/installLE.sh
+
+      # fix the background color
+      sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
+      ;;
+    "centos")
+      log "Maybe one day we will support CentOS..."
+      do_exit
+      ;;
+    *)
+      log "Shouldn't reach here! Please report this on GitHub. install_prereqs"
+      do_exit
+      ;;
+  esac
 }
 
 install_pg_repo() {
-
-    case "$CODENAME" in
-        "trusty") ;&
-        "utopic") ;&
-        "wheezy") ;&
-        "jessie") ;&
-        "xenial")
-            # check to make sure the PostgreSQL repo is already added on the system
-            if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
-                sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
-                sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-            fi
+  case "$CODENAME" in
+    "trusty") ;&
+    "utopic") ;&
+    "xenial")
+        # check to make sure the PostgreSQL repo is already added on the system
+        if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
+          sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
+          sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        fi
         ;;
-    esac
+  esac
 }
 
 # $1 is the port
@@ -246,6 +247,71 @@ setup_sudo() {
     sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
   else
     echo "User: $DEPLOYER_NAME already setup in sudoers.d"
+  fi
+}
+
+service_start () {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
+  local SERVICE="$1"
+
+  # shutdown node datasource
+  if [ $DISTRO = "ubuntu" ]; then
+    case "$CODENAME" in
+      "trusty") ;&
+      "utopic")
+        log_exec sudo service $SERVICE start
+        ;;
+      "vivid") ;&
+      "xenial")
+        log_exec sudo systemctl enable $SERVICE
+        log_exec sudo systemctl start  $SERVICE
+        ;;
+    esac
+  else
+    die "Don't know how to stop a service on $DISTRO $CODENAME"
+  fi
+}
+
+service_stop () {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
+  local SERVICE="$1"
+
+  # shutdown node datasource
+  if [ $DISTRO = "ubuntu" ]; then
+    case "$CODENAME" in
+      "trusty") ;&
+      "utopic")
+        log_exec sudo service $SERVICE stop
+        ;;
+      "vivid") ;&
+      "xenial")
+        log_exec sudo systemctl stop    $SERVICE
+        log_exec sudo systemctl disable $SERVICE
+        ;;
+    esac
+  else
+    die "Don't know how to stop a service on $DISTRO $CODENAME"
+  fi
+}
+
+service_reload () {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
+  local SERVICE="$1"
+
+  # shutdown node datasource
+  if [ $DISTRO = "ubuntu" ]; then
+    case "$CODENAME" in
+      "trusty") ;&
+      "utopic")
+        log_exec sudo service $SERVICE reload
+        ;;
+      "vivid") ;&
+      "xenial")
+        log_exec sudo systemctl reload $SERVICE
+        ;;
+    esac
+  else
+    die "Don't know how to reload a service on $DISTRO $CODENAME"
   fi
 }
 

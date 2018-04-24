@@ -5,7 +5,7 @@ provision_menu() {
 
   log "Opened provisioning menu"
 
-  ACTION=$(whiptail --backtitle "$( window_title )" --menu "Select Action" 0 0 7 \
+  ACTION=$(whiptail --backtitle "$( window_title )" --menu "Select Action" 0 0 10 \
                     --ok-button "Select" --cancel-button "Cancel" \
                     "1" "Install base xTuple system" \
                     3>&1 1>&2 2>&3)

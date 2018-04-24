@@ -6,7 +6,7 @@ nginx_menu() {
   log "Opened nginx menu"
 
   while true; do
-    NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 4 --cancel-button "Cancel" --ok-button "Select" \
+    NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install nginx" \
             "2" "Configure nginx" \
             "3" "Remove nginx" \
@@ -34,7 +34,7 @@ install_nginx() {
 
   log "Installing nginx"
 
-  log_exec sudo apt-get -y install nginx
+  log_exec sudo apt-get --quiet -y install nginx
   RET=$?
   if [ $RET -ne 0 ] ; then
     msgbox "Nginx failed to install."
@@ -117,7 +117,7 @@ configure_nginx() {
   NGINX_SITE="${3:-$NGINX_SITE}"
   NGINX_CERT="${4:-$NGINX_CERT}"
   NGINX_KEY="${5:-$NGINX_KEY}"
-  NGINX_PORT="${6:-$NGINX_PORT}"
+  NGINX_PORT="${6:-${NGINX_PORT:-8443}}"
   WEBROOT="${WEBROOT:-/var/www}"
   NGINX_LOG="${NGINX_LOG:-/var/log/nginx}"
 
@@ -140,12 +140,18 @@ configure_nginx() {
   log "Creating nginx site file"
   safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/sites-available/$NGINX_SITE
 
+  if [ ${RUNTIMEENV} = 'vagrant' ] ; then
+    safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE 
+    sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
+                               /etc/nginx/sites-enabled
+  fi
+
   safecp ${WORKDIR}/templates/nginx/mime.types     /etc/nginx
   safecp ${WORKDIR}/templates/nginx/fastcgi_params /etc/nginx
   safecp ${WORKDIR}/templates/nginx/sites-available/default.conf /etc/nginx/sites-available/default.http.conf
 
-  sudo cp -R ${WORKDIR}/templates/nginx/apps /etc/nginx/
-  sudo cp -R ${WORKDIR}/templates/nginx/conf.d/* /etc/nginx/conf.d/
+  sudo cp --recursive ${WORKDIR}/templates/nginx/apps /etc/nginx/
+  sudo cp --recursive ${WORKDIR}/templates/nginx/conf.d/* /etc/nginx/conf.d/
 
   log "Enabling nginx site"
   sudo ln --symbolic --force /etc/nginx/sites-available/$NGINX_SITE \
@@ -153,11 +159,11 @@ configure_nginx() {
                              /etc/nginx/sites-enabled
 
   export SSL=""
-  if [ -f ~/${NGINX_DOMAIN}.crt ] && [ -f ~/${NGINX_DOMAIN}.key ] ; then
+  if [ -f $HOME/${NGINX_DOMAIN}.crt ] && [ -f $HOME/${NGINX_DOMAIN}.key ] ; then
     export SSL="ssl"
     sudo mkdir -p /etc/nginx/private /etc/nginx/certs
-    sudo mv ~/${NGINX_DOMAIN}.key /etc/nginx/private/ || die
-    sudo mv ~/${NGINX_DOMAIN}.crt /etc/nginx/certs/   || die
+    sudo mv $HOME/${NGINX_DOMAIN}.key /etc/nginx/private/ || die
+    sudo mv $HOME/${NGINX_DOMAIN}.crt /etc/nginx/certs/   || die
 
   else
     sudo mkdir -p /etc/xtuple/ssl
@@ -223,7 +229,7 @@ configure_nginx() {
   done
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${WEBROOT}
 
-  sudo apt-get -q -y install apache2-utils
+  sudo apt-get --quiet -y install apache2-utils
 
   if [ -z "${HTTP_AUTH_NAME}" -o -z "${HTTP_AUTH_PASS}" ] ; then
     get_environment
@@ -246,7 +252,7 @@ remove_nginx() {
 
   if (whiptail --title "Are you sure?" --yesno "Uninstall nginx?" --yes-button "Yes" --no-button "No" 10 60) then
     log "Uninstalling nginx..."
-    log_exec sudo apt-get -y remove nginx
+    log_exec sudo apt-get --quiet -y remove nginx
     RET=$?
     return $RET
   fi

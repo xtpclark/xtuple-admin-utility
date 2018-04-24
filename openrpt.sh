@@ -7,7 +7,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     while true; do
 
-        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title OpenRPT\ Menu )" 0 0 1 --cancel-button "Cancel" --ok-button "Select" \
+        CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title OpenRPT\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install All" \
             "2" "Install Package" \
             "3" "Build from source" \
@@ -40,7 +40,7 @@ install_openrpt() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing OpenRPT from apt..."
-    log_exec sudo apt-get -y -qq install openrpt
+    log_exec sudo apt-get -y --quiet install openrpt
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "There was an error installing OpenRPT. Check the log and correct any issues before trying again"
@@ -50,49 +50,41 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 }
 
 build_openrpt() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    cd $WORKDIR || die "Couldn't cd $WORKDIR"
+  cd $WORKDIR || die "Couldn't cd $WORKDIR"
 
-    log "preparing to build OpenRPT from source"
-    rm -rf openrpt
-    log_exec git clone -q https://github.com/xtuple/openrpt.git || die "Can't clone openrpt"
-    log_exec runasroot apt-get install -qq --force-yes qt4-qmake libqt4-dev libqt4-sql-psql || die "Can't install Qt"
-    cd openrpt || die "Can't cd openrpt"
-    OPENRPT_VER=master #TODO: OPENRPT_VER=`latest stable release`
-    log_exec git checkout -q $OPENRPT_VER || die "Can't checkout openrpt"
-    log "Starting OpenRPT build (this will take a few minutes)..."
-    qmake || die "Can't qmake openrpt"
-    make > /dev/null || die "Can't make openrpt"
-    log_exec runasroot mkdir -p /usr/local/bin || die "Can't make /usr/local/bin"
-    log_exec runasroot mkdir -p /usr/local/lib || die "Can't make /usr/local/lib"
-    log_exec runasroot tar cf - bin lib | runasroot tar xf - -C /usr/local || die "Can't install OpenRPT"
-    log_exec runasroot ldconfig || die "ldconfig failed"
+  log "preparing to build OpenRPT from source"
+  rm -rf openrpt
+  log_exec git clone -q https://github.com/xtuple/openrpt.git || die "Can't clone openrpt"
+  log_exec sudo apt-get install --quiet --force-yes qt4-qmake libqt4-dev libqt4-sql-psql || die "Can't install Qt"
+  cd openrpt || die "Can't cd openrpt"
+  OPENRPT_VER=master #TODO: OPENRPT_VER=`latest stable release`
+  log_exec git checkout -q $OPENRPT_VER || die "Can't checkout openrpt"
+  log "Starting OpenRPT build (this will take a few minutes)..."
+  qmake || die "Can't qmake openrpt"
+  make > /dev/null || die "Can't make openrpt"
+  log_exec sudo mkdir -p /usr/local/bin || die "Can't make /usr/local/bin"
+  log_exec sudo mkdir -p /usr/local/lib || die "Can't make /usr/local/lib"
+  log_exec sudo tar cf - bin lib | sudo tar xf - -C /usr/local || die "Can't install OpenRPT"
+  log_exec sudo ldconfig || die "ldconfig failed"
 
 }
 
 install_xtuple_xvfb() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    case "$CODENAME" in
-        "trusty") ;&
-        "utopic") ;&
-        "wheezy")
-            log "Installing xtuple-Xvfb to /etc/init.d..."
-            log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
-            log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
-            log_exec sudo update-rc.d xtuple-Xvfb defaults
-            log_exec sudo service xtuple-Xvfb start
-            ;;
-        "vivid") ;&
-        "xenial") ;&
-        "jessie")
-            log "Installing xtuple-Xvfb.service to /etc/systemd/service"
-            log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb.service /etc/systemd/system
-            log_exec sudo systemctl enable xtuple-Xvfb.service
-            log_exec sudo systemctl start xtuple-Xvfb.service
-            ;;
-    esac
+  case "$CODENAME" in
+    "trusty") ;&
+    "utopic") ;&
+    "wheezy")
+        log "Installing xtuple-Xvfb to /etc/init.d..."
+        log_exec sudo cp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
+        log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
+        log_exec sudo update-rc.d xtuple-Xvfb defaults
+        log_exec sudo service xtuple-Xvfb start
+        ;;
+  esac
 }
 
 setup_webprint() {

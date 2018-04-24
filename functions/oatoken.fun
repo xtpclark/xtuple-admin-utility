@@ -37,6 +37,15 @@ generate_p12() {
 
   export OAPUBKEY=$(<${KEYTMP}/${NGINX_ECOM_DOMAIN}_public.pem)
   echo "Created OAPUBKEY"
+
+  if $ISDEVELOPMENTENV ; then
+    local SSHSUBDIR="$HOME/.ssh/${NGINX_ECOM_DOMAIN}"
+    mkdir -p $SSHSUBDIR
+    ssh-keygen -q -t rsa -b 4096 -C ${ECOM_ADMIN_EMAIL} \
+               -f ${SSHSUBDIR}/${NGINX_ECOM_DOMAIN}_root_rsa     -N "${ROOTPASS}"      || die
+    ssh-keygen -q -t rsa -b 4096 -C ${ECOM_ADMIN_EMAIL} \
+               -f ${SSHSUBDIR}/${NGINX_ECOM_DOMAIN}_deployer_rsa -N "${DEPLOYER_PASS}" || die
+  fi
 }
 
 generateoasql() {
