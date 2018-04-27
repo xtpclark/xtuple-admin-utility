@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+shopt extdebug
+
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 export BUILD_WORKING=${BUILD_WORKING:-$(pwd)}
 export BUILD_XT_TARGET_NAME=${BUILD_XT_TARGET_NAME:-xTupleREST}
@@ -6,6 +11,7 @@ export P12_KEY_FILE=${P12_KEY_FILE:-xTupleCommerce.p12}
 
 source ${BUILD_WORKING}/functions/gitvars.fun
 source ${BUILD_WORKING}/functions/setup.fun
+source ${BUILD_WORKING}/functions/oatoken.fun
 
 export NODE_ENV=${NODE_ENV:-production}
 
@@ -34,11 +40,11 @@ mwc_createdirs_static_mwc()
   BUILD_EP=${BUILD_XT_ROOT}/enhanced-pricing
   BUILD_DA=${BUILD_XT_ROOT}/xtdash
 
-  mkdir -p ${BUILD_XT_ROOT}
-  mkdir -p ${BUILD_CONFIG_ETC}
-  mkdir -p ${BUILD_CONFIG_XTUPLE}/private
-  mkdir -p ${BUILD_CONFIG_INIT}
-  mkdir -p ${BUILD_CONFIG_SYSTEMD}
+  mkdir --parents ${BUILD_XT_ROOT}
+  mkdir --parents ${BUILD_CONFIG_ETC}
+  mkdir --parents ${BUILD_CONFIG_XTUPLE}/private
+  mkdir --parents ${BUILD_CONFIG_INIT}
+  mkdir --parents ${BUILD_CONFIG_SYSTEMD}
 }
 
 repo_setup() {
@@ -81,6 +87,8 @@ mwc_build_static_mwc() {
       git fetch --tags
       # TODO: read the BUILDTAG from an external source
       BUILDTAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+
+      [ "$REPO" = xtuple ] && BUILD_XT_TAG=$BUILDTAG
       git checkout ${BUILDTAG}
       git submodule update --init --recursive
 
@@ -110,8 +118,8 @@ console output
 respawn
 #setuid xtuple
 #setgid xtuple
-chdir /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple/node-datasource
-exec ./main.js -c /etc/xtuple/$MWCVERSION/$MWCNAME/config.js > /var/log/node-datasource-$MWCVERSION-$MWCNAME.log 2>&1
+chdir /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource
+exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js > /var/log/node-datasource-$BUILD_XT_TAG-$MWCNAME.log 2>&1
 EOF
 
 }
@@ -137,7 +145,7 @@ Group=xtuple
 Environment=NODE_ENV=production
 ExecStop=/bin/kill -9 \$MAINPID
 SyslogIdentifier=xtuple-$MWCNAME
-ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/$MWCNAME/config.js
+ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource/main.js -c /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js
 
 EOF
 
@@ -162,7 +170,7 @@ mwc_bundle_mwc()
   cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
   export NODE_ENV=production
   export PGVER=${PGVER}
-  export MWC_VERSION=${BUILD_XT_TAG}
+  export BUILD_XT_TAG=${BUILD_XT_TAG}
   export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
   export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
@@ -227,59 +235,48 @@ xtc_build_static_xtuplecommerce() {
 }
 
 xtc_bundle_xtuplecommerce() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-source functions/oatoken.fun
+  echo "Bundling xTupleCommerce"
 
-echo "Bundling xTupleCommerce"
+  cd ${BUILD_WORKING}
+  generate_p12
+  generateoasql
 
-cd ${BUILD_WORKING}
+  echo "Copy a p12 key file that matches the sql in oa2client.sql"
+  cp ${BUILD_WORKING}/private/${P12_KEY_FILE} ${BUILD_XTC_ROOT}
+  RET=$?
+  if [[ $RET -ne 0 ]]; then
+   echo "There was a problem copying the P12 Key. Continuing..."
+  else
+   echo "Copied ${BUILD_WORKING}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
+  fi
 
-generate_p12
-generateoasql
+  echo "Copy a settings.php file that tells the xTupleCommerce site which database to connect to."
+  cp ${BUILD_WORKING}/private/settings.php ${BUILD_XTC_ROOT}/drupal/core/sites/default/
+  RET=$?
+  if [[ $RET -ne 0 ]]; then
+    echo "There was a problem copying the settings.php file. Continuing..."
+  else
+    echo "Copied ${BUILD_WORKING}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
+  fi
 
-echo "We include a p12 key file.  The content matches the sql in oa2client.sql"
-
-cp ${BUILD_WORKING}/private/${P12_KEY_FILE} ${BUILD_XTC_ROOT}
+  echo "Building ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
+  cp -R ${BUILD_XTC_ROOT} ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
+  RET=$?
+  if [[ $RET -ne 0 ]]; then
+    die "Could not copy ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
+  fi
+  echo "Copied ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
+  tar czf ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
 RET=$?
-if [[ $RET -ne 0 ]]; then
- echo "There was a problem copying the P12 Key. Continuing..."
-else
- echo "Copied ${BUILD_WORKING}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
-fi
+  if [[ $RET -ne 0 ]]; then
+    die "Bundling xTupleCommerce Failed"
+  fi
 
-echo "We include a settings.php file.  This is what tells the xTupleCommerce site to connect to which database"
-
-cp ${BUILD_WORKING}/private/settings.php ${BUILD_XTC_ROOT}/drupal/core/sites/default/
-RET=$?
-if [[ $RET -ne 0 ]]; then
- echo "There was a problem copying the settings.php file. Continuing..."
-else
- echo "Copied ${BUILD_WORKING}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
-fi
-
-echo "Attempting to create ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
-cp -R ${BUILD_XTC_ROOT} ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
-RET=$?
-if [[ $RET -ne 0 ]]; then
- echo "There was a problem copying ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
- exit 2
-else
- echo "Copied ${BUILD_XTC_ROOT} to ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}"
-fi
-
-tar czf ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}
-RET=$?
-if [[ $RET -ne 0 ]]; then
- echo "Bundling xTupleCommerce Failed"
- exit 2
-else
- echo "xTupleCommerce bundling was a success!"
- echo "Created: ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz "
-fi
-
+  echo "xTupleCommerce bundling was a success!"
+  echo "Created: ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz "
 }
-
 
 xtc_build_xtuplecommerce_envphp() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -352,7 +349,7 @@ writeout_config() {
   cat << EOF > ${BUILD_WORKING}/CreatePackages-${WORKDATE}.config
     NODE_ENV=production
     PGVER=${PGVER}
-    MWC_VERSION=${BUILD_XT_TAG}
+    BUILD_XT_TAG=${BUILD_XT_TAG}
     ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
     XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
@@ -364,7 +361,7 @@ writeout_xtau_config() {
   cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
     export NODE_ENV=production
     export PGVER=${PGVER}
-    export MWC_VERSION=${BUILD_XT_TAG}
+    export BUILD_XT_TAG=${BUILD_XT_TAG}
     export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
     export XTC_WWW_TARBALL=${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
 EOF
@@ -379,14 +376,14 @@ xtau_deploy_mwc() {
   whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60
   RET=$?
   if [ $RET -eq 0 ] ; then
-    install_webclient
+    webclient_setup
     sudo systemctl daemon-reload
-    start_mwc
+    service_restart xtuple-${ERP_DATABASE_NAME}
 
     msgbox "Web Client Setup Complete!
 Here is where you can login:
 
-xTuple Desktop Client: ${MWC_VERSION}
+xTuple Desktop Client: ${BUILD_XT_TAG}
 
 Public IP: ${WAN_IP}
 Private IP: ${LAN_IP}
@@ -407,23 +404,34 @@ your network. See your Administrator."
     RET=$?
     return $RET
   elif [ $RET -eq 255 ] ; then
-    # specifically check for ESC here as we're using a yesno box for a multiple choice question.
-    # it chooses no code even during escape, while in this case we want to actually escape when
-    # someone hits escape.
+    # we're using a yesno box for a multiple choice question - Yes/No/Cancel.
+    # whiptail returns 255 on ESC => Cancel
     return 255
   else
-    install_webclient
+    webclient_setup
     RET=$?
     return $RET
   fi
 }
 
+# TODO: make each step handle remote hosts
 xtau_deploy_ecommerce() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  setup_xdruple_nginx
-  #load_oauth_site
+  prepare_os_for_xtc    # xdruple-server/scripts/common.sh
+  deployer_setup        # xdruple-server/scripts/depoyler.sh
+  install_nginx         # xdruple-server/scripts/nginx-server.sh
+  configure_nginx
+  php_setup             # xdruple-server/scripts/php.sh
+  xtc_pg_setup          # xdruple-server/scripts/postgresql.sh
+  postfix_setup         # xdruple-server/scripts/postfix.sh
+  ruby_setup            # xdruple-server/scripts/ruby.sh
+  # xdruple-server/scripts/zsh.sh - see get_deployer_info and deployer_setup
+  druple_crontab        # xdruple-server/scripts/cron.sh
+
   setup_flywheel || die
+  webnotes
+
   main_menu      || die
 }
 
@@ -468,13 +476,25 @@ try_deploy_xtau() {
   install_npm_node
   check_pgdep
 
+  if [ -z "${ERP_DATABASE_NAME}" ] ; then
+    if [ -z "${PGPORT}" ] ; then
+      set_database_info_select
+    fi
+    select_database
+    RET=$?
+    if [ "$RET" -ne 0 ] ; then
+      return 1
+    fi
+    ERP_DATABASE_NAME=${DATABASE}
+  fi
+
   if [[ -f ${MWC_CONFIG} ]]; then
     echo "sourcing ${MWC_CONFIG}"
     source ${MWC_CONFIG}
   fi
   if [[ -e ${ERP_MWC_TARBALL}  ]]; then
     echo "Looks like we have a package already. Skipping any hard work."
-    echo "Tarball: ${BUILD_XT_TARGET_NAME}-${MWC_VERSION}.tar.gz "
+    echo "Tarball: ${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz "
   else
     mwc_createdirs_static_mwc
     mwc_build_static_mwc
@@ -485,13 +505,13 @@ try_deploy_xtau() {
 }
 
 if [[ -z "${1}" ]]; then
-echo "Do one of:
-./CreatePackages.sh mwc_only
-./CreatePackages.sh xtc_only
-./CreatePackages.sh try_deploy_xtau
-./CreatePackages.sh build_all"
+  echo "Do one of:
+  ./CreatePackages.sh mwc_only
+  ./CreatePackages.sh xtc_only
+  ./CreatePackages.sh try_deploy_xtau
+  ./CreatePackages.sh build_all"
 else
-${1}
+  ${1}
 fi
 
 exit

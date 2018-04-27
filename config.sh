@@ -1,29 +1,32 @@
+#!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$CONFIG_SH" ] ; then # {
+CONFIG_SH=true
+
 # Actions to take when the utility is run
 ACTIONS=()
 
+export TMPDIR=${TMPDIR:-/tmp}
+export DEBIAN_FRONTEND=noninteractive
+
 WORKING=$(pwd)
-TMPDIR=${TMPDIR:-/tmp}
-
-# default configurations
+DEPLOYER_NAME=$(whoami)
 LOG_FILE=$(pwd)/install-$DATE.log
-
 ISDEVELOPMENTENV=${ISDEVELOPMENTENV:-false}
-DATABASEDIR=$(pwd)/databases
-BACKUPDIR=$(pwd)/backups
+XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
+DATABASEDIR=${WORKING}/databases
+BACKUPDIR=${WORKING}/backups
 
-# leave these undefined. They should never be used in this utility because it would lead to hard to pinpoint easy to fix bugs that cause a disproportionate amount of wasted time.
-PGNAME=
-PGPORT=
-
-# set these
 PGVER=${PGVER:-9.6}
 PGHOST=${PGHOST:-localhost}
-
-# postgres user, required for all postgres/database actions
 PGUSER=${PGUSER:-postgres}
-
-# usually set to $LANG
 POSTLOCALE=$LANG
+
+# leave these undefined. otherwise we may waste lots of time looking for avoidable bugs
+PGNAME=
+PGPORT=
 
 NGINX_SITE=
 NGINX_DOMAIN=
@@ -37,7 +40,7 @@ GEN_SSL=false
 
 # default mobile web instance to use
 MWCNAME=
-MWCVERSION=
+BUILD_XT_TAG=
 # switch for private extensions to be installed
 PRIVATEEXT=
 
@@ -54,10 +57,14 @@ DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
 
 # server | vagrant
-export RUNTIMEENV=${RUNTIMEENV:-server}
-export DEPLOYER_NAME=$(whoami)
-
-export DEBIAN_FRONTEND=noninteractive
+if [ -z "${RUNTIMEENV}" ] ; then
+  if [ -e /vagrant/Vagrantfile ] ; then
+    RUNTIMEENV=vagrant
+  else
+    RUNTIMEENV=server
+  fi
+fi
+export RUNTIMEENV
 
 [ -z "$TZ" -a -e ${WORKDIR}/.timezone ] && source ${WORKDIR}/.timezone
 if [ -z "${TZ}" ] ; then
@@ -68,5 +75,9 @@ if [ -z "${TZ}" ] ; then
     echo "export TZ=${TZ}" > ${HOME}/.profile
   fi
   echo "Remove ${WORKDIR}/.timezone and unset TZ to reset the timezone"
-  sudo timedatectl set-timezone ${TZ}
+  log_exec sudo locale-gen en_US.UTF-8          || die
+  log_exec sudo dpkg-reconfigure locales        || die
+  log_exec sudo timedatectl set-timezone ${TZ}  || die
 fi
+
+fi # }

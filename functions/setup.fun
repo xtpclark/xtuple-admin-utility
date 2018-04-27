@@ -1,15 +1,20 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$SETUP_FUN" ] ; then # {
+SETUP_FUN=true
 
 export CONFIG_DIR=${CONFIG_DIR:-${BUILD_WORKING}/xdruple-server/config}
 export GITHUB_TOKEN=${GITHUB_TOKEN:-$(git config --get github.token)}
-export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
 export KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
+export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
 export SCRIPTS_DIR=${SCRIPTS_DIR:-${BUILD_WORKING}/xdruple-server/scripts}
-export TZ=${2:-${TZ:-$(tzselect)}}
+export TZ=${TZ:-$(tzselect)}
 export RUNTIMEENV=${RUNTIMEENV:-'server'}
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 
-source ${WORKDIR:-.}/functions/oatoken.fun
+source ${BUILD_WORKING:-${WORKING:-.}}/functions/oatoken.fun
 
 read_configs() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -23,7 +28,7 @@ read_configs() {
 
   rm -f ${WORKDIR}/setup.bak
 
-  for CONFIGVAR in NODE_ENV PGVER MWC_VERSION ERP_MWC_TARBALL XTC_WWW_TARBALL ; do
+  for CONFIGVAR in NODE_ENV PGVER BUILD_XT_TAG ERP_MWC_TARBALL XTC_WWW_TARBALL ; do
     if [[ ${!CONFIGVAR} ]]; then
      echo "${CONFIGVAR}=${!CONFIGVAR}" | tee -a ${WORKDIR}/setup.bak
     fi
@@ -39,13 +44,13 @@ read_configs() {
     cat >> ${WORKDIR}/setup.ini <<EOSETUP
 export TIMEZONE=${TIMEZONE}
        PGVER=${PGVER}
-       MWC_VERSION=v${MWC_VERSION}
+       BUILD_XT_TAG=v${BUILD_XT_TAG}
        ERP_DATABASE_NAME=xtupleerp
-       ERP_DATABASE_BACKUP=manufacturing_demo-${MWC_VERSION}.backup
-       ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-v${MWC_VERSION}.tar.gz
+       ERP_DATABASE_BACKUP=manufacturing_demo-${BUILD_XT_TAG}.backup
+       ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-v${BUILD_XT_TAG}.tar.gz
        XTC_DATABASE_NAME=xtuplecommerce
-       XTC_DATABASE_BACKUP=xTupleCommerce-v${MWC_VERSION}.backup
-       XTC_WWW_TARBALL=xTupleCommerce-v${MWC_VERSION}.tar.gz
+       XTC_DATABASE_BACKUP=xTupleCommerce-v${BUILD_XT_TAG}.backup
+       XTC_WWW_TARBALL=xTupleCommerce-v${BUILD_XT_TAG}.tar.gz
        # payment-gateway config
        # See https://github.com/bendiy/payment-gateways/tree/initial/gateways
        GATEWAY_NAME='Example'
@@ -106,11 +111,11 @@ install_postgresql() {
   fi
 
   # We handle this package separately - if create_main_cluster is true, then it can cause issues for our purposes.
-  sudo apt-get --quiet -y install postgresql-common
+  sudo apt-get --quiet --yes install postgresql-common
   sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
 
   # TODO: do we really want to install plv8?
-  sudo apt-get --quiet -y install \
+  sudo apt-get --quiet --yes install \
                           postgresql-${PGVER}         postgresql-client-${PGVER}     \
                           postgresql-contrib-${PGVER} postgresql-server-dev-${PGVER} \
                           postgresql-client-${PGVER}  postgresql-${PGVER}-plv8       \
@@ -152,23 +157,6 @@ setup_postgresql_cluster() {
       hostssl    all           +xtrole         0.0.0.0/0                 md5
 EOF
   RET=$?
-
-  if $ISDEVELOPMENTENV ; then
-    if [ "${RUNTIMEENV}" = 'server' ] ; then
-      log_exec sudo --username postgres cat <<-EOF >> $POSTDIR/pg_hba.conf
-	host         postgres       postgres       127.0.0.1/32              trust
-	host         development    development    127.0.0.1/32              trust
-	host         stage          stage          127.0.0.1/32              trust
-	host         production     production     127.0.0.1/32              trust
-	host         $DEPLOYER_NAME $DEPLOYER_NAME 127.0.0.1/32              trust
-EOF
-      RET=$?
-    elif [ "${RUNTIMEENV}" = "vagrant" ] ; then
-      log_exec sudo bash -c "echo 'host         all            all            127.0.0.1/32              trust' >> $POSTDIR/pg_hba.conf"
-      RET=$?
-    fi
-  fi
-
   if [ $RET -ne 0 ] ; then
     msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
     do_exit
@@ -199,24 +187,7 @@ EOF
   fi
   sudo chown postgres $POSTDIR/postgresql.conf
 
-  log "Restarting PostgreSQL $PGVER for $POSTNAME"
-  if [ $DISTRO = "ubuntu" ]; then
-    case "$CODENAME" in
-      "trusty") ;&
-      "utopic")
-        log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
-        log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
-        ;;
-      "vivid") ;&
-      "xenial")
-        log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
-        system_start postgresql@$PGVER-"$POSTNAME"
-        ;;
-    esac
-  else
-    log "Configuring PostgreSQL clusters on $DISTRO $CODENAME is not yet supported"
-    return 1
-  fi
+  service_restart postgresql
 
   log "Deploying init.sql, creating admin user and xtrole group"
   psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/sql/init.sql
@@ -224,19 +195,6 @@ EOF
   if [ $RET -ne 0 ]; then
     msgbox "Error deploying init.sql. Check for errors and try again"
     do_exit
-  fi
-
-  if $ISDEVELOPMENTENV ; then
-    psql --username=postgres <<-EOF
-	CREATE USER ${DEPLOYER_NAME} PASSWORD '${DEPLOYER_PASS}';
-	CREATE USER development PASSWORD '${DEVELOPMENT_DB_PASS}';
-	CREATE USER stage      PASSWORD '${STAGE_DB_PASS}';
-	CREATE USER production PASSWORD '${PRODUCTION_DB_PASS}';
-
-        CREATE DATABASE development WITH OWNER development;
-        CREATE DATABASE stage       WITH OWNER stage;
-        CREATE DATABASE production  WITH OWNER production;
-EOF
   fi
 
   msgbox "Initializing cluster successful."
@@ -247,20 +205,16 @@ turn_on_plv8() {
   local POSTGRESQL_CONF=/etc/postgresql/${PGVER}/xtuple/postgresql.conf
 
   sudo sed -i '/^#plv8.start_proc/c\plv8.start_proc='\'xt.js_init\''' ${POSTGRESQL_CONF}
-  sudo pg_ctlcluster ${PGVER} xtuple stop --force
-  sudo pg_ctlcluster ${PGVER} xtuple start
+  service_restart postgresql
 }
 
-#Turn off plv8 and restart postgresql.
 turn_off_plv8() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local POSTGRESQL_CONF=/etc/postgresql/${PGVER}/xtuple/postgresql.conf
 
   sudo sed -i '/^plv8.start_proc/c\#plv8.start_proc='\'xt.js_init\''' ${POSTGRESQL_CONF}
-  sudo pg_ctlcluster ${PGVER} xtuple stop --force
-  sudo pg_ctlcluster ${PGVER} xtuple start
+  service_restart postgresql
 }
-
 
 setup_erp_db() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -308,54 +262,121 @@ setup_erp_db() {
   fi
 }
 
+get_os_info() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+  dialog --ok-label  "Submit"                   \
+         --backtitle "xTupleCommerce OS Setup"  \
+         --title     "xTupleCommerce OS Setup"  \
+         --form      "Enter basic OS information" \
+         --begin 0 0  --inputbox "Email Address:" 1 1 "$ECOMM_ADMIN_EMAIL" \
+         --add-widget --inputbox "URL:"           1 1 "$ERP_SITE_URL"      \
+         --add-widget --inputbox "xTC Domain:"    1 1 "$NGINX_ECOM_DOMAIN" \
+         --add-widget --insecure --passwordbox "New Root Password:"      2 1    \
+         --add-widget --insecure --passwordbox "Root Cert Password:"     2 1    \
+         --add-widget --insecure --passwordbox "Deployer Cert Password:" 2 1    \
+         3>&1 1>&2 2> osinfo.ini
+  RET=$?
+  case $RET in
+    $DIALOG_OK)
+      read -d "\n" ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSED ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD <<<$(cat osinfo.ini)
+      export       ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSED ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD
+      ;;
+    *) return 1
+       ;;
+   esac
+}
+
+prepare_os_for_xtc() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  if [ "$RUNTIMEENV" = 'server' -a -n "$ROOT_PASSWD" ] ; then
+    echo "root:${ROOT_PASSWD}" | sudo chpasswd
+  fi
+
+  log_exec sudo apt-get --quiet update
+  log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade
+  log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing dist-upgrade
+
+  if [ ${RUNTIMEENV} = 'server' ]; then
+    safecp ${WORKDIR}/templates/ssh/sshd_config.conf /etc/ssh/sshd_config
+    service_restart ssh
+  elif [ ${RUNTIMEENV} = 'vagrant' ] ; then
+    eval $(stat --printf 'NFS_UID=%u
+                          NFS_GROUP=%G' /var/www)
+    sudo adduser --system --no-create-home --uid ${NFS_UID} --ingroup ${NFS_GROUP} ${HOST_USERNAME}
+  fi
+
+  generate_p12
+  generate_xdruple_keypairs ${ECOMM_ADMIN_EMAIL} ${ERP_SITE_URL} ${NGINX_ECOM_DOMAIN} ${ROOT_CERT_PASSWD} ${DEPLOY_CERT_PASSWD}
+  if $XTC_HOST_IS_REMOTE ; then
+    ssh root@${ERP_SITE_URL} mkdir --parents /var/xtuple/keys
+    scp ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN_P12} ${ERP_SITE_URL}:/var/xtuple/keys/
+
+     local IP=$(nslookup $URL | awk '/Server:/ { print $2 }')
+     back_up_file /etc/hosts
+     cat <<-EOF | sudo tee -a /etc/hosts
+           $URL            $IP
+           dev.$URL        $IP
+           stage.$URL      $IP
+           live.$URL       $IP
+EOF
+  elif [ "$RUNTIMEENV" = 'server' ] ; then
+    sudo mkdir --parents /var/xtuple/keys
+    safecp ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} /var/xtuple/keys
+  elif [ "$RUNTIMEENV" = 'vagrant' ] ; then
+    sudo mkdir --parents /var/xtuple
+    sudo ln --symbolic --force /vagrant/xtuple/keys /var/xtuple/keys
+  fi
+}
+
 setup_xtuplecommerce_db() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-psql -U postgres -c "CREATE USER xtuplecommerce SUPERUSER PASSWORD 'xtuplecommerce' IN GROUP xtrole;" 2>/dev/null
-psql -U postgres -c "ALTER USER xtuplecommerce SUPERUSER;" 2>/dev/null
-RET=$?
-if [[ $RET != 0 ]]; then
-  echo "Warning or Fail on: CREATE USER xtuplecommerce. Already exists?"
-fi
+  psql -U postgres -c "CREATE USER xtuplecommerce SUPERUSER PASSWORD 'xtuplecommerce' IN GROUP xtrole;" 2>/dev/null
+  psql -U postgres -c "ALTER USER xtuplecommerce SUPERUSER;" 2>/dev/null
+  RET=$?
+  if [[ $RET != 0 ]]; then
+    echo "Warning or Fail on: CREATE USER xtuplecommerce. Already exists?"
+  fi
 
+  psql -At -U postgres -l | grep -q ${XTC_DATABASE_NAME} 2>/dev/null
+  RET=$?
+  if [[ $RET == 0 ]]; then
+    echo "Database ${XTC_DATABASE_NAME} already exists"
+  else
+    echo "Creating ${XTC_DATABASE_NAME}!"
+    createdb -U postgres -O xtuplecommerce -p ${PGPORT} ${XTC_DATABASE_NAME}
 
-psql -At -U postgres -l | grep -q ${XTC_DATABASE_NAME} 2>/dev/null
-RET=$?
-if [[ $RET == 0 ]]; then
-   echo "Database ${XTC_DATABASE_NAME} already exists"
-else
-   echo "Creating ${XTC_DATABASE_NAME}!"
-   createdb -U postgres -O xtuplecommerce -p ${PGPORT} ${XTC_DATABASE_NAME}
-
-if [[ ! -f ${WORKDIR}/db/${XTC_DATABASE_BACKUP} ]]; then
-    echo "File not found! ${WORKDIR}/db/${XTC_DATABASE_BACKUP}"
-    echo "Don't know what you want me to restore!"
-else
-pg_restore -U xtuplecommerce -d ${XTC_DATABASE_NAME} ${WORKDIR}/db/${XTC_DATABASE_BACKUP} 2>/dev/null
-RET=$?
- if [[ $RET != 0 ]]; then
- echo "Something messed up with restore of ${XTC_DATABASE_BACKUP}"
- echo "May not be critical"
- fi
-
-fi
-fi
-
+    if [[ ! -f ${WORKDIR}/db/${XTC_DATABASE_BACKUP} ]]; then
+      echo "Could not find ${WORKDIR}/db/${XTC_DATABASE_BACKUP}"
+      echo "Don't know what you want me to restore!"
+    else
+      pg_restore -U xtuplecommerce -d ${XTC_DATABASE_NAME} ${WORKDIR}/db/${XTC_DATABASE_BACKUP} 2>/dev/null
+      RET=$?
+      if [[ $RET != 0 ]]; then
+        echo "Something messed up with restore of ${XTC_DATABASE_BACKUP}"
+        echo "May not be critical"
+      fi
+    fi
+  fi
 }
 
 encryption_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  local CONFIGDIR="${1:-$WORKDIR}"
-  local XTDIR="${2:-${BUILD_XT:-xtuple}}"
+  CONFIGDIR="${1:-${CONFIGDIR:-/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME}}"
+  BUILD_XT="${2:-${BUILD_XT}}"
   local DATABASE="${3:-${ERP_DATABASE_NAME}}"
   local KEYDIR="${CONFIGDIR}/private"
 
-  log_exec sudo mkdir -p "${KEYDIR}"
+  if [ ! -d "${BUILD_XT}" ] ; then
+    BUILD_XT="${BUILD_WORKING}/${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}"
+  fi
+  [ -d "${BUILD_XT}" ] || die "Cannot figure out where to stash the encryption keys"
 
-  log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} ${KEYDIR}
-  log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} ${CONFIGDIR}
-  log_exec chmod -R ug+rwX ${KEYDIR}
+  log_exec sudo mkdir --parents "${KEYDIR}"
+
+  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${CONFIGDIR}
   log_exec chmod -R ug+rwX ${CONFIGDIR}
 
   log_exec touch ${KEYDIR}/salt.txt
@@ -369,11 +390,12 @@ encryption_setup() {
   log_exec openssl req -batch -new -key ${KEYDIR}/key.pem -out ${KEYDIR}/server.csr -subj '/CN='$(hostname)
   log_exec openssl x509 -req -days 365 -in ${KEYDIR}/server.csr -signkey ${KEYDIR}/key.pem -out ${KEYDIR}/server.crt
 
-  safecp --username=${DEPLOYER_NAME} ${XTDIR}/node-datasource/sample_config.js ${CONFIGDIR}/config.js
+  safecp ${BUILD_XT}/node-datasource/sample_config.js ${CONFIGDIR}/config.js
 
   # use jq instead of sed
   log "Updating ${CONFIGDIR}/config.js"
-  sed -i -e "/encryptionKeyFile/c\      encryptionKeyFile: \"$KEYDIR/encryption_key.txt\"," \
+  sudo sed -i \
+         -e "/encryptionKeyFile/c\      encryptionKeyFile: \"$KEYDIR/encryption_key.txt\"," \
          -e "/keyFile/c\      keyFile: \"$KEYDIR/key.pem\","      \
          -e "/certFile/c\      certFile: \"$KEYDIR/server.crt\"," \
          -e "/saltFile/c\      saltFile: \"$KEYDIR/salt.txt\","   \
@@ -398,27 +420,26 @@ Wrote out web client config:
 config_webclient_scripts() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  if [[ -z $NGINX_PORT ]]; then
+  if [[ -z "$NGINX_PORT" ]]; then
     export NGINX_PORT=8443
     echo "Using port 8443 for Node.js https requests"
   fi
 
-  if [[ -z $PGPORT ]]; then
+  if [[ -z "$PGPORT" ]]; then
     export PGPORT=5432
     echo "Using port 5432 for PostgreSQL"
   fi
 
-  if [ ! -f /opt/xtuple/$MWC_VERSION/"$ERP_DATABASE_NAME"/xtuple/node-datasource/sample_config.js ]; then
-    log "Hrm, sample_config.js doesn't exist.. something went wrong. check the output/log and try again"
-    do_exit
+  if [ ! -f /opt/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"/xtuple/node-datasource/sample_config.js ]; then
+    die "Cannot find sample_config.js. Check the output or log and try again"
   fi
 
-  export XTDIR=/opt/xtuple/$MWC_VERSION/"$ERP_DATABASE_NAME"/xtuple
+  export XTDIR=/opt/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"/xtuple
 
-  log_exec sudo rm -rf /etc/xtuple/$MWC_VERSION/"$ERP_DATABASE_NAME"
-  encryption_setup /etc/xtuple/$MWC_VERSION/"$ERP_DATABASE_NAME" $XTDIR $ERP_DATABASE_NAME
+  log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"
+  encryption_setup /etc/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME" $XTDIR
 
-  log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /etc/xtuple
+  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /etc/xtuple
 
   if [ $DISTRO = "ubuntu" ]; then
     case "$CODENAME" in
@@ -427,8 +448,8 @@ config_webclient_scripts() {
         log "Creating upstart script using filename /etc/init/xtuple-$ERP_DATABASE_NAME.conf"
         # create the upstart script
         sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$ERP_DATABASE_NAME".conf
-        log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWC_VERSION/\"$ERP_DATABASE_NAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
-        log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWC_VERSION/\"$ERP_DATABASE_NAME\"/config.js > /var/log/node-datasource-$MWC_VERSION-\"$ERP_DATABASE_NAME\".log 2>&1\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
+        log_exec sudo bash -c "echo \"chdir /opt/xtuple/$BUILD_XT_TAG/\"$ERP_DATABASE_NAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
+        log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$ERP_DATABASE_NAME\"/config.js > /var/log/node-datasource-$BUILD_XT_TAG-\"$ERP_DATABASE_NAME\".log 2>&1\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
         ;;
       "vivid") ;&
       "xenial")
@@ -436,8 +457,8 @@ config_webclient_scripts() {
         safecp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-${ERP_DATABASE_NAME}.service
         log_exec sudo sed -i -e "s/{DEPLOYER_NAME}/$DEPLOYER_NAME/"       \
                              -e "s/{SYSLOGID}/xtuple-$ERP_DATABASE_NAME/" \
-                             -e "s,{XTDIR},/opt/xtuple/$MWC_VERSION/$ERP_DATABASE_NAME," \
-                             -e "s,{CONFIGDIR},/etc/xtuple/$MWC_VERSION/$ERP_DATABASE_NAME," /etc/systemd/system/xtuple-${ERP_DATABASE_NAME}.service
+                             -e "s,{XTDIR},/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME," \
+                             -e "s,{CONFIGDIR},/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME," /etc/systemd/system/xtuple-${ERP_DATABASE_NAME}.service
         ;;
     esac
   else
@@ -464,10 +485,11 @@ get_environment() {
   HTTP_AUTH_PASS="ChangeMe"
   ERP_HOST=https://${DOMAIN}:8443
 
-  dialog --ok-label "Submit"                       \
-         --backtitle "xTuple Web Client Setup"     \
-         --title "Configuration"                   \
-         --form "Configure Web Client Environment" \
+  # TODO: some of this may be specific to xTupleCommerce
+  dialog --ok-label  "Submit"                           \
+         --backtitle "xTuple Web Client Setup"          \
+         --title     "Configuration"                    \
+         --form      "Configure Web Client Environment" \
          0 0 0 \
            "ERP Host:"  1 1          "${ERP_HOST}"   1 20 50 0 \
        "ERP Database:"  2 1 "${ERP_DATABASE_NAME}"   2 20 50 0 \
@@ -490,21 +512,11 @@ get_environment() {
 
       read -d "\n" ERP_HOST ERP_DATABASE_NAME ERP_ISS ERP_APPLICATION SITE_TEMPLATE ERP_DEBUG WENVIRONMENT DOMAIN DOMAIN_ALIAS HTTP_AUTH_NAME HTTP_AUTH_PASS DEPLOYER_NAME GITHUB_TOKEN <<<$(cat xtuple_webclient.ini);
 
-      export ERP_HOST=${ERP_HOST}
-      export ERP_DATABASE_NAME=${ERP_DATABASE_NAME}
-      export ERP_ISS=${ERP_ISS}
-      export ERP_APPLICATION=${ERP_APPLICATION}
-      export SITE_TEMPLATE=${SITE_TEMPLATE}
-      export ERP_DEBUG=${ERP_DEBUG}
-      export WENVIRONMENT=${WENVIRONMENT}
-      export DOMAIN=${DOMAIN}
-      export DOMAIN_ALIAS=${DOMAIN_ALIAS}
-      export HTTP_AUTH_NAME=${HTTP_AUTH_NAME}
-      export HTTP_AUTH_PASS=${HTTP_AUTH_PASS}
-      export DEPLOYER_NAME=${DEPLOYER_NAME}
-      export GITHUB_TOKEN=${GITHUB_TOKEN}
-      export ERP_SITE_URL=${DOMAIN}
-      export NGINX_ECOM_DOMAIN=${DOMAIN}
+      export DEPLOYER_NAME    DOMAIN            DOMAIN_ALIAS
+      export ERP_APPLICATION  ERP_DATABASE_NAME ERP_DEBUG ERP_HOST ERP_ISS ERP_SITE_URL
+      export GITHUB_TOKEN
+      export HTTP_AUTH_NAME    HTTP_AUTH_PASS
+      export NGINX_ECOM_DOMAIN SITE_TEMPLATE WENVIRONMENT
       export ECOMM_ADMIN_EMAIL=admin@${DOMAIN}
       ;;
 
@@ -561,9 +573,9 @@ get_xtc_environment() {
   esac
 }
 
-# TODO: remove duplicate function name in mobileclient.sh
+# TODO: why do we have install_webclient in mobileclient.sh and this?
 # TODO: remove partial duplication from mwc_build_static_mwc?
-install_webclient() {
+webclient_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local APPLY_FOUNDATION=
 
@@ -597,17 +609,17 @@ install_webclient() {
   else
     echo "${ERPTARDIR} exists and is not empty"
   fi
-  MWC_VERSION=$(cd ${ERPTARDIR}/xtuple && git describe --abbrev=0 --tags)
+  BUILD_XT_TAG=$(cd ${ERPTARDIR}/xtuple && git describe --abbrev=0 --tags)
 
-  local XT_ROOT=/opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}
+  local XT_ROOT=/opt/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}
   if [[ -d "${XT_ROOT}" ]]; then
     back_up_file $XT_ROOT
     rm -rf $XT_ROOT
   fi
-  log_exec sudo mkdir -p $(dirname $XT_ROOT)
-  log_exec sudo mkdir -p /etc/xtuple/${MWC_VERSION}
+  log_exec sudo mkdir --parents $(dirname $XT_ROOT)
+  log_exec sudo mkdir --parents /etc/xtuple/${BUILD_XT_TAG}
 
-  echo "Copying ${WORKDIR}/${ERPTARDIR} to /opt/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}"
+  echo "Copying ${WORKDIR}/${ERPTARDIR} to /opt/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}"
   sudo cp -R ${WORKDIR}/${ERPTARDIR} ${XT_ROOT}
   echo "Setting owner to ${DEPLOYER_NAME} on $(dirname $XT_ROOT)"
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} $(dirname $XT_ROOT)
@@ -637,7 +649,7 @@ EOF
   done
   cd $XT_ROOT/xtuple
 
-  scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+  scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
   RET=$?
   msgbox "$(cat buildapp_output.log)"
   if [[ $RET -ne 0 ]]; then
@@ -645,7 +657,7 @@ EOF
   fi
 
   #TODO: why run this twice?
-  scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+  scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
   RET=$?
   msgbox "$(cat buildapp_output.log)"
   if [[ $RET -ne 0 ]]; then
@@ -656,7 +668,7 @@ EOF
     echo "${ERP_DATABASE_NAME} does not have xt.ext"
     # We can check for the private extensions dir...
     if [[ -d "${XT_ROOT}/private-extensions" ]] ; then
-      scripts/build_app.js -c /etc/xtuple/$MWC_VERSION/${ERP_DATABASE_NAME}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+      scripts/build_app.js -c /etc/xtuple/$BUILD_XT_TAG/${ERP_DATABASE_NAME}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
       RET=$?
       msgbox "$(cat buildapp_output.log)"
       if [[ $RET -ne 0 ]]; then
@@ -669,7 +681,7 @@ EOF
 
     psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/preload.sql
     echo "Running build_app for the extensions we preloaded into xt.ext"
-    scripts/build_app.js -c /etc/xtuple/${MWC_VERSION}/${ERP_DATABASE_NAME}/config.js 2>&1 | tee buildapp_output.log
+    scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js 2>&1 | tee buildapp_output.log
     RET=$?
     msgbox "$(cat buildapp_output.log)"
     if [[ $RET -ne 0 ]]; then
@@ -687,51 +699,20 @@ load_oauth_site() {
   psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/xd_site.sql || die
 }
 
-stop_mwc() {
-  echo "Stopping any node.js for this instance"
-  sudo service xtuple-${ERP_DATABASE_NAME} stop
-}
-
-start_mwc() {
-  echo "Lets try starting this..."
-  sudo service xtuple-${ERP_DATABASE_NAME} stop
-  sudo service xtuple-${ERP_DATABASE_NAME} start
-  RET=$?
-  if [[ $RET -ne 0 ]]; then
-    echo "Something went wrong trying to run"
-    echo "sudo service xtuple-${ERP_DATABASE_NAME} start"
-  else
-    msgbox "service xtuple-${ERP_DATABASE_NAME} started successfully"
-  fi
-}
-
-config_xtc() {
-echo "Updating the xTupleCommerce Login/Password"
-psql -U xtuplecommerce -d xtuplecommerce -f ${WORKDIR}/sql/setadmin.sql
-
-
-# (echo '127.0.0.1 ${NGINX_ECOM_DOMAIN} ${NGINX_SITE} ) | sudo tee -a /etc/hosts >/dev/null
-echo "Setting the local /etc/hosts file for 127.0.0.1 xtuple.xd"
-(echo '127.0.0.1 xtuple.xd') | sudo tee -a /etc/hosts >/dev/null
-
-
-}
-
-install_example_gateway() {
+# TODO: either remove or make this ask for gateway info and do the full config
+gateway_setup() {
   psql -U admin -p 5432 ${ERP_DATABASE_NAME} <<EOF
-        INSERT INTO paymentgateways.gateway (
-          gateway_name,  gateway_hostname,  gateway_base_path,  gateway_node_lib_name
-        ) SELECT ${GATEWAY_NAME}, ${GATEWAY_HOSTNAME}, ${GATEWAY_BASE_PATH}, ${GATEWAY_NODE_LIB_NAME}
-          WHERE NOT EXISTS (SELECT 1 FROM paymentgateways.gateway WHERE gateway_name = ${GATEWAY_NAME});
+    INSERT INTO paymentgateways.gateway (
+      gateway_name,  gateway_hostname,  gateway_base_path,  gateway_node_lib_name
+    ) SELECT ${GATEWAY_NAME}, ${GATEWAY_HOSTNAME}, ${GATEWAY_BASE_PATH}, ${GATEWAY_NODE_LIB_NAME}
+      WHERE NOT EXISTS (SELECT 1 FROM paymentgateways.gateway WHERE gateway_name = ${GATEWAY_NAME});
 EOF
 }
 
-
-setup_compass()
-{
+ruby_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  sudo apt-get --quiet -y install rubygems rubygems-integration ruby-dev
+  sudo apt-get --quiet --yes install rubygems rubygems-integration ruby-dev
 
   # required for theme CSS generation
   sudo gem install compass
@@ -742,29 +723,13 @@ setup_compass()
   fi
 }
 
-setup_phpunit() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-  if type -p  "phpunit" > /dev/null; then
-    echo "phpunit found"
-  else
-    echo "Installing phpunit and dependencies"
-
-    wget https://phar.phpunit.de/phpunit-old.phar && \
-    chmod +x phpunit-old.phar && \
-    sudo mv phpunit-old.phar /usr/local/bin/phpunit
-  fi
-}
-
 setup_flywheel() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   get_environment
   get_xtc_environment
-  setup_xdruple_nginx
-  setup_compass
 
-  start_mwc
+  service_restart xtuple-${ERP_DATABASE_NAME}
 
   local SITE_ENV_TMP_WORK=${WORKING}/xdruple-sites/${ERP_DATABASE_NAME}
   local SITE_ENV_TMP=${SITE_ENV_TMP_WORK}/${WENVIRONMENT}
@@ -776,7 +741,7 @@ setup_flywheel() {
   # The site template developer
   local SITE_DEV=xtuple
 
-  mkdir -p ${SITE_ENV_TMP_WORK}
+  mkdir --parents ${SITE_ENV_TMP_WORK}
 
   if [ -n ${NGINX_ECOM_DOMAIN_P12} ]; then
     load_oauth_site
@@ -784,12 +749,12 @@ setup_flywheel() {
     die "DOMAIN NOT SET - EXITING!"
   fi
 
-  sudo mkdir -p ${KEY_PATH}
+  sudo mkdir --parents ${KEY_PATH}
   if $ISDEVELOPMENTENV ; then
     ln -s /vagrant/xtuple/keys ${KEY_PATH}
   fi
 
-  log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} ${SITE_ROOT}
+  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${SITE_ROOT}
 
   {
     echo -e "XXX\n0\nCloning ${SITE_TEMPLATE} to ${SITE_ENV_TMP}\nXXX"
@@ -879,62 +844,46 @@ EOF
 
 }
 
+# TODO: this isn't called anywhere. should it be?
 setup_xtuplecommerce() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-if [[ ! -f ${WORKDIR}/${XTC_WWW_TARBALL} ]]; then
-    echo "Looking for: ${XTC_WWW_TARBALL}"
-    echo "Can't find it... This is important"
-    exit 2
-fi
+  if [[ ! -f ${WORKDIR}/${XTC_WWW_TARBALL} ]]; then
+    die "Could not find ${XTC_WWW_TARBALL} to install"
+  fi
 
-sudo mkdir -p /var/www
-echo "Directory /var/www created."
+  log_exec sudo mkdir --parents /var/www
 
-cd $WORKDIR
-XTCTARDIR=$(tar -tzf ${XTC_WWW_TARBALL} | head -1 | cut -f1 -d"/")
+  cd $WORKDIR
+  XTCTARDIR=$(tar -tzf ${XTC_WWW_TARBALL} | head -1 | cut -f1 -d"/")
 
-echo "Extracting ${XTC_WWW_TARBALL}"
-tar xf ${XTC_WWW_TARBALL}
-if [[ -d "/var/www/xTupleCommerce" ]]; then
-echo "Moving old /var/www/xTupleCommerce directory to /var/www/xTupleCommerce-${WORKDATE}"
-sudo mv /var/www/xTupleCommerce /var/www/xTupleCommerce-${WORKDATE}
-fi
+  echo "Extracting ${XTC_WWW_TARBALL}"
+  log_exec tar xf ${XTC_WWW_TARBALL}
+  if [[ -d "/var/www/xTupleCommerce" ]]; then
+    echo "Moving old /var/www/xTupleCommerce directory to /var/www/xTupleCommerce-${WORKDATE}"
+    back_up_file /var/www/xTupleCommerce
+  fi
 
-sudo mv $WORKDIR/${XTCTARDIR} /var/www/xTupleCommerce
-sudo chown -R www-data:www-data /var/www/xTupleCommerce
-
+  sudo mv $WORKDIR/${XTCTARDIR} /var/www/xTupleCommerce
+  sudo chown -R www-data:www-data /var/www/xTupleCommerce
 }
-
-setup_xdruple_nginx() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-  install_nginx
-  configure_nginx || die
-  drupal_crontab  || die
-}
-
 
 webnotes() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-if type -p "ec2metadata" > /dev/null; then
+  if type -p "ec2metadata" > /dev/null; then
+    #prefer this if we have it and we're on EC2...
+    IP=$(ec2metadata --public-ipv4)
+  else
+    IP=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
+  fi
 
-#prefer this if we have it and we're on EC2...
+  if [[ -z ${IP} ]]; then
+    IP="The IP address of this machine"
+  fi
 
-IP=$(ec2metadata --public-ipv4)
-
-else
-
-IP=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
-
-fi
-
-if [[ -z ${IP} ]]; then
-IP="The IP of This Machine"
-fi
-
-cat << EOF > xtuplecommerce_connection.log
+  back_up_file xtuplecommerce_connection.log
+  cat << EOF | tee xtuplecommerce_connection.log
      ************************************"
      ***** IMPORTANT!!! PLEASE READ *****"
      ************************************"
@@ -945,10 +894,10 @@ cat << EOF > xtuplecommerce_connection.log
      Windows: %SystemRoot%\System32\drivers\etc\hosts
      OSX/Linux: /etc/hosts
 
-     ${IP} xtuple.xd
+     ${IP} ${ERP_SITE_URL}
 
      Here is where you can login:
-     xTuple Desktop Client v${MWC_VERSION}:
+     xTuple Desktop Client v${BUILD_XT_TAG}:
      Server: ${IP}
      Port: ${PGPORT}
      Database: ${ERP_DATABASE_NAME}
@@ -971,9 +920,8 @@ cat << EOF > xtuplecommerce_connection.log
      Webroot: /var/www/xTupleCommerce/drupal/core
 
   Please set your nginx config for the xTupleCommerce webroot to:
-  root /var/www/xTupleCommerce/drupal/core;
+    root /var/www/xTupleCommerce/drupal/core;
 EOF
-cat xtuplecommerce_connection.log
 }
 
 destroy_env() {
@@ -984,13 +932,82 @@ xtau_deploy_mwc() {
   read_configs ${WORKDIR}/xtau_mwc-${WORKDATE}.config
 }
 
-install_composer() {
-  mkdir -p ~/.composer
+php_setup() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  mkdir --parents $HOME/.composer
 
-# git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple/xdruple-server
-  local RUNTIMEENV=${RUNTIMEENV}      # vagrant | server
+  export RUNTIMEENV=${1:-${RUNTIMEENV:-vagrant}}
+  export TZ=${2:-${TZ:-$(tzselect)}}
+  export DEPLOYER_NAME=${3:-${DEPLOYER_NAME:-$(whoami)}}
+  export GITHUB_TOKEN=${4:-${GITHUB_TOKEN:-$(git config --get github.token)}}
 
-  sudo timedatectl set-timezone ${TIMEZONE}
-  source ${WORKING}/php.sh ${RUNTIMEENV} ${TIMEZONE} ${DEPLOYER_NAME} ${GITHUB_TOKEN}
+  export MAX_EXECUTION_TIME=60
+  if [ ${RUNTIMEENV} = 'vagrant' ]; then
+      export MAX_EXECUTION_TIME=600
+  fi
+
+  sudo add-apt-repository -y ppa:ondrej/php && \
+  sudo apt-get --quiet -y update       || die
+  sudo apt-get --quiet -y upgrade      || die
+  sudo apt-get --quiet -y install \
+                          php-common     php7.1-common   php7.1-json \
+                          php7.1-opcache php7.1-readline php7.1-fpm  \
+                          php7.1         php7.1-cli      php7.1-xml  \
+                          php-pear       php7.1-dev      php7.1-gd   \
+                          php7.1-pgsql   php7.1-curl     php7.1-intl \
+                          php7.1-mcrypt  php7.1-mbstring php7.1-soap || die
+
+  if [ ${RUNTIMEENV} = 'vagrant' ]; then
+    sudo apt-get --quiet -y install php-xdebug || die
+    safecp ${WORKDIR}/templates/php/mods/xdebug.ini /etc/php/7.1/mods-available || die
+  fi
+
+  safecp ${WORKDIR}/templates/php/fpm/php-fpm.conf.ini /etc/php/7.1/fpm
+  safecp ${WORKDIR}/templates/php/fpm/www.conf.ini /etc/php/7.1/fpm/pool.d
+
+  ESCAPED_TIMEZONE=$(echo ${TZ} | sed -e 's/[]\/$*.^|[]/\\&/g')
+  safecp ${WORKDIR}/templates/php/fpm/php.ini /etc/php/7.1/fpm
+  sudo sed -i -e "s/{TZ}/${ESCAPED_TIMEZONE}/g" \
+              -e "s/{MAX_EXECUTION_TIME}/${MAX_EXECUTION_TIME}/g" /etc/php/7.1/fpm/php.ini
+
+  safecp ${WORKDIR}/templates/php/cli/php.ini /etc/php/7.1/cli
+  sudo sed -i "s/{TZ}/${ESCAPED_TIMEZONE}/g" /etc/php/7.1/cli/php.ini
+
+  # Composer
+  php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+  php -r "if (hash_file('SHA384', 'composer-setup.php') === '544e09ee996cdf60ece3804abc52599c22b1f40f4323403c44d44fdfdd586475ca9813a858088ffbc1f233e9b180f061') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" || die
+  php composer-setup.php                                || die
+  php -r "unlink('composer-setup.php');"                || die
+  sudo mv composer.phar /usr/local/bin/composer         || die
+  sudo mkdir -p /home/${DEPLOYER_NAME}/.composer        || die
+  safecp ${WORKDIR}/templates/php/composer/config-${RUNTIMEENV}.json /home/${DEPLOYER_NAME}/.composer/config.json
+  sudo sed -i "s/{GITHUB_TOKEN}/${GITHUB_TOKEN}/g" /home/${DEPLOYER_NAME}/.composer/config.json
+  sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
+
+  # TODO: some(?) of these should be moved to devenv.sh
+  if [ "$MODE" = manual ] ; then
+    GET=dlf_fast
+  else
+    GET=dlf_fast_console
+  fi
+  # PHPUnit (v6.x)
+  $GET https://phar.phpunit.de/phpunit.phar /usr/local/bin/phpunit +x
+
+  # PHP CodeSniffer
+  $GET https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar /usr/local/bin/phpcs +x
+
+  # PHP Code Beautifier
+  $GET https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar /usr/local/bin/phpcbf +x
+
+  # PHP Mess Detector
+  $GET http://static.phpmd.org/php/latest/phpmd.phar /usr/local/bin/phpmd +x
+
+  # Couscous (User documentation generation)
+  $GET http://couscous.io/couscous.phar /usr/local/bin/couscous +x
+
+  # Restart PHP and Nginx
+  sudo service php7.1-fpm restart
+  sudo service nginx restart
 }
 
+fi # }

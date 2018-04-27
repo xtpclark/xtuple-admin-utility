@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$GITVARS_FUN" ] ; then # {
+GITVARS_FUN=true
 
 loadadmin_gitconfig() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -167,3 +172,4 @@ checkcrm_gitconfig() {
   fi
 }
 
+fi # }

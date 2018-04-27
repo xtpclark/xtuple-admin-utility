@@ -1,59 +1,52 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
 
-ssh_setup(){
-log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+if [ -z "$TOKENMANAGEMENT_H" ] ; then # {
+TOKENMANAGEMENT_H=true
 
-# This is added so composer doesn't ask for auth during the process.
-if [[ -e ~/.ssh/config ]]; then
+ssh_setup() {
+  log "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-log "Found SSH config"
-
-SSHFILE=~/.ssh/config
-
-declare file=${SSHFILE}
-declare regex="\s+
+  # This is added so composer doesn't ask for auth during the process.
+  if [[ -e ~/.ssh/config ]]; then
+    log "Found SSH config"
+    SSHFILE=~/.ssh/config
+    declare regex="\s+
 #Added by xTau
 Host github.com
 HostName github.com
 StrictHostKeyChecking no\s+"
 
-declare file_content=$( cat "${file}" )
-if [[ " $file_content " =~ $regex ]]
-    then
-log "SSH Config looks good"
-else
-cat << EOF >> ~/.ssh/config
+    declare file_content=$( cat "${SSHFILE}" )
+    if [[ " $file_content " =~ $regex ]] ; then
+      log "SSH Config looks good"
+    else
+      cat <<-EOF >> ~/.ssh/config
 
-#Added by xTau
-Host github.com
-HostName github.com
-StrictHostKeyChecking no
-
+	#Added by xTau
+	Host github.com
+	HostName github.com
+	StrictHostKeyChecking no
 EOF
+    fi
 
-fi
-
-else
-log "Creating ~/.ssh/config"
-
-if [ ! -d ~/.ssh  ]; then
-log_exec mkdir -p ~/.ssh
-
-else
-cat << EOF >> ~/.ssh/config
-
-#Added by xTau
-Host github.com
-HostName github.com
-StrictHostKeyChecking no
-
+  else
+    log "Creating ~/.ssh/config"
+    if [ ! -d ~/.ssh  ]; then
+      log_exec mkdir -p ~/.ssh
+    else
+      cat <<-EOF >> ~/.ssh/config
+	#Added by xTau
+	Host github.com
+	HostName github.com
+	StrictHostKeyChecking no
 EOF
-fi
-
-fi
-
+    fi
+  fi
 }
 
+# TODO: rewrite using dialog
 generate_github_token() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local OAMSG RET
@@ -114,3 +107,5 @@ Token written to ${HOME}/.gitconfig" 16 60 3>&1 1>&2 2>&3
 }
 
 ssh_setup
+
+fi # }

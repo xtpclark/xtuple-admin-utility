@@ -1,5 +1,11 @@
 #!/bin/bash
-WORKDIR=`pwd`
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$CONMAN_SH" ] ; then # {
+CONMAN_SH=true
+
+WORKDIR=$(pwd)
 #source common.sh
 #source logging.sh
 menu_title=Conman
@@ -210,3 +216,4 @@ conman_menu
 
 
 # selectServer
+fi # }

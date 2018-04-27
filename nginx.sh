@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$NGINX_SH" ] ; then # {
+NGINX_SH=true
 
 nginx_menu() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -14,14 +19,17 @@ nginx_menu() {
             3>&1 1>&2 2>&3)
 
     RET=$?
-
     if [ $RET -ne 0 ]; then
       break
     else
       case "$NGM" in
-        "1") log_exec install_nginx ;;
-        "2") log_exec configure_nginx ;;
-        "3") log_exec remove_nginx ;;
+        "1") install_nginx
+             ;;
+        "2") nginx_prompt
+             configure_nginx
+             ;;
+        "3") remove_nginx
+             ;;
         "4") break ;;
         *) msgbox "How did you get here? nginx_menu $NGM" && break ;;
       esac
@@ -34,10 +42,10 @@ install_nginx() {
 
   log "Installing nginx"
 
-  log_exec sudo apt-get --quiet -y install nginx
+  local OUTPUT="$(log_exec sudo apt-get --quiet --yes install nginx)"
   RET=$?
   if [ $RET -ne 0 ] ; then
-    msgbox "Nginx failed to install."
+    msgbox "Nginx failed to install:\n$OUTPUT"
   fi
   return $RET
 }
@@ -54,6 +62,7 @@ nginx_prompt() {
     return 127
   fi
 
+  # TODO: dialog
   NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "nginx host name (the domain comes next)" 8 60 "$NGINX_HOSTNAME" 3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -ne 0 ]; then
@@ -124,15 +133,11 @@ configure_nginx() {
   if [ -z "$NGINX_HOSTNAME" -o -z "$NGINX_DOMAIN" -o -z "$NGINX_SITE" \
     -o -z "$NGINX_CERT"     -o -z "$NGINX_KEY"    -o -z "$NGINX_PORT" \
     -o -z "$WEBROOT" ] ; then
-    nginx_prompt
-    RET=$?
-    if [ $RET -ne 0 ] ; then
-      msgbox "Insufficient information to configure nginx"
-      return $RET
-    fi
+      die "Insufficient information to configure nginx"
   fi
 
   local CURRENTDIR=$(pwd)
+  local S
 
   log "Removing nginx site default"
   sudo rm -f /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
@@ -141,7 +146,7 @@ configure_nginx() {
   safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/sites-available/$NGINX_SITE
 
   if [ ${RUNTIMEENV} = 'vagrant' ] ; then
-    safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE 
+    safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
     sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
                                /etc/nginx/sites-enabled
   fi
@@ -236,9 +241,8 @@ configure_nginx() {
   fi
   sudo htpasswd -b -c /var/www/.htpasswd ${HTTP_AUTH_NAME} ${HTTP_AUTH_PASS}
 
-  # TODO: pick one?
   log "Reloading nginx configuration"
-  local OUTPUT=$(log_exec sudo bash -c "service nginx restart || nginx -s reload")
+  local OUTPUT="$(service_reload nginx)"
   RET=$?
   if [ $RET -ne 0 ]; then
     msgbox "Reloading nginx configuration failed:\n$OUTPUT"
@@ -259,3 +263,4 @@ remove_nginx() {
   return 0
 }
 
+fi # }

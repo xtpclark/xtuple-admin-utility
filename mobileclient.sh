@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$MOBILECLIENT_SH" ] ; then # {
+MOBILECLIENT_SH=true
 
 gitco() {
   local DESTDIR="$1"
@@ -65,30 +70,23 @@ install_webclient_menu() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z "$DATABASE" ]; then
-        check_database_info
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
+      check_database_info
+      RET=$?
+      if [ $RET -ne 0 ]; then
+        return $RET
+      fi
 
-        get_database_list
-
-        if [ -z "$DATABASES" ]; then
-            msgbox "No databases detected on this system"
-            return 1
-        fi
-
-        DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "List of databases on this cluster" 16 60 10 "${DATABASES[@]}" --notags 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            log "There was an error selecting the database.. exiting"
-            return $RET
-        fi
+      select_database
+      RET=$?
+      if [ $RET -ne 0 ]; then
+        log "There was an error selecting the database.. exiting"
+        return $RET
+      fi
     fi
 
     log "Chose database $DATABASE"
 
-    if [ -z "$MWCVERSION" ] && [ "$MODE" = "manual" ]; then
+    if [ -z "$BUILD_XT_TAG" ] && [ "$MODE" = "manual" ]; then
         TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
         HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
 
@@ -109,24 +107,24 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
                 return 0;
             elif [ $MENUVER -lt 10 ]; then
                 read -a tagversionarray <<< $TAGVERSIONS
-                MWCVERSION=${tagversionarray[$MENUVER]}
-                MWCREFSPEC=v$MWCVERSION
+                BUILD_XT_TAG=${tagversionarray[$MENUVER]}
+                MWCREFSPEC=v$BUILD_XT_TAG
             else
                 read -a headversionarray <<< $HEADVERSIONS
-                MWCVERSION=${headversionarray[(($MENUVER-10))]}
-                MWCREFSPEC=$MWCVERSION
+                BUILD_XT_TAG=${headversionarray[(($MENUVER-10))]}
+                MWCREFSPEC=$BUILD_XT_TAG
             fi
         else
             return $RET
         fi
-    elif [ -z "$MWCVERSION" ]; then
+    elif [ -z "$BUILD_XT_TAG" ]; then
         return 127
     fi
 
-    log "Chose version $MWCVERSION"
+    log "Chose version $BUILD_XT_TAG"
 
     if [ -z "$MWCNAME" ] && [ "$MODE" = "manual" ]; then
-        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\nThis name will be used in several ways:\n- naming the service script in /etc/systemd/system, /etc/init, or /etc/init.d\n- naming the directory for the xTuple web-enabling source code - /opt/xtuple/$(MWCVERSION)/" 15 60 3>&1 1>&2 2>&3)
+        MWCNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter a name for this xTuple instance.\nThis name will be used in several ways:\n- naming the service script in /etc/systemd/system, /etc/init, or /etc/init.d\n- naming the directory for the xTuple web-enabling source code - /opt/xtuple/$(BUILD_XT_TAG)/" 15 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
@@ -160,7 +158,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return 127
     fi
 
-    log_exec install_webclient $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+    log_exec install_webclient $BUILD_XT_TAG $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
 }
 
 
@@ -177,7 +175,7 @@ install_webclient() {
 
   log "Web enabling"
 
-  MWCVERSION="${1:-$MWCVERSION}"
+  BUILD_XT_TAG="${1:-$BUILD_XT_TAG}"
   MWCREFSPEC="${2:-$MWCREFSPEC}"
   MWCNAME="${3:-$MWCNAME}"
 
@@ -207,31 +205,31 @@ install_webclient() {
 
   log_exec sudo npm install -g npm@2.x.x                               || die
 
-  log "Cloning xTuple Web Client Source Code to /opt/xtuple/$MWCVERSION/xtuple"
-  log "Using version $MWCVERSION with the given name $MWCNAME"
-  log_exec sudo mkdir -p /opt/xtuple/$MWCVERSION/"$MWCNAME"            || die
+  log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/xtuple"
+  log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
+  log_exec sudo mkdir -p /opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"            || die
   log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple || die
 
   # main code
-  gitco /opt/xtuple/$MWCVERSION/$MWCNAME xtuple $MWCREFSPEC
-  cd /opt/xtuple/$MWCVERSION/$MWCNAME/xtuple
+  gitco /opt/xtuple/$BUILD_XT_TAG/$MWCNAME xtuple $MWCREFSPEC
+  cd /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple
   npm install bower                                                    || die
 
   if $PRIVATEEXT ; then
     log "Installing the commercial extensions"
-    gitco /opt/xtuple/$MWCVERSION/$MWCNAME private-extensions $MWCREFSPEC $GITHUBNAME $GITHUBPASS
+    gitco /opt/xtuple/$BUILD_XT_TAG/$MWCNAME private-extensions $MWCREFSPEC $GITHUBNAME $GITHUBPASS
   else
     log "Not installing the commercial extensions"
   fi
 
-  if [ ! -f /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource/sample_config.js ]; then
+  if [ ! -f /opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"/xtuple/node-datasource/sample_config.js ]; then
     die "Cannot find sample_config.js. Check the log and try again."
   fi
 
-  export XTDIR=/opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple
+  export XTDIR=/opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"/xtuple
 
-  log_exec sudo rm -rf /etc/xtuple/$MWCVERSION/"$MWCNAME"
-  encryption_setup /etc/xtuple/$MWCVERSION/$MWCNAME $ERP_DATABASE_NAME $XTDIR
+  log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/"$MWCNAME"
+  encryption_setup /etc/xtuple/$BUILD_XT_TAG/$MWCNAME
 
   log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /etc/xtuple
   turn_on_plv8
@@ -242,15 +240,15 @@ install_webclient() {
       "utopic")
           log "Creating upstart script using filename /etc/init/xtuple-$MWCNAME.conf"
           sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
-          log_exec sudo bash -c "echo \"chdir /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
-          log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js > /var/log/node-datasource-$MWCVERSION-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+          log_exec sudo bash -c "echo \"chdir /opt/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
+          log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/config.js > /var/log/node-datasource-$BUILD_XT_TAG-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
           ;;
       "vivid") ;&
       "xenial")
           log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
           sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
           log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
-          log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$MWCVERSION/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$MWCVERSION/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
+          log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
           ;;
     esac
   else
@@ -258,7 +256,7 @@ install_webclient() {
   fi
 
   log_exec cd $XTDIR                                                             || die
-  log_exec scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js  || die
+  log_exec scripts/build_app.js -c /etc/xtuple/$BUILD_XT_TAG/"$MWCNAME"/config.js  || die
 
   service_start xtuple-"$MWCNAME"
 
@@ -272,3 +270,4 @@ remove_mwc() {
 
   msgbox "Uninstalling the mobile client is not yet supported"
 }
+fi # }

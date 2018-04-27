@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$DEVENV_SH" ] ; then # {
+DEVENV_SH=true
 
 dev_menu() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -11,6 +16,8 @@ dev_menu() {
           "2" "Build & Install Qt 5.5.1"                \
           "3" "Build xTuple"                            \
           "4" "Set up xTupleCommerce Dev Environment"   \
+          "5" "Generate xTupleCommerce API Docs"        \
+          "6" "Generate xTupleCommerce Developer Docs"  \
           3>&1 1>&2 2>&3)
       RET=$?
 
@@ -22,6 +29,8 @@ dev_menu() {
           "2") build_qt5           ;;
           "3") build_xtuple        ;;
           "4") build_xtc_dev_env   ;;
+          "5") build_xtc_apidocs   ;;
+          "6") build_xtc_devdocs   ;;
           *) msgbox "Don't know how you got here! Please report on GitHub >> dev_menu $CC" && break ;;
         esac
       fi
@@ -32,9 +41,6 @@ install_dev_prereqs() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
   log "Installing Development Environment pre-requisites..."
-  sudo apt-get --quiet -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade
-  sudo apt-get --quiet -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing dist-upgrade
-  log_exec sudo apt-get --quiet update
 
   log_exec sudo apt-get -y --quiet install                                       \
                                    bison flex gperf libasound2-dev libbz2-dev    \
@@ -127,15 +133,7 @@ build_xtuple() {
 }
 
 build_xtc_dev_env() {
-  if [ ${RUNTIMEENV} = 'server' ]; then
-    safecp ${WORKDIR}/template/ssh/sshd_config.conf /etc/ssh/sshd_config
-    sudo restart ssh
-
-  elif [ ${RUNTIMEENV} = 'vagrant' ] ; then
-    local HOST_USERNAME=hostuser # TODO: can we derive this?
-    eval $(stat --printf 'NFS_UID=%u
-                          NFS_GROUP=%G' /var/www)
-    sudo adduser --system --no-create-home --uid ${NFS_UID} --ingroup ${NFS_GROUP} ${HOST_USERNAME}
+  if [ ${RUNTIMEENV} = 'vagrant' ] ; then
 
     dialog --ok-label "Submit"                           \
            --backtitle "PostgreSQL User Passwords"       \
@@ -159,3 +157,42 @@ build_xtc_dev_env() {
 
   fi
 }
+
+build_xtc_apidocs () {
+  export PATH="/home/deployer/.composer/vendor/bin":$PATH
+  local STARTDIR=$(pwd)
+  date -R
+  cd /home/deployer/source/xdruple
+  git fetch origin
+  git reset --hard origin/master
+  apigen generate --source /home/deployer/source/xdruple/xdruple \
+                  --destination /var/www/xdruple/api \
+                  --config /home/deployer/source/xdruple/apigen.neon \
+                  --quiet
+  RET=$?
+  cd $STARTDIR
+  if [ $RET -ne 0 ] ; then
+    echo "API documentation generation failed"
+    return 1
+  fi
+  echo "API documentation generated"
+}
+
+build_xtc_devdocs() {
+  export PATH="/home/deployer/.composer/vendor/bin":$PATH
+  local STARTDIR=$(pwd)
+  date -R
+  cd /home/deployer/source/xdruple
+  git fetch origin
+  git reset --hard origin/master
+  couscous generate --target=/var/www/xdruple/docs /home/deployer/source/xdruple
+  RET=$?
+  cd $STARTDIR
+  if [ $RET -ne 0 ] ; then
+    echo "Developer documentation generation failed"
+    return 1
+  fi
+  echo "Developer documentation generated"
+}
+
+fi # }

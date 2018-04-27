@@ -1,4 +1,27 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$COMMON_H" ] ; then # {
+COMMON_H=true
+
+log_exec() {
+  "$@" | tee -a $LOG_FILE 2>&1
+  RET=${PIPESTATUS[0]}
+  return $RET
+}
+
+log() {
+  echo "$( timestamp ) xtuple >> $@"
+  echo "$( timestamp ) xtuple >> $@" >> $LOG_FILE
+}
+
+timestamp() {
+  date +"%T"
+}
+
+LOG_FILE=$(pwd)/install-$DATE.log
+log "Logging initialized. Current session will be logged to $LOG_FILE"
 
 do_exit() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
@@ -15,7 +38,7 @@ die() {
   exit 1
 }
 
-# catch user hitting control-c during operation, exit gracefully. 
+# catch user hitting control-c during operation, exit gracefully.
 trap ctrlc INT
 ctrlc() {
   log "Breaking due to user CTRL-C"
@@ -25,14 +48,14 @@ ctrlc() {
 back_up_file() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local TGT="$1"
-  [ -e $TGT ] || die "$FUNCNAME[0] needs a file to back up"
+  [ -e $TGT ] || return
 
   local SUFFIX="${WORKDATE}"
 
   # move then copy back preserves the file timestamp
   eval $(stat --printf 'OWNER=%U
                         GROUP=%G' ${TGT})
-  while [ -e ${TGT}.${SUFFIX} -o -d ${TGT}.${SUFFIX} ] ; do
+  while [ -e ${TGT}.${SUFFIX} ] ; do
     sleep 10
     SUFFIX="${WORKDATE}-$(date +'%H-%M')"
   done
@@ -45,39 +68,36 @@ back_up_file() {
 
 safecp() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  local USAGE="$FUNCNAME[0] [ -U username | --username=username ] source target"
-  local USER=
-  if [[ "$1" =~ ^-U(.*) ]] ; then
-    USER=$BASH_REMATCH[1]
-    shift
-    if [ -z "$USER" ] ; then
-      USER="$1"
-    fi
-    shift
-  elif [[ "$1" =~ ^--username=(.*) ]] ; then
-    USER="${BASH_REMATCH[1]}"
-    shift
-  fi
 
   if [ $# -lt 2 ] ; then
-    die "$USAGE\n$FUNCNAME[0]: needs a source and target"
+    die "$FUNCNAME[0]: needs a source and target"
   elif [ $# -gt 2 ] ; then
-    die "$USAGE\n$FUNCNAME[0]: cannot handle more than one source"
+    die "$FUNCNAME[0]: cannot handle more than one source"
   fi
 
   local SRC="$1"
   local TGT="$2"
-  if [ -d "$TGT" ] ; then
-    TGT="$TGT/$(basename $SRC)"
+  local SUFFIX="${WORKDATE}"
+  local OWNER GROUP
+
+  if [ -f "${SRC}" -a -d "${TGT}" ] ; then
+    TGT="${TGT}/$(basename ${SRC})"
   fi
 
-  if [ -e "${TGT}" ] ; then
-    sudo mv "${TGT}" "${TGT}.${WORKDATE}"
-    sudo chmod a-w "${TGT}.${WORKDATE}"
+  if [ -e "$TGT" ] ; then
+    while [ -e ${TGT}.${SUFFIX} ] ; do
+      SUFFIX="${WORKDATE}-$(date +'%H-%M')"
+      ! [ -e ${TGT}.${SUFFIX} ] || sleep 10
+    done
+
+    eval $(stat --printf 'OWNER=%U GROUP=%G' ${TGT})
+    sudo mv "${TGT}" "${TGT}.${SUFFIX}"
+    sudo chmod a-w "${TGT}.${SUFFIX}"
   fi
-  sudo cp "${SRC}" "${TGT}" || die "Error copying ${SRC} to ${TGT}; look for ${TGT}.${WORKDATE}"
-  if [ -n "$USER" ] ; then
-    sudo chown -R ${USER} "${TGT}"
+
+  sudo cp -R "${SRC}" "${TGT}" || die "Error copying ${SRC} to ${TGT}; look for ${TGT}.${SUFFIX}"
+  if [ -n "${OWNER}" ] ; then
+    sudo chown -R ${OWNER}:${GROUP:-${OWNER}} "${TGT}"
   fi
 }
 
@@ -98,8 +118,9 @@ dlf() {
 dlf_fast() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  log "Downloading $1 to file $3 using axel"
-  axel -n 5 "$1" -o "$3" 2>&1 | stdbuf -o0 awk '/[0-9][0-9]?%+/ { print substr($0,2,3) }' | whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100;
+  log_exec sudo wget --output-file="$3" --progress=dot:force "$1" 2>&1 | \
+           awk '/K.*%/ { pct=$(NF-2) ; sub("%", "", pct); print pct }' | \
+           whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
   return ${PIPESTATUS[0]}
 }
 
@@ -115,10 +136,13 @@ dlf_fast_console() {
   local DEST="$2"
   local MODE="$3"
 
-  # TODO: why axel?
-  #wget "$URL" && chmod +x "$FILE" && sudo mv "$FILE" "$DEST"
   log "Downloading $URL to file $DEST"
-  sudo axel --num-connections=5 --output="$DEST" "$URL" > /dev/null
+  log_exec sudo wget --output-file="$DEST" "$URL"
+  RET=$?
+  if [ "$RET" -ne 0 ] ; then
+    log "Downloading $URL to file $DEST failed"
+    return 1
+  fi
   [ -z "$MODE" ] || chmod "$MODE" ${DEST}
 }
 
@@ -160,20 +184,20 @@ install_prereqs() {
       sudo apt-get --quiet update
       # TODO: prune this list if possible (e.g. build-essential?)
       sudo apt-get --quiet -y install \
-                              axel build-essential bzip2 cups curl dialog git jq       \
+                              build-essential bzip2 cups curl dialog git jq       \
                               libauthen-pam-perl libavahi-compat-libdnssd-dev libc++1  \
                               libc++1 libio-pty-perl libnet-ssleay-perl libpam-runtime \
-                              libssl-dev openssl perl postgresql-client-$PGVER python  \
-                              python-magic python-software-properties s3cmd unzip wget \
-                              whiptail xsltproc xvfb
+                              libssl-dev openssl ntp perl postgresql-client-$PGVER     \
+                              python python-magic python-software-properties s3cmd     \
+                              unzip wget whiptail xsltproc xvfb
       RET=$?
       if [ $RET -ne 0 ]; then
         msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
         do_exit
       fi
 
-      if $ISDEVELPMENTENV ; then
-        sudo apt-get --quiet -y install g++ gcc make ntp vim zsh
+      if $ISDEVELOPMENTENV ; then
+        sudo apt-get --quiet -y install g++ gcc make vim zsh
       fi
 
       # Install LE prerequsites
@@ -294,9 +318,48 @@ service_stop () {
   fi
 }
 
+service_restart () {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
+  local SERVICE="$1"
+
+  if [ "$SERVICE" = postgresql -a -n "$PGVER" -a -n "$POSTNAME" ] ; then
+    log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" stop --force
+    log_exec sudo pg_ctlcluster $PGVER "$POSTNAME" start
+    RET=$?
+  elif [ $DISTRO = "ubuntu" ]; then
+    case "$CODENAME" in
+      "trusty") ;&
+      "utopic")
+        log_exec sudo service $SERVICE restart
+        RET=$?
+        ;;
+      "vivid") ;&
+      "xenial")
+        log_exec sudo systemctl enable  $SERVICE
+        log_exec sudo systemctl restart $SERVICE
+        RET=$?
+        ;;
+    esac
+  else
+    die "Don't know how to stop a service on $DISTRO $CODENAME"
+  fi
+  if [ $RET -eq 0 ] ; then
+    msgbox "Service $SERVICE restarted successfully"
+  else
+    msgbox "Could not restart $SERVICE"
+    return $RET
+  fi
+}
+
 service_reload () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
   local SERVICE="$1"
+
+  # TODO: why is this different?
+  if [ "$SERVICE" = nginx ] ; then
+    log_exec sudo nginx -s reload
+    return
+  fi
 
   # shutdown node datasource
   if [ $DISTRO = "ubuntu" ]; then
@@ -324,7 +387,8 @@ if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR5='\e[1;34m'
   COLOR6='\e[1;33m'
   COLOR7='\e[1;31m'
-  ENDCOLOR='\e[0m' 
+  ENDCOLOR='\e[0m'
   S='\\'
 fi
 
+fi # }

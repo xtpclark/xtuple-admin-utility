@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$OPENRPT_SH" ] ; then # {
+OPENRPT_SH=true
 
 openrpt_menu() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -16,9 +21,9 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
             "6" "Install initscript" \
             "7" "Return to main menu" \
             3>&1 1>&2 2>&3)
-        
+
         RET=$?
-        
+
         if [ $RET -ne 0 ]; then
             break
         else
@@ -93,3 +98,5 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     install_openrpt
     install_xtuple_xvfb
 }
+
+fi # }

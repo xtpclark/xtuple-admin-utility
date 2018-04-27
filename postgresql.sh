@@ -1,71 +1,74 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+if [ -z "$POSTGRESQL_SH" ] ; then # {
+POSTGRESQL_SH=true
 
 postgresql_menu() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    log "Opened PostgreSQL menu"
+  log "Opened PostgreSQL menu"
 
-    while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Install PostgreSQL $PGVER" \
-            "2" "List provisioned clusters" \
-            "3" "Select Cluster" \
-            "4" "Create new cluster" \
-            "5" "Backup Globals" \
-            "6" "Restore Globals" \
-            "7" "Return to main menu" \
-            3>&1 1>&2 2>&3)
+  while true; do
+      PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+          "1" "Install PostgreSQL $PGVER" \
+          "2" "List provisioned clusters" \
+          "3" "Select Cluster" \
+          "4" "Create new cluster" \
+          "5" "Backup Globals" \
+          "6" "Restore Globals" \
+          "7" "Drop a cluster"      \
+          "8" "Return to main menu" \
+          3>&1 1>&2 2>&3)
+      RET=$?
 
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            # instead of exiting, bring us back to the previous menu. Will capture escape and other cancels. 
-            break
-        elif [ $RET -eq 0 ]; then
-            case "$PGM" in
-            "1") log_exec install_postgresql $PGVER ;;
-            "2") log_exec list_clusters ;;
-            "3") log_exec select_cluster ;;
-            "4") log_exec provision_cluster ;;
-            "5") log_exec backup_globals ;;
-            "6") log_exec restore_globals ;;
-            "7") break ;;
-            *) msgbox "Error. How did you get here?" && break ;;
-            esac
-        fi
-    done
-
+      if [ $RET -ne 0 ]; then
+          # instead of exiting, bring us back to the previous menu. Will capture escape and other cancels.
+          break
+      elif [ $RET -eq 0 ]; then
+        case "$PGM" in
+          "1") log_exec install_postgresql $PGVER ;;
+          "2") log_exec list_clusters ;;
+          "3") log_exec select_cluster ;;
+          "4") log_exec provision_cluster ;;
+          "5") log_exec backup_globals ;;
+          "6") log_exec restore_globals   ;;
+          "7") log_exec drop_cluster_menu ;;
+          "8") break ;;
+          *) msgbox "Error. How did you get here?" && break ;;
+        esac
+      fi
+  done
 }
 
 password_menu() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    log "Opened password menu"
+  log "Opened password menu"
 
-    while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Reset postgres via sudo postgres" \
-            "2" "Reset postgres via psql" \
-            "3" "Reset admin via sudo postgres" \
-            "4" "Reset admin via psql" \
-            "5" "Return to previous menu" \
-            3>&1 1>&2 2>&3)
+  while true; do
+    PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+        "1" "Reset postgres via sudo postgres" \
+        "2" "Reset postgres via psql" \
+        "3" "Reset admin via sudo postgres" \
+        "4" "Reset admin via psql" \
+        "5" "Return to previous menu" \
+        3>&1 1>&2 2>&3)
+    RET=$?
 
-        RET=$?
-
-        if [ $RET -ne 0 ]; then
-            break
-        elif [ $RET -eq 0 ]; then
-            case "$PGM" in
-            "1") reset_sudo postgres ;;
-            "2") reset_psql postgres ;;
-            "3") reset_sudo admin ;;
-            "4") reset_psql admin ;;
-            "5") break ;;
-            *) msgbox "How did you get here?" && exit 0 ;;
-            esac
-        fi
-    done
-
+    if [ $RET -ne 0 ]; then
+      break
+    elif [ $RET -eq 0 ]; then
+      case "$PGM" in
+        "1") reset_sudo postgres ;;
+        "2") reset_psql postgres ;;
+        "3") reset_sudo admin ;;
+        "4") reset_psql admin ;;
+        "5") break ;;
+        *) msgbox "How did you get here?" && exit 0 ;;
+      esac
+    fi
+  done
 }
 
 # $1 is pg version (9.3, 9.4, etc)
@@ -139,28 +142,24 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 }
 
 get_cluster_list() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  CLUSTERS=()
 
-    CLUSTERS=()
-    
-    while read -r line; do 
-        CLUSTERS+=("$line" "$line")
-    done < <( sudo pg_lsclusters | tail -n +2 )
-
+  while read -r line; do
+    CLUSTERS+=("$line" "$line")
+  done < <( sudo pg_lsclusters | tail -n +2 )
 }
 
 list_clusters() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    get_cluster_list
+  get_cluster_list
 
-    if [ -z "$CLUSTERS" ]; then
-        msgbox "No database clusters detected on this system"
-        return 0
-    fi
-
-    msgbox "`sudo pg_lsclusters`"
-
+  if [ -z "$CLUSTERS" ]; then
+    msgbox "No database clusters detected on this system"
+    return 0
+  fi
+  msgbox "`sudo pg_lsclusters`"
 }
 
 # $1 is postgresql version
@@ -260,87 +259,72 @@ select_cluster() {
 # $3 is mode (auto/manual)
 # prompt if not provided
 drop_cluster() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-    PGVER="${1:-$PGVER}"
-    POSTAME="${2:-$POSTNAME}"
-    MODE="${3:-$MODE}"
-    MODE="${MODE:-manual}"
+  PGVER="${1:-$PGVER}"
+  POSTNAME="${2:-$POSTNAME}"
+  MODE="${3:-${MODE:-manual}}"
 
-    if [ $MODE = "manual" ]; then
-        if [ -z "$PGVER" ]; then
-            PGVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        if [ -z "$POSTNAME" ]; then
-            POSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
-            RET=$?
-            if [ $RET -ne 0 ]; then
-                return 0
-            fi
-        fi
-
-        if (whiptail --title "Are you sure?" --yesno "Completely remove cluster $POSTNAME - $PGVER?" --yes-button "No" --no-button "Yes" 10 60) then
-            return 0
-        fi
+  if [ "$MODE" = "manual" ] ; then
+    if [ -z "$PGVER" -o -z "$POSTNAME" ] ; then
+      drop_cluster_menu
+      RET=$?
+      return $RET
     fi
 
-    log "Dropping PostgreSQL cluster $POSTNAME version $PGVER"
-
-   # We do not want to drop ANY CLUSTERS.  Either modify what is there for plv8/pg_hba.conf or CREATE new.
-  # log_exec sudo su - postgres -c "pg_dropcluster --stop $PGVER $POSTNAME"
-true
-    RET=$?
-    if [ $MODE = "manual" ]; then
-        if [ $RET -ne 0 ]; then
-            msgbox "Dropping PostgreSQL cluster failed. Please check the output and correct any issues."
-            do_exit
-        else
-            msgbox "Dropping PostgreSQL cluster $POSTNAME version $PGVER completed successfully."
-        fi
+    if (whiptail --title "Are you sure?" \
+                 --yesno "Completely remove cluster $POSTNAME - $PGVER?" \
+                 --yes-button "No" --no-button "Yes" 10 60) then
+      return 0
     fi
-    return $RET
+  fi
+
+  log "Dropping PostgreSQL cluster $POSTNAME version $PGVER"
+
+  log_exec sudo su - postgres -c "pg_dropcluster --stop $PGVER $POSTNAME"
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    die "Dropping PostgreSQL cluster $POSTNAME version $PGVER failed"
+  fi
+  msgbox "Successfully dropped cluster $POSTNAME version $PGVER"
+
+  return $RET
 }
 
 drop_cluster_menu() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  local CLUSTERS=()
+  while read -r line; do
+    CLUSTERS+=("$line" "$line")
+  done < <( sudo pg_lsclusters | tail -n +2 )
 
-    CLUSTERS=()
+  if [ -z "$CLUSTERS" ]; then
+    msgbox "No database clusters detected on this system"
+    return 0
+  fi
 
-    while read -r line; do 
-        CLUSTERS+=("$line" "$line")
-    done < <( sudo pg_lsclusters | tail -n +2 )
+  CLUSTER=$(whiptail --title "PostgreSQL Clusters" \
+                     --menu "Select cluster to drop" 16 120 10 \
+                     "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    return 0
+  fi
 
-     if [ -z "$CLUSTERS" ]; then
-        msgbox "No database clusters detected on this system"
-        return 0
-    fi
+  if [ -z "$CLUSTER" ]; then
+    msgbox "No database clusters detected on this system"
+    return 0
+  fi
 
-    CLUSTER=$(whiptail --title "PostgreSQL Clusters" --menu "Select cluster to drop" 16 120 10 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
-    fi
+  eval $(awk '{ print "VER="  $1;
+                print "NAME=" $2; }' <<< "$CLUSTER")
 
-    if [ -z "$CLUSTER" ]; then
-        msgbox "No database clusters detected on this system"
-        return 0
-    fi
+  if [ -z "$VER" ] || [ -z "$NAME" ]; then
+    msgbox "Could not determine database version or name"
+    return 0
+  fi
 
-    VER=`awk  '{print $1}' <<< "$CLUSTER"`
-    NAME=`awk  '{print $2}' <<< "$CLUSTER"`
-
-    if [ -z "$VER" ] || [ -z "$NAME" ]; then
-        msgbox "Could not determine database version or name"
-        return 0
-    fi
-
-    log_exec drop_cluster "$VER" "$NAME"
-
+  log_exec drop_cluster "$VER" "$NAME"
 }
 
 # $1 is user to reset
@@ -389,9 +373,9 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     if [ $RET -ne 0 ]; then
         return 0
     fi
-    
+
     log "Resetting PostgreSQL password for user $1 using psql directly"
-    
+
     log_exec psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -c "ALTER USER $1 WITH PASSWORD '$NEWPASS';"
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -402,7 +386,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         msgbox "Password for user $1 successfully reset"
         return 0
     fi
-    
+
 }
 
 #  $1 is globals file to backup to
@@ -424,7 +408,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     else
         DEST=$1
     fi
-    
+
     log "Backing up globals to file "$DEST"."
 
     log_exec pg_dumpall --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
@@ -470,3 +454,5 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
         return 0
     fi
 }
+
+fi # }

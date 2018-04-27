@@ -10,7 +10,6 @@ export MODE="manual"
 #set some defaults
 source config.sh        || die
 source common.sh        || die
-source logging.sh       || die
 
 mkdir -p $DATABASEDIR
 mkdir -p $BACKUPDIR
@@ -143,8 +142,7 @@ esac
 # Load the rest of the scripts
 source postgresql.sh            || die
 source database.sh              || die
-source drupal.sh                || die
-source provision.sh             || die
+source xdruple.sh               || die
 source nginx.sh                 || die
 source mobileclient.sh          || die
 source openrpt.sh               || die
@@ -153,6 +151,7 @@ source conman.sh                || die
 source tokenmanagement.sh       || die
 source functions/setup.fun      || die
 source functions/gitvars.fun    || die
+source functions/oatoken.fun    || die
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
