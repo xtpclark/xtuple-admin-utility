@@ -48,48 +48,43 @@ database_menu() {
 # $2 is version to grab
 # $3 is type of database: empty, demo, manufacturing, distribution, masterref, ...
 download_database() {
-    echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    local DESTFILE="$1"
-    local DBVERSION="$2"
-    local DBTYPE="${3:-$DBTYPE}"
+  local DESTFILE="$1"
+  local DBVERSION="$2"
+  local DBTYPE="${3:-$DBTYPE}"
 
-    if [ -z "$DBVERSION" ]; then
-        msgbox "Database version not specified."
-        return 1
+  if [ -z "$DBVERSION" ]; then
+    msgbox "Database version not specified."
+    return 1
+  fi
+
+  DBTYPE="${DBTYPE:-demo}"
+
+  if [ -z "$DESTFILE" ] && [ "$MODE" = "manual" ]; then
+    DESTFILE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      return $RET
     fi
+  elif [ -z "$DESTFILE" ]; then
+    return 127
+  fi
 
-    DBTYPE="${DBTYPE:-demo}"
+  local DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
+  local MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
 
-    if [ -z "$DESTFILE" ] && [ "$MODE" = "manual" ]; then
-        DESTFILE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the filename where you would like to save the database" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
-    elif [ -z "$DESTFILE" ]; then
-        return 127
-    fi
+  log "Saving $DB_URL as $DESTFILE."
+  mkdir -p $(dirname $DESTFILE)
+  download $DB_URL "$DESTFILE"
+  download $MD5_URL "$DESTFILE".md5sum
 
-    local DB_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup"
-    local MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
-
-    log "Saving $DB_URL as $DESTFILE."
-    mkdir -p $(dirname $DESTFILE)
-    if [ $MODE = "auto" ]; then
-        dlf_fast_console $DB_URL "$DESTFILE"
-        dlf_fast_console $MD5_URL "$DESTFILE".md5sum
-    else
-        dlf_fast $DB_URL  "Downloading $DBTYPE Database. Please Wait." "$DESTFILE"
-        dlf_fast $MD5_URL "Downloading MD5SUM. Please Wait." "$DESTFILE".md5sum
-    fi
-
-    local VALID=$(cat "$DESTFILE".md5sum | awk '{printf $1}')
-    local CURRENT=$(md5sum "$DESTFILE" | awk '{printf $1}')
-    if [ "$VALID" != "$CURRENT" ]; then
-        msgbox "There was an error verifying the downloaded database."
-        return 1
-    fi
+  local VALID=$(cat "$DESTFILE".md5sum | awk '{printf $1}')
+  local CURRENT=$(md5sum "$DESTFILE" | awk '{printf $1}')
+  if [ "$VALID" != "$CURRENT" ]; then
+    msgbox "There was an error verifying the downloaded database."
+    return 1
+  fi
 }
 
 # Copies database $1 to $2 by backing up $1 and restoring to $2
@@ -275,7 +270,7 @@ create_database() {
 #  $1 is database file to restore
 #  $2 is name of new database (if not provided, prompt)
 restore_database() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   check_database_info
   RET=$?
@@ -296,15 +291,18 @@ restore_database() {
       return $RET
     fi
   elif [ -z "$DATABASE" ]; then
-      return 127
+    return 127
   fi
 
   service_start postgresql # just in case
   log "Creating database $DATABASE."
-  log_exec createdb -h $PGHOST -p $PGPORT -U $PGUSER -O "admin" "$DATABASE"
+  log_exec psql --q -U $PGUSER -h $PGHOST -p $PGPORT -d postgres <<EOSCRIPT
+    ALTER DATABASE $DATABASE RENAME TO "$DATABASE_$(date +'%Y%m%d_%H%M')";
+EOSCRIPT
+  log_exec createdb -h $PGHOST -p $PGPORT -U $PGUSER -O "admin" "$DATABASE" 2>createdb.log
   RET=$?
   if [ $RET -ne 0 ]; then
-    msgbox "Something has gone wrong. Check log and correct any issues."
+    msgbox "Could not create the database:\n$(cat createdb.log)"
     return $RET
   fi
   # XTDIR/lib/orm/source/create_{xt_schema,plv8}.sql but XTDIR isn't installed yet
@@ -653,7 +651,7 @@ upgrade_database() {
     return $RET
   fi
 
-  DATABASE="$1"
+  DATABASE="${1:-${DATABASE}}"
   if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
     select_database "Select database to upgrade"
     RET=$?

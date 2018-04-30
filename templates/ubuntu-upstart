@@ -5,3 +5,5 @@ console output
 respawn
 #setuid xtuple
 #setgid xtuple
+chdir {XTDIR}/xtuple/node-datasource
+exec ./main.js -c /etc/xtuple/{BUILD_XT_TAG}/{MWCNAME}/config.js  > /var/log/node-datasource-{BUILD_XT_TAG}-{MWCNAME}.log 2>&1

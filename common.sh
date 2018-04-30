@@ -102,31 +102,8 @@ safecp() {
 }
 
 # $1 is the URL
-# $2 is the name of what is downloading to show on the window
-# $3 is the output file name
-dlf() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-  log "Downloading $1 to file $3 using wget"
-  wget "$1" 2>&1 -O "$3"  | stdbuf -o0 awk '/[.] +[0-9][0-9]?[0-9]?%/ { print substr($0,63,3) }' | whiptail --backtitle "$( window_title )" --gauge $2 0 0 100;
-  return ${PIPESTATUS[0]}
-}
-
-# $1 is the URL
-# $2 is the name of what is downloading to show on the window
-# $3 is the output file name
-dlf_fast() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-  log_exec sudo wget --output-file="$3" --progress=dot:force "$1" 2>&1 | \
-           awk '/K.*%/ { pct=$(NF-2) ; sub("%", "", pct); print pct }' | \
-           whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
-  return ${PIPESTATUS[0]}
-}
-
-# $1 is the URL
 # $2 is the output file name
-dlf_fast_console() {
+download() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   if [ $# -lt 2 ] ; then
     die "$FUNCNAME[0]: url dest [ file-mode ]"
@@ -134,16 +111,23 @@ dlf_fast_console() {
   local URL="$1"
   local FILE="$(basename $URL)"
   local DEST="$2"
-  local MODE="$3"
+  local FILEMODE="$3"
 
   log "Downloading $URL to file $DEST"
-  log_exec sudo wget --output-file="$DEST" "$URL"
-  RET=$?
+  if [ "$MODE" = manual ] ; then
+    log_exec sudo wget --output-document="$3" --progress=dot:force "$1" 2>&1 | \
+             awk '/K.*%/ { pct=$(NF-2) ; sub("%", "", pct); print pct }' | \
+             whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
+    RET=${PIPESTATUS[0]}
+  else
+    log_exec sudo wget --output-document="$DEST" "$URL"
+    RET=$?
+  fi
   if [ "$RET" -ne 0 ] ; then
     log "Downloading $URL to file $DEST failed"
     return 1
   fi
-  [ -z "$MODE" ] || chmod "$MODE" ${DEST}
+  [ -z "$FILEMODE" ] || chmod "$FILEMODE" ${DEST}
 }
 
 # $1 is the msg

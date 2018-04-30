@@ -5,16 +5,14 @@
 if [ -z "$SETUP_FUN" ] ; then # {
 SETUP_FUN=true
 
-export CONFIG_DIR=${CONFIG_DIR:-${BUILD_WORKING}/xdruple-server/config}
 export GITHUB_TOKEN=${GITHUB_TOKEN:-$(git config --get github.token)}
 export KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
 export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
-export SCRIPTS_DIR=${SCRIPTS_DIR:-${BUILD_WORKING}/xdruple-server/scripts}
 export TZ=${TZ:-$(tzselect)}
 export RUNTIMEENV=${RUNTIMEENV:-'server'}
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 
-source ${BUILD_WORKING:-${WORKING:-.}}/functions/oatoken.fun
+source ${WORKDIR:-.}/functions/oatoken.fun
 
 read_configs() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -361,13 +359,14 @@ encryption_setup() {
 
   CONFIGDIR="${1:-${CONFIGDIR:-/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME}}"
   BUILD_XT="${2:-${BUILD_XT}}"
-  local DATABASE="${3:-${ERP_DATABASE_NAME}}"
+  BUILD_XT_TARGET_NAME=${BUILD_XT_TARGET_NAME:-xTupleREST}
+  DATABASE="${3:-${DATABASE:-${ERP_DATABASE_NAME}}}"
   local KEYDIR="${CONFIGDIR}/private"
 
   if [ ! -d "${BUILD_XT}" ] ; then
-    BUILD_XT="${BUILD_WORKING}/${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}"
+    BUILD_XT="${WORKDIR}/${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}"
   fi
-  [ -d "${BUILD_XT}" ] || die "Cannot figure out where to stash the encryption keys"
+  mkdir -p "${BUILD_XT}"
 
   log_exec sudo mkdir --parents "${KEYDIR}"
 
@@ -937,7 +936,7 @@ php_setup() {
 
   export MAX_EXECUTION_TIME=60
   if [ ${RUNTIMEENV} = 'vagrant' ]; then
-      export MAX_EXECUTION_TIME=600
+    export MAX_EXECUTION_TIME=600
   fi
 
   sudo add-apt-repository -y ppa:ondrej/php && \
@@ -978,26 +977,20 @@ php_setup() {
   sudo sed -i "s/{GITHUB_TOKEN}/${GITHUB_TOKEN}/g" /home/${DEPLOYER_NAME}/.composer/config.json
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
 
-  # TODO: some(?) of these should be moved to devenv.sh
-  if [ "$MODE" = manual ] ; then
-    GET=dlf_fast
-  else
-    GET=dlf_fast_console
-  fi
   # PHPUnit (v6.x)
-  $GET https://phar.phpunit.de/phpunit.phar /usr/local/bin/phpunit +x
+  download https://phar.phpunit.de/phpunit.phar /usr/local/bin/phpunit +x
 
   # PHP CodeSniffer
-  $GET https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar /usr/local/bin/phpcs +x
+  download https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar /usr/local/bin/phpcs +x
 
   # PHP Code Beautifier
-  $GET https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar /usr/local/bin/phpcbf +x
+  download https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar /usr/local/bin/phpcbf +x
 
   # PHP Mess Detector
-  $GET http://static.phpmd.org/php/latest/phpmd.phar /usr/local/bin/phpmd +x
+  download http://static.phpmd.org/php/latest/phpmd.phar /usr/local/bin/phpmd +x
 
   # Couscous (User documentation generation)
-  $GET http://couscous.io/couscous.phar /usr/local/bin/couscous +x
+  download http://couscous.io/couscous.phar /usr/local/bin/couscous +x
 
   # Restart PHP and Nginx
   sudo service php7.1-fpm restart

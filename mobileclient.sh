@@ -192,6 +192,7 @@ install_webclient() {
   GITHUBNAME="${6:-$GITHUBNAME}"
   GITHUBPASS="${7:-$GITHUBPASS}"
 
+  local STARTDIR=$(pwd)
   setup_webprint
 
   log "Installing n..."
@@ -199,7 +200,6 @@ install_webclient() {
   wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
   log_exec chmod +x n                                                  || die
   log_exec sudo mv n /usr/bin/n                                        || die
-  # use it to set node to 0.10
   log "Installing node 0.10.40..."
   log_exec sudo n 0.10.40                                              || die
 
@@ -207,12 +207,14 @@ install_webclient() {
 
   log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/xtuple"
   log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
-  log_exec sudo mkdir -p /opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"            || die
+  log_exec sudo mkdir -p /opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"          || die
   log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /opt/xtuple || die
 
   # main code
   gitco /opt/xtuple/$BUILD_XT_TAG/$MWCNAME xtuple $MWCREFSPEC
-  cd /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple
+
+  export XTDIR=/opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple
+  cd $XTDIR
   npm install bower                                                    || die
 
   if $PRIVATEEXT ; then
@@ -222,47 +224,51 @@ install_webclient() {
     log "Not installing the commercial extensions"
   fi
 
-  if [ ! -f /opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"/xtuple/node-datasource/sample_config.js ]; then
+  if [ ! -f $XTDIR/node-datasource/sample_config.js ]; then
     die "Cannot find sample_config.js. Check the log and try again."
   fi
 
-  export XTDIR=/opt/xtuple/$BUILD_XT_TAG/"$MWCNAME"/xtuple
-
-  log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/"$MWCNAME"
-  encryption_setup /etc/xtuple/$BUILD_XT_TAG/$MWCNAME
+  log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/$MWCNAME
+  encryption_setup /etc/xtuple/$BUILD_XT_TAG/$MWCNAME "$XTDIR"
 
   log_exec sudo chown -R ${DEPLOYER_NAME}.${DEPLOYER_NAME} /etc/xtuple
   turn_on_plv8
 
+  local INITFILE
   if [ $DISTRO = "ubuntu" ]; then
     case "$CODENAME" in
       "trusty") ;&
       "utopic")
-          log "Creating upstart script using filename /etc/init/xtuple-$MWCNAME.conf"
-          sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$MWCNAME".conf
-          log_exec sudo bash -c "echo \"chdir /opt/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
-          log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/config.js > /var/log/node-datasource-$BUILD_XT_TAG-\"$MWCNAME\".log 2>&1\" >> /etc/init/xtuple-\"$MWCNAME\".conf"
-          ;;
+        INITFILE=/etc/init/xtuple-$MWCNAME.conf
+        log "Creating upstart script using filename $INITFILE"
+        safecp $WORKDIR/templates/ubuntu-upstart $INITFILE
+        ;;
       "vivid") ;&
       "xenial")
-          log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$MWCNAME.service"
-          sudo cp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-"$MWCNAME".service
-          log_exec sudo bash -c "echo \"SyslogIdentifier=xtuple-$MWCNAME\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
-          log_exec sudo bash -c "echo \"ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/xtuple/node-datasource/main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$MWCNAME\"/config.js\" >> /etc/systemd/system/xtuple-\"$MWCNAME\".service"
-          ;;
+        INITFILE=/etc/systemd/system/xtuple-$MWCNAME.service
+        log "Creating systemd service unit using filename $INITFILE"
+        safecp $WORKDIR/templates/xtuple-systemd.service $INITFILE
+        ;;
     esac
+    log_exec sed -i -e "s/{DEPLOYER_NAME}/$DEPLOYER_NAME/g" \
+                    -e "s/{SYSLOGID}/xtuple-$MWCNAME/g"     \
+                    -e "s/{XTDIR}/$XTDIR/g"                 \
+                    -e "s/{CONFIGDIR}/$CONFIGDIR/g"         \
+                    -e "s/{BUILD_XT_TAG}/$BUILD_XT_TAG/g"   \
+                    -e "s/{MWCNAME}/$MWCNAME/g"             \
+                  $INITFILE
   else
-    die "Seriously? We made it all the way to where I need to write out the init script and suddenly I can't detect your distro -> $DISTRO codename -> $CODENAME"
+    die "We cannot write an init script for xtuple-$MWCNAME on $DISTRO $CODENAME"
   fi
 
   log_exec cd $XTDIR                                                             || die
-  log_exec scripts/build_app.js -c /etc/xtuple/$BUILD_XT_TAG/"$MWCNAME"/config.js  || die
+  log_exec scripts/build_app.js -c /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js  || die
 
-  service_start xtuple-"$MWCNAME"
+  service_start xtuple-$MWCNAME
 
-  # assuming eth0 for now... hostname -I will give any non-local address if we wanted
-  IP=$(ip -f inet -o addr show | grep -vw lo | awk '{print $4}' | cut -d/ -f 1)
-  log "All set! You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
+  IP="$(hostname -I)"
+  msgbox "You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
+  cd $STARTDIR
 }
 
 remove_mwc() {
