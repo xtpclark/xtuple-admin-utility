@@ -450,9 +450,14 @@ mwc_only() {
 xtc_only() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
+  # TODO: this doesn't look right {
   xtc_build_static_xtuplecommerce
   xtc_build_xtuplecommerce_envphp
   xtc_bundle_xtuplecommerce
+  # }
+
+  # TODO: does this go before or after ^^^?
+  xtau_deploy_ecommerce
   writeout_config
 }
 

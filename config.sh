@@ -68,16 +68,16 @@ export RUNTIMEENV
 
 [ -z "$TZ" -a -e ${WORKDIR}/.timezone ] && source ${WORKDIR}/.timezone
 if [ -z "${TZ}" ] ; then
-  export TZ=$(tzselect) || die
+  export TZ=$(tzselect) || exit 1
   echo "export TZ=${TZ}" > ${WORKDIR}/.timezone
   if ! grep --quiet --word-regexp --no-messages TZ= \
             ${HOME}/.bashrc ${HOME}/.bash_profile ${HOME}/.profile ${HOME}/.zprofile ; then
     echo "export TZ=${TZ}" > ${HOME}/.profile
   fi
   echo "Remove ${WORKDIR}/.timezone and unset TZ to reset the timezone"
-  log_exec sudo locale-gen en_US.UTF-8          || die
-  log_exec sudo dpkg-reconfigure locales        || die
-  log_exec sudo timedatectl set-timezone ${TZ}  || die
+  sudo locale-gen en_US.UTF-8          || exit 1
+  sudo dpkg-reconfigure locales        || exit 1
+  sudo timedatectl set-timezone ${TZ}  || exit 1
 fi
 
 fi # }

@@ -243,8 +243,7 @@ provision_cluster() {
   setup_postgresql_cluster "$PGVER" "$POSTNAME" "$PGPORT" "$POSTLOCALE" "$POSTSTART"
   RET=$?
   if [ $RET -ne 0 ]; then
-    msgbox "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
-    do_exit
+    die "Creation of PostgreSQL cluster failed. Please check the output and correct any issues."
   fi
 }
 
@@ -414,8 +413,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     log_exec pg_dumpall --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --database "postgres" --no-password --file "$DEST" --globals-only
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Something has gone wrong. Check output and correct any issues."
-        do_exit
+        die "Something has gone wrong. Check output and correct any issues."
     else
         msgbox "Globals successfully backed up to $DEST"
         return 0
@@ -447,8 +445,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -q -f "$SOURCE"
     RET=$?
     if [ $RET -ne 0 ]; then
-        msgbox "Something has gone wrong. Check output and correct any issues."
-        do_exit
+        die "Something has gone wrong. Check output and correct any issues."
     else
         msgbox "Globals successfully restored."
         return 0

@@ -31,7 +31,8 @@ drupal_menu() {
                     "9" "Set up SSH keys"         \
                    "10" "Set up crontab"          \
                    "11" "Set up flywheel"         \
-                   "12" "Return to main menu"     \
+                   "12" "Update a site"           \
+                   "13" "Return to main menu"     \
             3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -55,10 +56,12 @@ drupal_menu() {
        "9") generate_p12       ;;
       "10") drupal_crontab     ;;
       "11") setup_flywheel     ;;
-      "12") webnotes
+      "12") update_site        ;;
+      "13") webnotes
             break
             ;;
-      *) msgbox "How did you get here? drupal_menu $DRUPALMENU" && break ;;
+       "=") ;;
+         *) msgbox "How did you get here? drupal_menu $DRUPALMENU" && break ;;
     esac
   done
 }
@@ -246,6 +249,10 @@ EOF
   sudo chown postgres $POSTDIR/pg_hba.conf
 
   service_restart postgresql
+}
+
+update_site () {
+  msgbox 'ssh -t USER@SITE.xtuplecloud.com "cd /var/www/SITE.xd && ./console.php update:all"'
 }
 
 fi # }

@@ -68,9 +68,7 @@ initial_update() {
   sudo apt-get --quiet update
   RET=$?
   if [[ $RET != 0 ]]; then
-    echo "apt-get returned $RET trying to update"
-    echo "Log out and back in and try again"
-    exit 2
+    die "apt-get update returned $RET. Log out and back in and try again"
   fi
 }
 
@@ -158,8 +156,7 @@ setup_postgresql_cluster() {
 EOF
   RET=$?
   if [ $RET -ne 0 ] ; then
-    msgbox "Opening pg_hba.conf for internet access failed. Check log file and try again. "
-    do_exit
+    die "Opening pg_hba.conf for internet access failed. Check log file and try again. "
   fi
   sudo chown postgres $POSTDIR/pg_hba.conf
 
@@ -182,8 +179,7 @@ EOF
        sudo tee $POSTDIR/postgresql.conf
   RET=$?
   if [ $RET -ne 0 ] ; then
-    msgbox "Customizing postgresql.conf failed. Check the log file for any issues."
-    do_exit
+    die "Customizing postgresql.conf failed. Check the log file for any issues."
   fi
   sudo chown postgres $POSTDIR/postgresql.conf
 
@@ -193,8 +189,7 @@ EOF
   psql -q -h $PGHOST -U postgres -d postgres -p $PGPORT -f $WORKDIR/sql/init.sql
   RET=$?
   if [ $RET -ne 0 ]; then
-    msgbox "Error deploying init.sql. Check for errors and try again"
-    do_exit
+    die "Error deploying init.sql. Check for errors and try again"
   fi
 
   msgbox "Initializing cluster successful."
@@ -597,8 +592,7 @@ webclient_setup() {
   cd $WORKDIR
 
   if [[ ! -f ${WORKDIR}/${ERP_MWC_TARBALL} ]]; then
-    echo "Could not find ${WORKDIR}/${ERP_MWC_TARBALL}! This is kinda important..."
-    exit 2
+    die "Could not find ${WORKDIR}/${ERP_MWC_TARBALL}! This is kinda important..."
   fi
 
   ERPTARDIR=$(tar -tzf ${ERP_MWC_TARBALL} | head -1 | cut -f1 -d"/")

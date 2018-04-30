@@ -150,6 +150,7 @@ dlf_fast_console() {
 msgbox() {
   log "MessageBox >> ""$1"
   [ $MODE = "manual" ] && whiptail --backtitle "$( window_title )" --msgbox "$1" 0 0 0
+  return 0
 }
 
 # $1 is the product
@@ -192,8 +193,7 @@ install_prereqs() {
                               unzip wget whiptail xsltproc xvfb
       RET=$?
       if [ $RET -ne 0 ]; then
-        msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
-        do_exit
+        die "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
       fi
 
       if $ISDEVELOPMENTENV ; then
@@ -207,12 +207,10 @@ install_prereqs() {
       sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
       ;;
     "centos")
-      log "Maybe one day we will support CentOS..."
-      do_exit
+      die "Maybe one day we will support CentOS..."
       ;;
     *)
-      log "Shouldn't reach here! Please report this on GitHub. install_prereqs"
-      do_exit
+      die "Shouldn't reach here! Please report this on GitHub. install_prereqs"
       ;;
   esac
 }
