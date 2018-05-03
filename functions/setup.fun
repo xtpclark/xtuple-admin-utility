@@ -39,22 +39,22 @@ read_configs() {
     echo "We'll create a sample for you. Please review."
 
     #TODO: should TIMEZONE be TZ? why export only that one?
-    cat >> ${WORKDIR}/setup.ini <<EOSETUP
-export TIMEZONE=${TIMEZONE}
-       PGVER=${PGVER}
-       BUILD_XT_TAG=v${BUILD_XT_TAG}
-       ERP_DATABASE_NAME=xtupleerp
-       ERP_DATABASE_BACKUP=manufacturing_demo-${BUILD_XT_TAG}.backup
-       ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-v${BUILD_XT_TAG}.tar.gz
-       XTC_DATABASE_NAME=xtuplecommerce
-       XTC_DATABASE_BACKUP=xTupleCommerce-v${BUILD_XT_TAG}.backup
-       XTC_WWW_TARBALL=xTupleCommerce-v${BUILD_XT_TAG}.tar.gz
-       # payment-gateway config
-       # See https://github.com/bendiy/payment-gateways/tree/initial/gateways
-       GATEWAY_NAME='Example'
-       GATEWAY_HOSTNAME='api.example.com'
-       GATEWAY_BASE_PATH='/v1'
-       GATEWAY_NODE_LIB_NAME='example' "
+    cat >> ${WORKDIR}/setup.ini <<-EOSETUP
+	export TIMEZONE=${TIMEZONE}
+	       PGVER=${PGVER}
+	       BUILD_XT_TAG=v${BUILD_XT_TAG}
+	       ERP_DATABASE_NAME=xtupleerp
+	       ERP_DATABASE_BACKUP=manufacturing_demo-${BUILD_XT_TAG}.backup
+	       ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-v${BUILD_XT_TAG}.tar.gz
+	       XTC_DATABASE_NAME=xtuplecommerce
+	       XTC_DATABASE_BACKUP=xTupleCommerce-v${BUILD_XT_TAG}.backup
+	       XTC_WWW_TARBALL=xTupleCommerce-v${BUILD_XT_TAG}.tar.gz
+	       # payment-gateway config
+	       # See https://github.com/bendiy/payment-gateways/tree/initial/gateways
+	       GATEWAY_NAME='Example'
+	       GATEWAY_HOSTNAME='api.example.com'
+	       GATEWAY_BASE_PATH='/v1'
+	       GATEWAY_NODE_LIB_NAME='example'
 EOSETUP
 
   fi
@@ -258,22 +258,22 @@ setup_erp_db() {
 get_os_info() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  dialog --ok-label  "Submit"                   \
-         --backtitle "xTupleCommerce OS Setup"  \
-         --title     "xTupleCommerce OS Setup"  \
-         --form      "Enter basic OS information" \
-         --begin 0 0  --inputbox "Email Address:" 1 1 "$ECOMM_ADMIN_EMAIL" \
-         --add-widget --inputbox "URL:"           1 1 "$ERP_SITE_URL"      \
-         --add-widget --inputbox "xTC Domain:"    1 1 "$NGINX_ECOM_DOMAIN" \
-         --add-widget --insecure --passwordbox "New Root Password:"      2 1    \
-         --add-widget --insecure --passwordbox "Root Cert Password:"     2 1    \
-         --add-widget --insecure --passwordbox "Deployer Cert Password:" 2 1    \
+  dialog --ok-label  "Submit"                           \
+         --backtitle "xTupleCommerce OS Setup"          \
+         --title     "xTupleCommerce OS Setup"          \
+         --form      "Enter basic OS information" 0 0 7 \
+         "Email Address:"          1 1 "${ECOMM_ADMIN_EMAIL:-admin@${DOMAIN:-xtuple.xd}}" 1 25 50 0 \
+         "URL:"                    2 1 "${ERP_SITE_URL:-${DOMAIN:-xtuple.xd}}"            2 25 50 0 \
+         "xTC Domain:"             3 1 "${NGINX_ECOM_DOMAIN:-${DOMAIN:-xtuple.xd}}"       3 25 50 0 \
+         "New Root Password:"      4 1 "" 4 25 50 0   \
+         "Root Cert Password:"     5 1 "" 5 25 50 0   \
+         "Deployer Cert Password:" 6 1 "" 6 25 50 0   \
          3>&1 1>&2 2> osinfo.ini
   RET=$?
   case $RET in
     $DIALOG_OK)
-      read -d "\n" ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSED ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD <<<$(cat osinfo.ini)
-      export       ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSED ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD
+      read -d "\n" ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSWD ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD <<<$(cat osinfo.ini)
+      export       ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSWD ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD
       ;;
     *) return 1
        ;;
@@ -293,10 +293,12 @@ prepare_os_for_xtc() {
   if [ ${RUNTIMEENV} = 'server' ]; then
     safecp ${WORKDIR}/templates/ssh/sshd_config.conf /etc/ssh/sshd_config
     service_restart ssh
-  elif [ ${RUNTIMEENV} = 'vagrant' ] ; then
+  elif [ ${RUNTIMEENV} = 'vagrant' -a -n "$HOST_USERNAME" ] && \
+       ! cut -f1 -d: /etc/passwd | grep --line-regexp --quiet "$HOST_USERNAME" ; then
     eval $(stat --printf 'NFS_UID=%u
                           NFS_GROUP=%G' /var/www)
     sudo adduser --system --no-create-home --uid ${NFS_UID} --ingroup ${NFS_GROUP} ${HOST_USERNAME}
+    # TODO: HOST_USERNAME is never defined so we'll never get here
   fi
 
   generate_p12
@@ -366,7 +368,7 @@ encryption_setup() {
   if [ ! -d "${BUILD_XT}" ] ; then
     BUILD_XT="${WORKDIR}/${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}"
   fi
-  mkdir -p "${BUILD_XT}"
+  mkdir --parents "${BUILD_XT}"
 
   log_exec sudo mkdir --parents "${KEYDIR}"
 
@@ -424,60 +426,64 @@ config_webclient_scripts() {
     echo "Using port 5432 for PostgreSQL"
   fi
 
-  if [ ! -f /opt/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"/xtuple/node-datasource/sample_config.js ]; then
+  export XTDIR="/opt/xtuple/$BUILD_XT_TAG/${MWCNAME:-${ERP_DATABASE_NAME}}/xtuple"
+
+  if [ ! -f $XTDIR/node-datasource/sample_config.js ]; then
     die "Cannot find sample_config.js. Check the output or log and try again"
   fi
 
-  export XTDIR=/opt/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"/xtuple
-
-  log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME"
-  encryption_setup /etc/xtuple/$BUILD_XT_TAG/"$ERP_DATABASE_NAME" $XTDIR
-
+  CONFIGDIR="/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME"
+  log_exec sudo rm -rf $CONFIGDIR
+  encryption_setup $CONFIGDIR $XTDIR
   log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /etc/xtuple
 
   if [ $DISTRO = "ubuntu" ]; then
+    local SERVICEFILE=
     case "$CODENAME" in
       "trusty") ;&
       "utopic")
-        log "Creating upstart script using filename /etc/init/xtuple-$ERP_DATABASE_NAME.conf"
-        # create the upstart script
-        sudo cp $WORKDIR/templates/ubuntu-upstart /etc/init/xtuple-"$ERP_DATABASE_NAME".conf
-        log_exec sudo bash -c "echo \"chdir /opt/xtuple/$BUILD_XT_TAG/\"$ERP_DATABASE_NAME\"/xtuple/node-datasource\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
-        log_exec sudo bash -c "echo \"exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/\"$ERP_DATABASE_NAME\"/config.js > /var/log/node-datasource-$BUILD_XT_TAG-\"$ERP_DATABASE_NAME\".log 2>&1\" >> /etc/init/xtuple-\"$ERP_DATABASE_NAME\".conf"
+        SERVICEFILE="/etc/init/xtuple-$ERP_DATABASE_NAME.conf"
+        log "Creating upstart script using filename $SERVICEFILE"
+        safecp $WORKDIR/templates/ubuntu-upstart $SERVICEFILE
         ;;
       "vivid") ;&
       "xenial")
-        log "Creating systemd service unit using filename /etc/systemd/system/xtuple-$ERP_DATABASE_NAME.service"
-        safecp $WORKDIR/templates/xtuple-systemd.service /etc/systemd/system/xtuple-${ERP_DATABASE_NAME}.service
-        log_exec sudo sed -i -e "s/{DEPLOYER_NAME}/$DEPLOYER_NAME/"       \
-                             -e "s/{SYSLOGID}/xtuple-$ERP_DATABASE_NAME/" \
-                             -e "s,{XTDIR},/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME," \
-                             -e "s,{CONFIGDIR},/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME," /etc/systemd/system/xtuple-${ERP_DATABASE_NAME}.service
+        SERVICEFILE="/etc/systemd/system/xtuple-$ERP_DATABASE_NAME.service"
+        log "Creating systemd service unit using filename $SERVICEFILE"
+        safecp $WORKDIR/templates/xtuple-systemd.service $SERVICEFILE
         ;;
     esac
+    log_exec sudo sed -i -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#"                         \
+                         -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#"                   \
+                         -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#"   \
+                         -e "s#{MWCNAME}#$MWCNAME#"                                     \
+                         -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#"                           \
+                         -e "s#{CONFIGDIR}#$CONFIGDIR#" $SERVICEFILE
   else
     die "Do not know how to configure_web_client_scripts on $DISTRO $CODENAME"
   fi
 }
 
 get_environment() {
-  upgrade_database
+  webenable_database
 
   DEPLOYER_NAME=${DEPLOYER_NAME}
 
   ERP_DATABASE_NAME=${DATABASE}
-  ERP_ISS="xTupleCommerceID"
+  ERP_ISS="${ERP_ISS:-xTupleCommerceID}"
 
-  SITE_TEMPLATE="flywheel"
-  ERP_APPLICATION="xTupleCommerce"
+  SITE_TEMPLATE="${SITE_TEMPLATE:-flywheel}"
+  ERP_APPLICATION="${ERP_APPLICATION:-xTupleCommerce}"
   ERP_DEBUG="true"
-  WENVIRONMENT="stage"
+  WENVIRONMENT="${WENVIRONMENT:-stage}"
 
-  DOMAIN=${SITE_TEMPLATE}.xd
-  DOMAIN_ALIAS=${SITE_TEMPLATE}.xtuple.net
-  HTTP_AUTH_NAME="Developer"
-  HTTP_AUTH_PASS="ChangeMe"
+  DOMAIN=${DOMAIN:-${SITE_TEMPLATE}.xd}
+  DOMAIN_ALIAS=${DOMAIN_ALIAS:-${SITE_TEMPLATE}.xtuple.net}
+  HTTP_AUTH_NAME="${HTTP_AUTH_NAME:-Developer}"
+  HTTP_AUTH_PASS="${HTTP_AUTH_PASS:-ChangeMe}"
   ERP_HOST=https://${DOMAIN}:8443
+
+  [ -n "${GITHUB_TOKEN}" ] || get_github_token || return 1
 
   # TODO: some of this may be specific to xTupleCommerce
   dialog --ok-label  "Submit"                           \
@@ -497,11 +503,11 @@ get_environment() {
      "HTTP Auth User:" 10 1    "${HTTP_AUTH_NAME}"  10 20 50 0 \
      "HTTP Auth Pass:" 11 1    "${HTTP_AUTH_PASS}"  11 20 50 0 \
       "Deployer Name:" 12 0     "${DEPLOYER_NAME}"  12 20 50 0 \
-       "Github Token:" 13 0      "${GITHUB_TOKEN}"  13 20 50 0 \
+       "GitHub Token:" 13 0      "${GITHUB_TOKEN}"  13 20 50 0 \
   3>&1 1>&2 2>&3 2> xtuple_webclient.ini
-  return_value=$?
+  RET=$?
 
-  case $return_value in
+  case $RET in
     $DIALOG_OK)
 
       read -d "\n" ERP_HOST ERP_DATABASE_NAME ERP_ISS ERP_APPLICATION SITE_TEMPLATE ERP_DEBUG WENVIRONMENT DOMAIN DOMAIN_ALIAS HTTP_AUTH_NAME HTTP_AUTH_PASS DEPLOYER_NAME GITHUB_TOKEN <<<$(cat xtuple_webclient.ini);
@@ -546,9 +552,9 @@ get_xtc_environment() {
         "Site DB Pg User:" 4 1 "${ECOMM_DB_USERNAME}" 4 20 50 0 \
         "Site DB Pg Pass:" 5 1 "${ECOMM_DB_USERPASS}" 5 20 50 0 \
   3>&1 1>&2 2>&3 2> xtuple_commerce.ini
-  return_value=$?
+  RET=$?
 
-  case $return_value in
+  case $RET in
     $DIALOG_OK)
       read -d "\n" ECOMM_EMAIL ECOMM_SITE_NAME ECOMM_DB_NAME ECOMM_DB_USERNAME ECOMM_DB_USERPASS <<<$(cat xtuple_commerce.ini);
 
@@ -640,9 +646,9 @@ EOF
   for REPO in * ; do
     [ -d $XT_ROOT/$REPO ] && cd $XT_ROOT/$REPO && repo_setup $REPO
   done
-  cd $XT_ROOT/xtuple
 
-  scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+  cd $XT_ROOT/xtuple
+  scripts/build_app.js -c ${CONFIGDIR}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
   RET=$?
   msgbox "$(cat buildapp_output.log)"
   if [[ $RET -ne 0 ]]; then
@@ -650,7 +656,7 @@ EOF
   fi
 
   #TODO: why run this twice?
-  scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+  scripts/build_app.js -c ${CONFIGDIR}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
   RET=$?
   msgbox "$(cat buildapp_output.log)"
   if [[ $RET -ne 0 ]]; then
@@ -658,10 +664,8 @@ EOF
   fi
 
   if [[ $HAS_XTEXT != 1 ]]; then
-    echo "${ERP_DATABASE_NAME} does not have xt.ext"
-    # We can check for the private extensions dir...
     if [[ -d "${XT_ROOT}/private-extensions" ]] ; then
-      scripts/build_app.js -c /etc/xtuple/$BUILD_XT_TAG/${ERP_DATABASE_NAME}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
+      scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
       RET=$?
       msgbox "$(cat buildapp_output.log)"
       if [[ $RET -ne 0 ]]; then
@@ -671,25 +675,33 @@ EOF
       msgbox "private-extensions does not exist. Contact xTuple for access on github."
       main_menu
     fi
-
-    psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/preload.sql
-    echo "Running build_app for the extensions we preloaded into xt.ext"
-    scripts/build_app.js -c /etc/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}/config.js 2>&1 | tee buildapp_output.log
-    RET=$?
-    msgbox "$(cat buildapp_output.log)"
-    if [[ $RET -ne 0 ]]; then
-      main_menu
-    fi
   fi
 }
 
 load_oauth_site() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  generate_p12  || die
+  [ -e "${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN_P12}" ] || generate_p12  || die
   generateoasql || die
 
   psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/oa2client.sql || die
   psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/xd_site.sql || die
+}
+
+# needed by the "headless" updater and possibly openrpt
+install_xtuple_xvfb() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+  case "$CODENAME" in
+    "trusty") ;&
+    "utopic") ;&
+    "wheezy")
+      log "Installing xtuple-Xvfb to /etc/init.d..."
+      safecp $WORKDIR/templates/xtuple-Xvfb /etc/init.d
+      log_exec sudo chmod 755 /etc/init.d/xtuple-Xvfb
+      log_exec sudo update-rc.d xtuple-Xvfb defaults
+      log_exec sudo service xtuple-Xvfb start
+      ;;
+  esac
 }
 
 # TODO: either remove or make this ask for gateway info and do the full config
@@ -716,20 +728,60 @@ ruby_setup() {
   fi
 }
 
+xtc_code_setup() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+  local BUILDTAG
+  local STARTDIR=$(pwd)
+
+  [ -n "$GITHUB_TOKEN" ] || get_github_token || die "Cannot set up xTupleCommerce without a GitHub access token"
+
+  local REPOS=" enhanced-pricing
+                nodejsshim
+                payment-gateways
+                xdruple-extension
+              "
+
+  for REPO in $REPOS ; do
+    # TODO: read the BUILDTAG from an external source
+    if [ "$REPO" = "private-extensions" ] ; then
+      BUILDTAG=${MWCREFSPEC:-TAG}
+    else
+      BUILDTAG="TAG"
+    fi
+    gitco ${REPO} ${BUILD_XT}/.. ${BUILDTAG} || die
+    cd ${BUILD_XT}
+    scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
+  done
+  cd ${STARTDIR}
+}
+
 setup_flywheel() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  get_environment
-  get_xtc_environment
+  if [   -z "${DEPLOYER_NAME}"     -o -z "${DOMAIN}"            \
+      -o -z "${DOMAIN_ALIAS}"      -o -z "${ERP_APPLICATION}"   \
+      -o -z "${ERP_DATABASE_NAME}" -o -z "${ERP_DEBUG}"         \
+      -o -z "${ERP_HOST}"          -o -z "${ERP_ISS}"           \
+      -o -z "${GITHUB_TOKEN}"      -o -z "${HTTP_AUTH_NAME}"    \
+      -o -z "${HTTP_AUTH_PASS}"    -o -z "${SITE_TEMPLATE}"     \
+      -o -z "${WENVIRONMENT}" ] ; then
+    get_environment
+  fi
 
-  service_restart xtuple-${ERP_DATABASE_NAME}
+  if [   -z "${ECOMM_DB_NAME}"     -o -z "${ECOMM_DB_USERNAME}" \
+      -o -z "${ECOMM_DB_USERPASS}" -o -z "${ECOMM_EMAIL}"       \
+      -o -z "${ECOMM_SITE_NAME}" ] ; then
+    get_xtc_environment
+  fi
 
-  local SITE_ENV_TMP_WORK=${WORKING}/xdruple-sites/${ERP_DATABASE_NAME}
+  service_restart xtuple-${ERP_DATABASE_NAME} || die
+
+  local SITE_ENV_TMP_WORK=${WORKDIR}/xdruple-sites/${ERP_DATABASE_NAME}
   local SITE_ENV_TMP=${SITE_ENV_TMP_WORK}/${WENVIRONMENT}
   local SITE_ROOT=/var/www
   local SITE_WEBROOT=${SITE_ROOT}/${WENVIRONMENT}
-  local KEY_PATH=/var/xtuple/keys
-  local ERP_KEY_FILE_PATH=${KEY_PATH}/${NGINX_ECOM_DOMAIN_P12}
+  local ERP_KEY_FILE_PATH=/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}
 
   # The site template developer
   local SITE_DEV=xtuple
@@ -740,11 +792,6 @@ setup_flywheel() {
     load_oauth_site
   else
     die "DOMAIN NOT SET - EXITING!"
-  fi
-
-  sudo mkdir --parents ${KEY_PATH}
-  if $ISDEVELOPMENTENV ; then
-    ln -s /vagrant/xtuple/keys ${KEY_PATH}
   fi
 
   log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${SITE_ROOT}
@@ -776,18 +823,20 @@ EOF
 
     echo -e "XXX\n30\nWriting out environment.xml\nXXX"
     ERP_DATABASE=${ERP_DATABASE_NAME}
-    tee ${SITE_ENV_TMP}/application/config/environment.xml <<EOF
+    # TODO: is SITE_ENV_TMP the correct destination?
+    mkdir --parents ${SITE_ENV_TMP}/application/config
+    cat <<-EOF    > ${SITE_ENV_TMP}/application/config/environment.xml
 	<?xml version="1.0" encoding="UTF-8" ?>
-        <environment type="${WENVIRONMENT}"
-                     xmlns="https://xdruple.xtuple.com/schema/environment"
-                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                     xsi:schemaLocation="https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
-	  <xtuple host="${ERP_HOST}"
-                  database="${ERP_DATABASE}"
-                  iss="${ERP_ISS}"
-                  key="${ERP_KEY_FILE_PATH}"
-                  application="${ERP_APPLICATION}"
-                  debug="${ERP_DEBUG}"/>
+	<environment type               = "${WENVIRONMENT}"
+	             xmlns              = "https://xdruple.xtuple.com/schema/environment"
+	             xmlns:xsi          = "http://www.w3.org/2001/XMLSchema-instance"
+	             xsi:schemaLocation = "https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
+	  <xtuple host        = "${ERP_HOST}"
+	          database    = "${ERP_DATABASE}"
+	          iss         = "${ERP_ISS}"
+	          key         = "${ERP_KEY_FILE_PATH}"
+	          application = "${ERP_APPLICATION}"
+	          debug       = "${ERP_DEBUG}"/>
 	</environment>
 EOF
     sleep 1
@@ -801,11 +850,9 @@ EOF
     sleep 1
 
     echo -e "XXX\n45\nMoving WENVIRONMENT=${WENVIRONMENT}\nXXX"
-    log_exec "mv ${SITE_ROOT}/${WENVIRONMENT} ${SITE_ROOT}/${WENVIRONMENT}_${WORKDATE}"
-    log_exec "mv ${SITE_ENV_TMP} ${SITE_WEBROOT}"
+    safecp ${SITE_ENV_TMP} ${SITE_WEBROOT}
 
     echo -e "XXX\n50\nRunning console.php install:drupal\nXXX"
-
     local CMD="./console.php install:drupal --db-name=${ECOMM_DB_NAME}     \
                                             --db-pass=${ECOMM_DB_USERPASS} \
                                             --db-user=${ECOMM_DB_USERNAME} \
@@ -863,62 +910,61 @@ setup_xtuplecommerce() {
 
 webnotes() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local RET=0
 
-  if type -p "ec2metadata" > /dev/null; then
-    #prefer this if we have it and we're on EC2...
-    IP=$(ec2metadata --public-ipv4)
-  else
-    IP=$(ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1)
-  fi
+  # prefer this if we have it and we're on EC2...
+  # TODO: how can we tell if we're "on EC2"?
+  #if type -p "ec2metadata" > /dev/null; then
+  #  IP=$(ec2metadata --public-ipv4)
+  #  RET=$?
+  #fi
+  #if [ -z "$IP" -o "${RET}" -ne 0 ] ; then
+    IP=$(hostname -I)
+  #fi
 
-  if [[ -z ${IP} ]]; then
+  if [[ -z ${IP} ]] ; then
     IP="The IP address of this machine"
   fi
 
   back_up_file xtuplecommerce_connection.log
-  cat << EOF | tee xtuplecommerce_connection.log
-     ************************************"
-     ***** IMPORTANT!!! PLEASE READ *****"
-     ************************************"
+  cat <<-EOF | tee xtuplecommerce_connection.log
+	************************************"
+	***** IMPORTANT!!! PLEASE READ *****"
+	************************************"
 
-     Here is the information to get logged in!
+	Here is the information to get logged in!
 
-     First, Add the following to your system's hosts file
-     Windows: %SystemRoot%\System32\drivers\etc\hosts
-     OSX/Linux: /etc/hosts
+	First, Add the following to your system's hosts file
+	Windows: %SystemRoot%\System32\drivers\etc\hosts
+	OSX/Linux: /etc/hosts
 
-     ${IP} ${ERP_SITE_URL}
+	${IP} ${ERP_SITE_URL}
 
-     Here is where you can login:
-     xTuple Desktop Client v${BUILD_XT_TAG}:
-     Server: ${IP}
-     Port: ${PGPORT}
-     Database: ${ERP_DATABASE_NAME}
-     User: admin
-     Pass: admin
+	Here is where you can login:
+	  xTuple version ${BUILD_XT_TAG}
+	  Server    ${IP}
+	  Port      ${PGPORT}
+	  Database  ${ERP_DATABASE_NAME}
+	  User      admin
+	  Pass      admin
 
+	Web API:
+	  Login at http://xtuple.xd:8888
+	  Login at https://${DOMAIN_ALIAS}:8443
+	  User     admin
+	  Pass     admin
 
-     Web Client/REST:
-     Login at: http://xtuple.xd:8888
-     Login at: https:/${DOMAIN_ALIAS}:8443
-     User: admin
-     Pass: admin
+	xTupleCommerce Site Login:
+	  Login at http://${DOMAIN_ALIAS}/login
+	  User     Developer
+	  Pass     admin
 
-     Ecommerce Site Login:
-     Login at http://${DOMAIN_ALIAS}/login
-     User: Developer
-     Pass: admin
+	Nginx Config:
+	  Webroot: /var/www/xTupleCommerce/drupal/core
 
-     Nginx Config:
-     Webroot: /var/www/xTupleCommerce/drupal/core
-
-  Please set your nginx config for the xTupleCommerce webroot to:
-    root /var/www/xTupleCommerce/drupal/core;
+	Please set your nginx config for the xTupleCommerce webroot to:
+	  root /var/www/xTupleCommerce/drupal/core;
 EOF
-}
-
-destroy_env() {
-  echo "About to delete the following"
 }
 
 xtau_deploy_mwc() {
@@ -972,7 +1018,7 @@ php_setup() {
   php composer-setup.php                                || die
   php -r "unlink('composer-setup.php');"                || die
   sudo mv composer.phar /usr/local/bin/composer         || die
-  sudo mkdir -p /home/${DEPLOYER_NAME}/.composer        || die
+  sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
   safecp ${WORKDIR}/templates/php/composer/config-${RUNTIMEENV}.json /home/${DEPLOYER_NAME}/.composer/config.json
   sudo sed -i "s/{GITHUB_TOKEN}/${GITHUB_TOKEN}/g" /home/${DEPLOYER_NAME}/.composer/config.json
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer

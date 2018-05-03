@@ -166,12 +166,12 @@ configure_nginx() {
   export SSL=""
   if [ -f $HOME/${NGINX_DOMAIN}.crt ] && [ -f $HOME/${NGINX_DOMAIN}.key ] ; then
     export SSL="ssl"
-    sudo mkdir -p /etc/nginx/private /etc/nginx/certs
+    sudo mkdir --parents /etc/nginx/private /etc/nginx/certs
     sudo mv $HOME/${NGINX_DOMAIN}.key /etc/nginx/private/ || die
     sudo mv $HOME/${NGINX_DOMAIN}.crt /etc/nginx/certs/   || die
 
   else
-    sudo mkdir -p /etc/xtuple/ssl
+    sudo mkdir --parents /etc/xtuple/ssl
 
     # LetsEncrypt will go around here
     log "Generating certificate"
@@ -209,7 +209,7 @@ configure_nginx() {
     sudo ln --symbolic --force /etc/nginx/sites-available/${ENVIRONMENT}.http.conf \
                                /etc/nginx/sites-enabled
 
-    sudo mkdir -p ${NGINX_LOG}/${ENVIRONMENT} ${WEBROOT}/${ENVIRONMENT}
+    sudo mkdir --parents ${NGINX_LOG}/${ENVIRONMENT} ${WEBROOT}/${ENVIRONMENT}
 
     # TODO: why is it important to make this live/other distinction here?
     if [ ${ENVIRONMENT} = "live" ] ; then

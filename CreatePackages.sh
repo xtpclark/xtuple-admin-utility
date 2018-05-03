@@ -5,13 +5,13 @@
 shopt extdebug
 
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
-export BUILD_WORKING=${BUILD_WORKING:-$(pwd)}
+export WORKDIR=${WORKDIR:-$(pwd)}
 export BUILD_XT_TARGET_NAME=${BUILD_XT_TARGET_NAME:-xTupleREST}
 export P12_KEY_FILE=${P12_KEY_FILE:-xTupleCommerce.p12}
 
-source ${BUILD_WORKING}/functions/gitvars.fun
-source ${BUILD_WORKING}/functions/setup.fun
-source ${BUILD_WORKING}/functions/oatoken.fun
+source ${WORKDIR}/functions/gitvars.fun
+source ${WORKDIR}/functions/setup.fun
+source ${WORKDIR}/functions/oatoken.fun
 
 export NODE_ENV=${NODE_ENV:-production}
 
@@ -27,7 +27,7 @@ mwc_createdirs_static_mwc()
 
   echo "Creating Directories in ${BUILD_XT_TARGET_NAME}-${WORKDATE}"
 
-  BUILD_XT_ROOT=${BUILD_WORKING}/${BUILD_XT_TARGET_NAME}-${WORKDATE}
+  BUILD_XT_ROOT=${WORKDIR}/${BUILD_XT_TARGET_NAME}-${WORKDATE}
   BUILD_CONFIG_ETC=${BUILD_XT_ROOT}/etc
   BUILD_CONFIG_XTUPLE=${BUILD_CONFIG_ETC}/xtuple
   BUILD_CONFIG_INIT=${BUILD_CONFIG_ETC}/init
@@ -47,105 +47,69 @@ mwc_createdirs_static_mwc()
   mkdir --parents ${BUILD_CONFIG_SYSTEMD}
 }
 
-repo_setup() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  local REPO="${1}"
-
-  case "$REPO" in
-    xtuple)
-      export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-      ;;
-    payment-gateways)
-      log_exec make
-      ;;
-    *) echo $REPO does not need special treatment
-      ;;
-  esac
-}
-
 mwc_build_static_mwc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   local BUILDTAG REPOS
   local STARTDIR=$(pwd)
 
-  [ -n "$GITHUB_TOKEN" ] || generate_github_token
+  [ -n "$GITHUB_TOKEN" ] || get_github_token
 
-  # TODO: build this list so it's not specific to xTupleCommerce
-  REPOS=" xtuple
-          private-extensions
-          enhanced-pricing
-          nodejsshim
-          payment-gateways
-          xdruple-extension
-          xtdash
-        "
+  REPOS="xtuple nodejsshim"
+  if $PRIVATEEXT ; then
+    REPOS="$REPOS private-extensions xtdash"
+  fi
 
   for REPO in $REPOS ; do
-    if git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/xtuple/$REPO ${BUILD_XT_ROOT}/$REPO ; then
-      cd ${BUILD_XT_ROOT}/$REPO
-      git fetch --tags
-      # TODO: read the BUILDTAG from an external source
-      BUILDTAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-
-      [ "$REPO" = xtuple ] && BUILD_XT_TAG=$BUILDTAG
-      git checkout ${BUILDTAG}
-      git submodule update --init --recursive
-
-      if [[ -f package.json ]] ; then
-        echo "package.json found for ${REPO} => running npm install"
-        npm install
-        RET=$?
-        echo "npm install returned: ${RET}"
-        [ "$RET" -eq 0 ] || die
-      fi
-
-      repo_setup $REPO
-      cd ${STARTDIR}
+    # TODO: read the BUILDTAG from an external source
+    if [ "$REPO" = "xtuple" ] ; then
+      BUILDTAG=${MWCREFSPEC:-TAG}
+    else
+      BUILDTAG="TAG"
     fi
+    gitco $REPO ${BUILD_XT_ROOT} ${BUILDTAG} || die
   done
 }
 
 mwc_createinit_static_mwc() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-# create the upstart scripts
-cat << EOF > ${BUILD_CONFIG_INIT}/xtuple-${MWCNAME}.conf
-description "xTuple Node Server"
-start on filesystem or runlevel [2345]
-stop on runlevel [!2345]
-console output
-respawn
-#setuid xtuple
-#setgid xtuple
-chdir /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource
-exec ./main.js -c /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js > /var/log/node-datasource-$BUILD_XT_TAG-$MWCNAME.log 2>&1
+  # create the upstart scripts
+  cat <<-EOF > ${BUILD_CONFIG_INIT}/xtuple-${MWCNAME}.conf
+	description "xTuple Node Server"
+	start on filesystem or runlevel [2345]
+	stop on runlevel [!2345]
+	console output
+	respawn
+	#setuid xtuple
+	#setgid xtuple
+	chdir /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource
+	exec ./main.js -c $CONFIGDIR/config.js > /var/log/node-datasource-$BUILD_XT_TAG-$MWCNAME.log 2>&1
 EOF
-
 }
 
 mwc_createsystemd_static_mwc() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-cat << EOF > ${BUILD_CONFIG_SYSTEMD}/xtuple-${MWCNAME}.service
+  cat <<-EOF > ${BUILD_CONFIG_SYSTEMD}/xtuple-${MWCNAME}.service
 
-[Unit]
-Description=xTuple ERP NodeJS Server
-After=network.target
+	[Unit]
+	Description=xTuple ERP NodeJS Server
+	After=network.target
 
-[Install]
-WantedBy=multi-user.target
+	[Install]
+	WantedBy=multi-user.target
 
-[Service]
-Restart=always
-StandardOutput=syslog
-StandardError=syslog
-User=xtuple
-Group=xtuple
-Environment=NODE_ENV=production
-ExecStop=/bin/kill -9 \$MAINPID
-SyslogIdentifier=xtuple-$MWCNAME
-ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource/main.js -c /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js
+	[Service]
+	Restart=always
+	StandardOutput=syslog
+	StandardError=syslog
+	User=xtuple
+	Group=xtuple
+	Environment=NODE_ENV=production
+	ExecStop=/bin/kill -9 \$MAINPID
+	SyslogIdentifier=xtuple-$MWCNAME
+	ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource/main.js -c $CONFIGDIR/config.js
 
 EOF
 
@@ -165,7 +129,7 @@ mwc_bundle_mwc()
 
   echo "Bundling MWC"
 
-  cd ${BUILD_WORKING}
+  cd ${WORKDIR}
 
   cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
   export NODE_ENV=production
@@ -204,7 +168,7 @@ xtc_build_static_xtuplecommerce() {
   echo "Building Static xTupleCommerce"
 
   BUILD_XTC_TARGET_NAME=xTupleCommerce
-  BUILD_XTC_ROOT=${BUILD_WORKING}/${BUILD_XTC_TARGET_NAME}-${WORKDATE}
+  BUILD_XTC_ROOT=${WORKDIR}/${BUILD_XTC_TARGET_NAME}-${WORKDATE}
   BUILD_XTC_CONF_DIR=${BUILD_XTC_ROOT}/config
 
   CDDREPOURL=http://satis.codedrivendrupal.com
@@ -239,26 +203,26 @@ xtc_bundle_xtuplecommerce() {
 
   echo "Bundling xTupleCommerce"
 
-  cd ${BUILD_WORKING}
+  cd ${WORKDIR}
   generate_p12
   generateoasql
 
   echo "Copy a p12 key file that matches the sql in oa2client.sql"
-  cp ${BUILD_WORKING}/private/${P12_KEY_FILE} ${BUILD_XTC_ROOT}
+  cp ${WORKDIR}/private/${P12_KEY_FILE} ${BUILD_XTC_ROOT}
   RET=$?
   if [[ $RET -ne 0 ]]; then
    echo "There was a problem copying the P12 Key. Continuing..."
   else
-   echo "Copied ${BUILD_WORKING}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
+   echo "Copied ${WORKDIR}/private/${P12_KEY_FILE} to ${BUILD_XTC_ROOT}"
   fi
 
   echo "Copy a settings.php file that tells the xTupleCommerce site which database to connect to."
-  cp ${BUILD_WORKING}/private/settings.php ${BUILD_XTC_ROOT}/drupal/core/sites/default/
+  cp ${WORKDIR}/private/settings.php ${BUILD_XTC_ROOT}/drupal/core/sites/default/
   RET=$?
   if [[ $RET -ne 0 ]]; then
     echo "There was a problem copying the settings.php file. Continuing..."
   else
-    echo "Copied ${BUILD_WORKING}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
+    echo "Copied ${WORKDIR}/private/settings.php to ${BUILD_XTC_ROOT}/drupal/core/sites/default/"
   fi
 
   echo "Building ${BUILD_XTC_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz"
@@ -281,7 +245,7 @@ RET=$?
 xtc_build_xtuplecommerce_envphp() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  cd ${BUILD_WORKING}
+  cd ${WORKDIR}
   CRMACCT=xTupleBuild
 
   loadcrm_gitconfig
@@ -346,7 +310,7 @@ EOF
 writeout_config() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-  cat << EOF > ${BUILD_WORKING}/CreatePackages-${WORKDATE}.config
+  cat << EOF > ${WORKDIR}/CreatePackages-${WORKDATE}.config
     NODE_ENV=production
     PGVER=${PGVER}
     BUILD_XT_TAG=${BUILD_XT_TAG}
@@ -358,7 +322,7 @@ EOF
 writeout_xtau_config() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-  cat << EOF > ${BUILD_WORKING}/xtau_mwc-${WORKDATE}.config
+  cat << EOF > ${WORKDIR}/xtau_mwc-${WORKDATE}.config
     export NODE_ENV=production
     export PGVER=${PGVER}
     export BUILD_XT_TAG=${BUILD_XT_TAG}
@@ -429,6 +393,7 @@ xtau_deploy_ecommerce() {
   # xdruple-server/scripts/zsh.sh - see get_deployer_info and deployer_setup
   druple_crontab        # xdruple-server/scripts/cron.sh
 
+  xtc_code_setup || die
   setup_flywheel || die
   webnotes
 
@@ -514,6 +479,7 @@ if [[ -z "${1}" ]]; then
   ./CreatePackages.sh mwc_only
   ./CreatePackages.sh xtc_only
   ./CreatePackages.sh try_deploy_xtau
+  ./CreatePackages.sh xtau_deploy_ecommerce
   ./CreatePackages.sh build_all"
 else
   ${1}

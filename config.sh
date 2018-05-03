@@ -11,13 +11,13 @@ ACTIONS=()
 export TMPDIR=${TMPDIR:-/tmp}
 export DEBIAN_FRONTEND=noninteractive
 
-WORKING=$(pwd)
+WORKDIR=$(pwd)
 DEPLOYER_NAME=$(whoami)
 LOG_FILE=$(pwd)/install-$DATE.log
 ISDEVELOPMENTENV=${ISDEVELOPMENTENV:-false}
 XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
-DATABASEDIR=${WORKING}/databases
-BACKUPDIR=${WORKING}/backups
+DATABASEDIR=${WORKDIR}/databases
+BACKUPDIR=${WORKDIR}/backups
 
 PGVER=${PGVER:-9.6}
 PGHOST=${PGHOST:-localhost}
@@ -42,11 +42,11 @@ GEN_SSL=false
 MWCNAME=
 BUILD_XT_TAG=
 # switch for private extensions to be installed
-PRIVATEEXT=
+PRIVATEEXT=false
 
 # optional, but will prompt if missing
-GITHUBNAME=
-GITHUBPASS=
+GITHUBNAME=${GITHUBNAME}
+GITHUBPASS=${GITHUBPASS}
 
 # return values from `dialog`
 DIALOG_OK=0

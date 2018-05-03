@@ -127,7 +127,7 @@ download() {
     log "Downloading $URL to file $DEST failed"
     return 1
   fi
-  [ -z "$FILEMODE" ] || chmod "$FILEMODE" ${DEST}
+  [ -z "$FILEMODE" ] || sudo chmod "$FILEMODE" ${DEST}
 }
 
 # $1 is the msg
@@ -358,6 +358,76 @@ service_reload () {
   else
     die "Don't know how to reload a service on $DISTRO $CODENAME"
   fi
+}
+
+gitco() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
+
+  local REPO="$(basename $1 .git)"
+  local DESTDIR="$2"
+  local REFSPEC="$3"
+  GITHUBNAME="${4:-$GITHUBNAME}"
+  GITHUBPASS="${5:-${GITHUBPASS:-${GITHUB_TOKEN}}}"
+
+  local STARTDIR=$(pwd)
+  local GHUSERSPEC=
+
+  if [ -z "$REFSPEC" ] ; then
+    # TODO: use jq
+    REFSPEC=$(curl https://api.github.com/repos/xtuple/$REPO | \
+             awk -v FS='"' '/default_branch/ { print $4 }')
+    [ -n "$REFSPEC" ] || REFSPEC=master
+  fi
+
+  if [ -n "$GITHUBPASS" ] ; then
+    GHUSERSPEC="$GITHUBNAME:$GITHUBPASS@"
+  elif [ -n "$GITHUBNAME" ] ; then
+    GHUSERSPEC="$GITHUBNAME@"
+  fi
+
+  log_exec mkdir --parents "$DESTDIR"
+  cd "$DESTDIR"
+  if [ ! -d $REPO/.git ] ; then
+    log_exec git clone https://${GHUSERSPEC}github.com/xtuple/$REPO.git || die
+  fi
+  cd $REPO
+  log_exec git fetch
+  if ! git remote -v | grep -q xtuple/$REPO ; then
+    git remote add XTUPLE https://github.com/xtuple/$REPO.git
+    git fetch https://${GHUSERSPEC}github.com/xtuple/$REPO.git
+  fi
+
+  if [ "$REFSPEC" = "TAG" ] ; then
+    git fetch --tags
+    REFSPEC=$(git describe --tags $(git rev-list --tags --max-count=1))
+  fi
+
+  log_exec git checkout $REFSPEC                           || die
+  log_exec git submodule update --init --recursive         || die
+
+  if [[ -f package.json ]] ; then
+    log_exec npm install                          || die "npm failure"
+  fi
+
+  repo_setup $REPO
+  cd "$STARTDIR"
+}
+
+# perform any special handling required for particular repositories after checkout
+repo_setup() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local REPO="${1}"
+
+  case "$REPO" in
+    xtuple)
+      export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+      ;;
+    payment-gateways)
+      log_exec make
+      ;;
+    *) echo $REPO does not need special treatment
+      ;;
+  esac
 }
 
 # define some colors if the tty supports it

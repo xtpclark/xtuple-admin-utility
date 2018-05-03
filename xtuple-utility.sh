@@ -11,8 +11,8 @@ export MODE="manual"
 source config.sh        || die
 source common.sh        || die
 
-mkdir -p $DATABASEDIR
-mkdir -p $BACKUPDIR
+mkdir --parents $DATABASEDIR
+mkdir --parents $BACKUPDIR
 
 # sets up sudoer.d
 setup_sudo
@@ -61,12 +61,13 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
 	Usage: xtuple-utility [OPTION]
 	$( menu_title )
 	To get an interactive menu run xtuple-utility.sh with no arguments
-	
+
 	  -h	Show this message
 	  -a	Install all:
                   PostgreSQL $(latest_version pg)
                   demo database $(latest_version db)
                   web API $(latest_version db)
+                  xTupleCommerce
 	  -d	Specify database name to create
 	  -p	Override PostgreSQL version
 	  -q	Build and Install Qt $(latest_version qt_sdk)
@@ -90,8 +91,7 @@ EOUsage
 done
 
 if [ $(uname -m) != "x86_64" ]; then
-  log "$PROG only runs on 64bit servers"
-  do_exit
+  die "$PROG only runs on 64bit servers"
 fi
 
 log "Starting xTuple Admin Utility..."
@@ -107,8 +107,7 @@ fi
 test_connection
 RET=$?
 if [ $RET -ne 0 ]; then
-  log "I can't tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
-  do_exit
+  die "I can't tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
 fi
 
 # check what distro we are running.
@@ -121,14 +120,12 @@ case "$DISTRO" in
       "utopic") ;;
       "vivid") ;;
       "xenial") ;;
-      *) log "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
-         do_exit
+      *) die "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
          ;;
     esac
     ;;
   "centos")
-    log "Maybe one day we will support CentOS..."
-    do_exit
+    die "Maybe one day we will support CentOS..."
     ;;
   *)
     log "We do not currently support your distribution."
@@ -145,7 +142,6 @@ source database.sh              || die
 source xdruple.sh               || die
 source nginx.sh                 || die
 source mobileclient.sh          || die
-source openrpt.sh               || die
 source devenv.sh                || die
 source conman.sh                || die
 source tokenmanagement.sh       || die
@@ -153,7 +149,6 @@ source functions/setup.fun      || die
 source functions/gitvars.fun    || die
 source functions/oatoken.fun    || die
 
-# kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
 if [[ ! -f .already_ran_update ]]; then
   install_prereqs
@@ -178,16 +173,36 @@ if [ $INSTALLALL ]; then
   NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
   NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
+  get_github_token
+  [ -n "$GITHUBNAME" ]                       || die "Full provisioning needs your GITHUBNAME"
+  [ -n "$GITHUBPASS" -o -n "$GITHUB_TOKEN" ] || die "Full provisioning needs either GITHUBPASS or GITHUB_TOKEN"
+
   install_postgresql "$PGVER"
   provision_cluster "$PGVER" "${POSTNAME:-xtuple}" $PGPORT "$LANG" "--start-conf=auto"
   download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
   restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
+
+  install_xtuple_xvfb
+
   log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
-  install_webclient "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
+  install_webclient "v$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
   install_nginx
-  log_exec sudo mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
-  configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key}
-  setup_webprint
+  log_exec sudo mkdir --parents $CONFIGDIR/ssl
+  configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" $CONFIGDIR/ssl/server.{crt,key}
+
+  get_os_info
+  prepare_os_for_xtc
+  get_deployer_info
+  deployer_setup
+  php_setup
+  xtc_pg_setup
+  postfix_setup
+  ruby_setup
+  drupal_crontab
+  xtc_code_setup
+  setup_flywheel
+  update_site
+  webnotes
 fi
 
 # TODO: build qt in the background?

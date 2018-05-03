@@ -9,11 +9,11 @@ OATOKEN_FUN=true
 # then added edit of .ssh/config
 generate_xdruple_keypairs() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  local ECOM_ADMIN_EMAIL=${1:-${ECOM_ADMIN_EMAIL}}
-  local ERP_SITE_URL=${2:-${ERP_SITE_URL}}
+  ECOMM_ADMIN_EMAIL=${1:-${ECOMM_ADMIN_EMAIL}}
+  ERP_SITE_URL=${2:-${ERP_SITE_URL}}
   local SHORTHAND=${3:-${NGINX_ECOM_DOMAIN}}
-  local ROOT_CERT_PASSWD=${4:-${ROOT_CERT_PASSWD}}
-  local DEPLOY_CERT_PASSWD=${5:-${DEPLOY_CERT_PASSWD}}
+  ROOT_CERT_PASSWD=${4:-${ROOT_CERT_PASSWD}}
+  DEPLOY_CERT_PASSWD=${5:-${DEPLOY_CERT_PASSWD}}
 
   local STARTDIR=$(pwd)
   local SSHSUBDIR="$HOME/.ssh/${ERP_SITE_URL}"
@@ -23,8 +23,8 @@ generate_xdruple_keypairs() {
   back_up_file "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
   rm -f "${SSHSUBDIR}/${SHORTHAND}_root_rsa" "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
 
-  log_exec ssh-keygen -q -b 4096 -t rsa -N "${ROOT_CERT_PASSWD}"   -C "${ECOM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_root_rsa"
-  log_exec ssh-keygen -q -b 4096 -t rsa -N "${DEPLOY_CERT_PASSWD}" -C "${ECOM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
+  log_exec ssh-keygen -q -b 4096 -t rsa -N "${ROOT_CERT_PASSWD}"   -C "${ECOMM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_root_rsa"
+  log_exec ssh-keygen -q -b 4096 -t rsa -N "${DEPLOY_CERT_PASSWD}" -C "${ECOMM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
 
   if $XTC_HOST_IS_REMOTE ; then
     back_up_file ${SSHSUBDIR}/../config
@@ -47,7 +47,7 @@ generate_p12() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   NGINX_ECOM_DOMAIN=${NGINX_ECOM_DOMAIN:-'xTupleCommerce'}
-  ECOM_ADMIN_EMAIL=${ECOM_ADMIN_EMAIL:-"admin@xtuple.xd"}
+  ECOMM_ADMIN_EMAIL=${ECOMM_ADMIN_EMAIL:-"admin@xtuple.xd"}
   ERP_SITE_URL=${ERP_SITE_URL:-'xtuple.xd'}
   KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
   KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp_${WORKDATE}}
@@ -55,14 +55,14 @@ generate_p12() {
   export NGINX_ECOM_DOMAIN_P12=${NGINX_ECOM_DOMAIN}.p12
 
   local SSHSUBDIR="$HOME/.ssh/${NGINX_ECOM_DOMAIN}"
-  local ROOT_CERT_PASSWD=${ROOT_CERT_PASSWD:-"pass:notasecret"}
+  ROOT_CERT_PASSWD=${ROOT_CERT_PASSWD:-"pass:notasecret"}
 
   mkdir --parents ${KEY_P12_PATH} ${KEYTMP}
 
   rm -rf ${KEYTMP}/*.key ${KEYTMP}/*.csr
   rm -rf ${KEYTMP}/*.p12 ${KEYTMP}/*.pem ${KEYTMP}/*.crt
 
-  ssh-keygen     -t rsa -b 2048 -C "${ECOM_ADMIN_EMAIL}"            \
+  ssh-keygen     -t rsa -b 2048 -C "${ECOMM_ADMIN_EMAIL}"            \
                  -f ${KEYTMP}/${NGINX_ECOM_DOMAIN}.key -P ''
   openssl req    -batch -new -key ${KEYTMP}/${NGINX_ECOM_DOMAIN}.key \
                  -out ${KEYTMP}/${NGINX_ECOM_DOMAIN}.csr
@@ -97,7 +97,7 @@ generateoasql() {
       oa2client_active, oa2client_issued, oa2client_delegated_access,
       oa2client_client_x509_pub_cert, oa2client_org
     ) SELECT 'xTupleCommerceID', xt.uuid_generate_v4(), '${NGINX_ECOM_DOMAIN}',
-           '${ECOM_ADMIN_EMAIL}', '${ERP_SITE_URL}', 'jwt bearer',
+           '${ECOMM_ADMIN_EMAIL}', '${ERP_SITE_URL}', 'jwt bearer',
            TRUE, now(), TRUE,
            '${OAPUBKEY}', current_database();
 EOF

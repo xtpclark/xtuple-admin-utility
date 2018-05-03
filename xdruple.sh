@@ -28,8 +28,8 @@ drupal_menu() {
                     "6" "Set up Postgres for xTC" \
                     "7" "Set up PostFix"          \
                     "8" "Set up Ruby"             \
-                    "9" "Set up SSH keys"         \
-                   "10" "Set up crontab"          \
+                    "9" "Set up crontab"          \
+                   "10" "Set up xTC code"         \
                    "11" "Set up flywheel"         \
                    "12" "Update a site"           \
                    "13" "Return to main menu"     \
@@ -39,28 +39,41 @@ drupal_menu() {
       break
     fi
     case "$MENU" in
-       "1") get_os_info
-            source ${WORKDIR:-.}/CreatePackages.sh xtau_deploy_ecommerce
+       "1") get_os_info        && \
+            prepare_os_for_xtc && \
+            get_deployer_info  && \
+            deployer_setup     && \
+            nginx_menu         && \
+            php_setup          && \
+            xtc_pg_setup       && \
+            postfix_setup      && \
+            ruby_setup         && \
+            drupal_crontab     && \
+            xtc_code_setup     && \
+            setup_flywheel     && \
+            update_site        && \
+            webnotes
+            RET=$?
+            if [ $RET -ne 0 ] ; then
+              msgbox "Quick Install failed or was cancelled"
+            fi
             ;;
-       "2") get_os_info
-            prepare_os_for_xtc
-            ;;
-       "3") get_deployer_info
-            deployer_setup
-            ;;
+      "==") ;;
+       "2") get_os_info       && prepare_os_for_xtc ;;
+       "3") get_deployer_info && deployer_setup     ;;
        "4") nginx_menu         ;;
        "5") php_setup          ;;
        "6") xtc_pg_setup       ;;
        "7") postfix_setup      ;;
        "8") ruby_setup         ;;
-       "9") generate_p12       ;;
-      "10") drupal_crontab     ;;
+       "9") drupal_crontab     ;;
+      "10") xtc_code_setup     ;;
       "11") setup_flywheel     ;;
       "12") update_site        ;;
       "13") webnotes
             break
             ;;
-       "=") ;;
+      "==") ;;
          *) msgbox "How did you get here? drupal_menu $DRUPALMENU" && break ;;
     esac
   done
@@ -116,33 +129,41 @@ get_deployer_info () {
   export RUNTIMEENV=${1:-${RUNTIMEENV}}
   export DEPLOYER_NAME=${2:-${DEPLOYER_NAME}}
   export DEPLOYER_PASS=${3:-${DEPLOYER_PASS}}
-  local  DEPLOYER_SHELL={$4:-${DEPLOYER_SHELL:-/bin/bash}}
+  export DEPLOYER_SHELL={$4:-${DEPLOYER_SHELL:-/bin/bash}}
 
-  # TODO: is this really necessary?
-  if [ ${RUNTIMEENV} = 'vagrant' ] && ! command -v zsh > /dev/null 2>&1 ; then
-    sudo su -c 'curl -L https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh | sh'
+  if [ "$MODE" = "manual" ] ; then
+    # TODO: is robbyrussell really necessary?
+    if [ ${RUNTIMEENV} = 'vagrant' ] && ! command -v zsh > /dev/null 2>&1 ; then
+      sudo apt-get install --quiet --yes zsh
+      sudo su -c 'curl -L https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh | sh'
+    fi
+
+    local SHELLLIST
+    # get the list of legal shells & default to bash
+    SHELLLIST=$(awk 'BEGIN  { print "/bin/bash" }
+                     /bash/ { next }
+                            { sub(" *#.*", "");
+                              if (length) { print }}' /etc/shells)
+    dialog --ok-label  "Submit"                 \
+           --backtitle "Drupal User Setup"      \
+           --title     "Drupal User Setup"      \
+           --form      "Enter information about the Drupal user" 0 0 7  \
+           "Username:"   1 1 "${DEPLOYER_NAME}" 1 25 50 0               \
+           "Password":   2 1 ""                 2 25 50 0               \
+           --and-widget --menu Shell: 15 20  5 $(echo $SHELLLIST | tr " " "\n" | cat -n) \
+           3>&1 1>&2 2> user.ini
+    RET=$?
+    case $RET in
+      $DIALOG_OK)
+        read -d "\n" DEPLOYER_NAME DEPLOYER_PASS DEPLOYER_SHELL <<<$(cat user.ini)
+        DEPLOYER_SHELL=$(cut --fields=$DEPLOYER_SHELL  --delimiter=" " <<< $SHELLLIST)
+        export DEPLOYER_NAME DEPLOYER_PASS DEPLOYER_SHELL
+        ;;
+      *)
+        return 1
+        ;;
+    esac
   fi
-
-  local SHELLLIST
-  SHELLLIST=$(sed -e 's/#.*//' -e 's/$/off/' -e '/^.bin.bash/s/off/on/' /etc/shells | cat -n)
-  dialog --ok-label  "Submit"                 \
-         --backtitle "Drupal User Setup"      \
-         --title     "User Information"       \
-         --begin    0 0                       \
-                      --inputbox    Username: 1 1 "${DEPLOYER_NAME}" \
-         --and-widget --insecure --passwordbox Password: 2 1         \
-         --and-widget --radiolist Shell: 10 40 10 $SHELLLIST         \
-         3>&1 1>&2 2> user.ini
-  RET=$?
-  case $RET in
-    $DIALOG_OK)
-      read -d "\n" DEPLOYER_NAME DEPLOYER_PASS DEPLOYER_SHELL <<<$(cat user.ini)
-      export DEPLOYER_NAME DEPLOYER_PASS DEPLOYER_SHELL
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 deployer_setup () {
@@ -188,12 +209,13 @@ deployer_setup () {
 postfix_setup () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  export DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
-  export SERVER_NAME=${2:-${SERVER_NAME}}
+  DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
+  local SERVER_NAME=${2:-${SERVER_NAME:-$(hostname)}}
 
-  sudo apt-get --quiet -y install postfix
+  sudo apt-get --quiet --yes install postfix
   back_up_file /etc/postfix/main.cf
 
+  # TODO: why debconf-set-selections instead of >> /etc/postfix/main.conf
   cat <<-EOF | sudo debconf-set-selections
 	postfix postfix/root_address      string ${DEPLOYER_NAME}"
 	postfix postfix/rfc1035_violation boolean false
@@ -204,9 +226,10 @@ postfix_setup () {
 	postfix postfix/destinations      string localhost
 EOF
 
-  #TODO: remove if possible; this was called during apt-get install
-  sudo dpkg-reconfigure postfix
+  #TODO: remove if possible; this was called during apt-get install and we updated the config above
+  sudo dpkg-reconfigure --unseen-only postfix
 
+  #TODO: why is this separate from debconf_set_selections above?
   sudo sed -i -e "/^myhostname/ a\
     mydomain = ${SERVER_NAME}"          \
               -e '/^myorigin/ s/^/# /'  \

@@ -75,7 +75,7 @@ download_database() {
   local MD5_URL="http://files.xtuple.org/$DBVERSION/$DBTYPE.backup.md5sum"
 
   log "Saving $DB_URL as $DESTFILE."
-  mkdir -p $(dirname $DESTFILE)
+  mkdir --parents $(dirname $DESTFILE)
   download $DB_URL "$DESTFILE"
   download $MD5_URL "$DESTFILE".md5sum
 
@@ -640,9 +640,8 @@ check_database_info() {
   return $RET
 }
 
-# Upgrade an existing database to a Web-Enabled
 # $1 is database
-upgrade_database() {
+webenable_database() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   check_database_info
@@ -652,7 +651,7 @@ upgrade_database() {
   fi
 
   DATABASE="${1:-${DATABASE}}"
-  if [ -z "$DATABASE" ] && [ "$MODE" = "manual" ]; then
+  if [ -z "$DATABASE" -a "$MODE" = "manual" ] ; then
     select_database "Select database to upgrade"
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -663,17 +662,17 @@ upgrade_database() {
   fi
 
   psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT 1 FROM pkghead WHERE pkghead_name='xt';"
-  if [ $? -ne 0 ]; then
-    whiptail --title "Database not Web-Enabled" --yesno "The selected database is not currently web-enabled. If you continue, this process will update AND web-enable the database. If you prefer to not web-enable the database, exit xTuple Admin Utility and use the xTuple Updater app to apply the desired update package. Continue?" 10 60
-    RET=$?
-    if [ ${RET} -ne 0 ] ; then
-      return 0
-    fi
-  else
+  RET=$?
+  if [ $RET -eq 0 ]; then
     return 127
   fi
 
-  # make sure plv8 is in
+  whiptail --title "Database not Web-Enabled" --yesno "The selected database is not currently web-enabled. If you continue, this process will update AND web-enable the database. If you prefer to not web-enable the database, exit xTuple Admin Utility and use the xTuple Updater app to apply the desired update package. Continue?" 10 60
+  RET=$?
+  if [ ${RET} -ne 0 ] ; then
+    return 0
+  fi
+
   log_exec psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "create EXTENSION IF NOT EXISTS plv8;"
 
   # find the instance name and version
@@ -689,7 +688,7 @@ upgrade_database() {
     service_stop xtuple-"$MWCNAME"
 
     # get the listening port for the node datasource
-    MWCPORT=$(grep -Po '(?<= port: )8[0-9]{3}' /etc/xtuple/$BUILD_XT_TAG/$MWCNAME/config.js)
+    MWCPORT=$(grep -Po '(?<= port: )8[0-9]{3}' $CONFIGDIR/config.js)
     if [ -z "$MWCPORT" ] && [ "$MODE" = "manual" ]; then
         MWCPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Web Client Port Number" 8 60 3>&1 1>&2 2>&3)
     elif [ -z "$MWCPORT" ]; then
@@ -697,16 +696,16 @@ upgrade_database() {
     fi
     NGINX_PORT=$MWCPORT
 
-    log "Removing files in /etc/xtuple"
-    log_exec sudo rm -rf /etc/xtuple/$BUILD_XT_TAG/$MWCNAME
+    log "Removing old web-enabling configuration"
+    log_exec sudo rm -rf $CONFIGDIR
 
-    log "Removing files in /opt/xtuple"
+    log "Removing old web-enabling code"
     log_exec sudo rm -rf /opt/xtuple/$BUILD_XT_TAG/$MWCNAME
 
     log "Deleting systemd service file"
     log_exec sudo rm /etc/systemd/system/xtuple-$MWCNAME.service
 
-    log "Completely removed previous mobile client installation"
+    log "Completely removed previous web-enabling installation"
   fi
 
   # install or update the mobile client

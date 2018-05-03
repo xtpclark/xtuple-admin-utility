@@ -22,7 +22,7 @@ StrictHostKeyChecking no\s+"
     if [[ " $file_content " =~ $regex ]] ; then
       log "SSH Config looks good"
     else
-      cat <<-EOF >> ~/.ssh/config
+      cat <<-EOF >> $HOME/.ssh/config
 
 	#Added by xTau
 	Host github.com
@@ -33,8 +33,8 @@ EOF
 
   else
     log "Creating ~/.ssh/config"
-    if [ ! -d ~/.ssh  ]; then
-      log_exec mkdir -p ~/.ssh
+    if [ ! -d $HOME/.ssh  ]; then
+      log_exec mkdir --parents $HOME/.ssh
     else
       cat <<-EOF >> ~/.ssh/config
 	#Added by xTau
@@ -46,63 +46,73 @@ EOF
   fi
 }
 
-# TODO: rewrite using dialog
+get_github_token() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+  loadadmin_gitconfig
+
+  if [ -z "${GITHUB_TOKEN}" ] ; then
+    GITHUB_TOKEN=$(git config --get github.token)
+  fi
+  if [ -z "${GITHUB_TOKEN}" -a -f .githubtoken ] ; then
+    GITHUB_TOKEN=$(cat .githubtoken | tr "[:blank:]" "\\n" | tail -n 1)
+  fi
+  if [ -z "${GITHUB_TOKEN}" -a "${MODE}" = 'auto' ] ; then
+    msgbox "Cannot find your github personal access token.
+Either set GITHUB_TOKEN in your environment,
+write a .githubtoken file in the xtuple-admin-utility directory,
+or run xtuple-utility.sh interactively."
+    return 1
+  fi
+
+  if [ -z "${GITHUB_TOKEN}" ] ; then
+    generate_github_token
+  fi
+}
+
 generate_github_token() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local OAMSG RET
   local OUTPUT=GITHUB_TOKEN_${WORKDATE}.log
 
-  loadadmin_gitconfig
-
-  export GITHUB_TOKEN=$(git config --get github.token)
-  if [[ -z ${GITHUB_TOKEN} ]]; then
-    if ! whiptail --title "GitHub Personal Access Token" \
-                 --yesno "Would you like to set up your GitHub Personal Access Token?" 10 60 ; then
-      return;
-    fi
-
-    log "Creating GitHub Personal Access Token"
-    GITHUBNAME=$(whiptail --backtitle "$( window_title )" \
-                          --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
+  if [ -z "${GITHUBNAME}" -o -z "${GITHUBPASS}" ] ; then
+    dialog --ok-label  "Submit"                                 \
+           --backtitle "Generate GitHub Personal Access Token"  \
+           --title     "Generate GitHub Personal Access Token"  \
+           --form      "GitHub Credentials" 0 0 3               \
+           "GitHub Username:" 1 1 "" 1 20 50 0                  \
+           "GitHub Password:" 2 1 "" 2 20 50 0                  \
+           3>&1 1>&2 2> github.ini
     RET=$?
-    if [ $RET -ne 0 ]; then
-      return $RET
+    if [ $RET -ne $DIALOG_OK ] ; then
+      return 1
     fi
-
-    GITHUBPASS=$(whiptail --backtitle "$( window_title )" \
-                          --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-      return $RET
-    fi
-
-    log "Generating your Github token."
-    curl https://api.github.com/authorizations --user ${GITHUBNAME}:${GITHUBPASS} \
-         --data '{"scopes":["user","read:org","repo","public_repo"],"note":"Added Via xTau '${WORKDATE}'"}' \
-         -o $OUTPUT
-    GITHUB_TOKEN=$(jq --raw-output '.token | select(length > 0)' $OUTPUT)
-    if grep -q errors $OUTPUT ; then
-      OAMSG=$(jq --compact-output --raw-output '{ (.message): .errors[0].code }' $OUTPUT)
-    fi
-
-    if [[ -n "${GITHUB_TOKEN}" ]]; then
-      git config --global github.token ${GITHUB_TOKEN}
-    else
-      whiptail --backtitle "$( window_title )" --msgbox "Error creating your token. ${OAMSG}" 8 60 3>&1 1>&2 2>&3
-      return
-    fi
+    read -d "\n" GITHUBNAME GITHUBPASS <<<$(cat github.ini)
+    export       GITHUBNAME GITHUBPASS
+    rm -f github.ini
   fi
 
-  if [[ -z "${GITHUB_TOKEN}" ]]; then
-    whiptail --backtitle "$( window_title )" --msgbox "Not sure what happened, but we don't know about a token..." 8 60 3>&1 1>&2 2>&3
-    return
+  log "Generating your Github token."
+  curl https://api.github.com/authorizations --user ${GITHUBNAME}:${GITHUBPASS} \
+       --data '{"scopes":["user","read:org","repo","public_repo"],"note":"Added Via xTau '${WORKDATE}'"}' \
+       -o $OUTPUT
+  GITHUB_TOKEN=$(jq --raw-output '.token | select(length > 0)' $OUTPUT)
+  if grep -q errors $OUTPUT ; then
+    OAMSG=$(jq --compact-output --raw-output '{ (.message): .errors[0].code }' $OUTPUT)
   fi
 
-  whiptail --backtitle "$( window_title )" \
-           --msgbox "Your GitHub Personal Access token is: ${GITHUB_TOKEN}.
+  if [ -n "${OAMSG}" -o -z "${GITHUB_TOKEN}" ] ; then
+    msgbox "Error creating your token:\n${OAMSG}"
+    return 1
+  fi
+
+  git config --global github.token ${GITHUB_TOKEN}
+  echo ${GITHUB_TOKEN} >> .githubtoken
+
+  msgbox "Your GitHub Personal Access token is: ${GITHUB_TOKEN}.
 Maintain your tokens at https://github.com/settings/tokens
 
-Token written to ${HOME}/.gitconfig" 16 60 3>&1 1>&2 2>&3
+Token written to ${HOME}/.gitconfig"
   log "Your GitHub Personal Access token is: ${GITHUB_TOKEN}"
 }
 

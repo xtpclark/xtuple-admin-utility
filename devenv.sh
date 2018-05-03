@@ -110,17 +110,8 @@ build_xtuple() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   cd $WORKDIR
-  mkdir xtuple
-  cd xtuple
-  git clone https://github.com/xtuple/qt-client
-  cd qt-client
-  GITTAG=$(curl https://api.github.com/repos/xtuple/qt-client | \
-           awk -v FS='"' '/default_branch/ { print $4 }')
-  if [ -z "$GITTAG" ] ; then
-    GITTAG=master
-  fi
-  git checkout $GITTAG
-  git submodule update --init --recursive
+  gitco qt-client $WORKDIR/xtuple
+  cd $WORKDIR/xtuple/qt-client
   cd openrpt
   qmake
   make -j$(nproc)
