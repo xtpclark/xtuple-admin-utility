@@ -41,7 +41,7 @@ http {
     ## Timeouts.
     client_body_timeout 60;
     client_header_timeout 60;
-    keepalive_timeout 10 10;
+#   keepalive_timeout 10 10;
     send_timeout 60;
 
     ## Reset lingering timed out connections. Deflect DDoS.

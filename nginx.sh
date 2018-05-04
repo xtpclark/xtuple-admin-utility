@@ -185,23 +185,9 @@ configure_nginx() {
     fi
   fi
 
-  sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" \
-              -e "s#HOSTNAME#$NGINX_HOSTNAME#" \
-              -e "s#SERVER_CRT#$NGINX_CERT#g"  \
-              -e "s#SERVER_KEY#$NGINX_KEY#g"   \
-              -e "s#MWCPORT#$NGINX_PORT#g" /etc/nginx/sites-available/${NGINX_SITE}
-  RET=$?
-  if [ $RET -ne 0 ]; then
-    msgbox "Error configuring nginx. Check ${NGINX_SITE} in /etc/nginx/sites-available"
-    return $RET
-  fi
-
   for ENVIRONMENT in dev stage live ; do
     safecp ${WORKDIR}/templates/nginx/sites-available/stage.conf \
               /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
-    sudo sed -i -e "s/{DOMAIN_ALIAS}/${DOMAIN_ALIAS}/g" \
-                -e "s/{ENVIRONMENT}/${ENVIRONMENT}/g"   \
-                /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
     if [ $RET -ne 0 ]; then
       msgbox "Error configuring nginx. Check ${ENVIRNOMENT}.http.conf in /etc/nginx/sites-available"
       return $RET
@@ -214,16 +200,12 @@ configure_nginx() {
     # TODO: why is it important to make this live/other distinction here?
     if [ ${ENVIRONMENT} = "live" ] ; then
       if [ "${SSL}" = "ssl" ] ; then
-        sudo sed -i "s/{DOMAIN}/${DOMAIN}/g" /etc/nginx/conf.d/ssl.conf
         S=s
       else
         S=
       fi
       safecp ${WORKDIR}/templates/nginx/sites-available/http${S}.conf \
              /etc/nginx/sites-available
-      sudo sed -i -e "s/{DOMAIN}/${DOMAIN}/g" \
-                  -e "s/{ENVIRONMENT}/${ENVIRONMENT}/g" \
-                  /etc/nginx/sites-available/http${S}.conf
       if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx. Check /etc/nginx/sites-available/http${S}.conf"
         return $RET
@@ -232,6 +214,25 @@ configure_nginx() {
                                  /etc/nginx/sites-enabled
     fi
   done
+
+  for CONF_FILE in $(sudo egrep --recursive --files-with-matches "{.*}" /etc/nginx | \
+                     egrep --invert-match '[0-9]$') ; do
+  #TODO: HOSTNAME and MWCPORT don't appear in the templates
+    sudo sed -i -e "s#{DOMAIN_NAME}#${NGINX_DOMAIN}#"   \
+                -e "s#{DOMAIN_ALIAS}#${DOMAIN_ALIAS}#g" \
+                -e "s#{ENVIRONMENT}#${ENVIRONMENT}#g"   \
+                -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"      \
+                -e "s#{SERVER_CRT}#${NGINX_CERT}#g"     \
+                -e "s#{SERVER_KEY}#${NGINX_KEY}#g"      \
+                -e "s#{MWCPORT}#$NGINX_PORT#g"          \
+                $CONF_FILE
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      msgbox "Error configuring nginx. Check /etc/nginx/sites-available/$NGINX_SITE and $CONF_FILE"
+      return $RET
+    fi
+  done
+
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${WEBROOT}
 
   sudo apt-get --quiet -y install apache2-utils
