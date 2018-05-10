@@ -10,16 +10,16 @@ database_menu() {
 
   log "Opened database menu"
   while true; do
-    DBM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Database\ Menu )" 15 60  7 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Select a Database to work with" \
-            "2" "Inspect Database"  \
-            "3" "Rename Database"   \
-            "4" "Copy database"     \
-            "5" "Backup Database"   \
-            "6" "Create Database"   \
-            "7" "Drop Database"     \
-            "8" "Setup Automated Backup" \
-            "9" "Return to main menu" \
+    DBM=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                   --menu "$(menu_title Database Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+            "1" "Inspect database"        \
+            "2" "Rename database"         \
+            "3" "Copy database"           \
+            "4" "Back up database"        \
+            "5" "Create database"         \
+            "6" "Drop database"           \
+            "7" "Set up automated backup" \
+           "10" "Return to main menu"     \
             3>&1 1>&2 2>&3)
 
     RET=$?
@@ -27,15 +27,14 @@ database_menu() {
       break
     else
       case "$DBM" in
-          "1") select_database ;;
-          "2") inspect_database_menu ;;
-          "3") rename_database ;;
-          "4") copy_database ;;
-          "5") log_exec backup_database ;;
-          "6") create_database ;;
-          "7") drop_database ;;
-          "8") source xtnbackup2/xtnbackup.sh ;;
-          "9") main_menu ;;
+          "1") inspect_database_menu ;;
+          "2") rename_database ;;
+          "3") copy_database ;;
+          "4") backup_database ;;
+          "5") create_database ;;
+          "6") drop_database ;;
+          "7") source xtnbackup2/xtnbackup.sh ;;
+         "10") break ;;
             *) msgbox "How did you get here?" && break ;;
         esac
     fi
@@ -152,7 +151,7 @@ copy_database() {
 #  $1 is database file to backup to
 #  $2 is name of database (if not provided, prompt)
 backup_database() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   check_database_info
   RET=$?
@@ -178,11 +177,13 @@ backup_database() {
     fi
   elif [ -z "$DEST" ]; then
     return 127
+  elif ! [[ "$DEST" =~ ^/ ]] ; then
+    DEST="$BACKUPDIR/$DEST"
   fi
 
   log "Backing up database "$DATABASE" to file "$DEST"."
 
-  pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$BACKUPDIR/$DEST" "$DATABASE"
+  pg_dump --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --format custom  --file "$DEST" "$DATABASE"
   RET=$?
   if [ $RET -ne 0 ]; then
     msgbox "Something has gone wrong. Check log and correct any issues."
@@ -217,7 +218,8 @@ create_database() {
   done < <( ls -t $BACKUPDIR 2>/dev/null | awk '{printf("Restore %s\n", $0)}' | tr ' ' '_' )
   CUSTOMDB=("EnterFileName..." "EnterFileName...")
 
-  CHOICE=$(whiptail --backtitle "$(window_title)" --menu "Choose Database" 15 60 7 \
+  CHOICE=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                    --menu "Choose Database" 0 0 10 \
                     --cancel-button "Cancel" --ok-button "Select" --notags \
                     ${EXISTINGDBS[@]} \
                     ${BACKUPDBS[@]} \
@@ -235,7 +237,8 @@ create_database() {
     while read line ; do
       EDITIONS+=("$line" "$line")
     done < <( curl http://files.xtuple.org/$DBVERSION/ | grep -oP '>\K\S+.backup' | uniq )
-    CHOICE=$(whiptail --backtitle "$( window_title )" --menu "Choose Starting Database" 15 60  7 \
+    CHOICE=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                      --menu "Choose Starting Database" 0 0 10 \
                       --cancel-button "Cancel" --ok-button "Select" --notags \
                       ${EDITIONS[@]} \
                       3>&1 1>&2 2>&3)
@@ -340,7 +343,8 @@ select_database() {
     return 1
   fi
 
-  DATABASE=$(whiptail --title "PostgreSQL Databases" --menu "$MSG" 16 60  7 \
+  DATABASE=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                      --menu "$MSG" 0 0 10 \
                       --notags "${DATABASES[@]}" 3>&1 1>&2 2>&3)
 }
 
@@ -435,12 +439,12 @@ rename_database() {
 inspect_database_menu() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-  [ "MODE" = "auto"] && return 127
+  [ "MODE" = "auto" ] && return 127
 
   check_database_info
   RET=$?
   if [ $RET -ne 0 ]; then
-      return $RET
+    return $RET
   fi
 
   select_database
@@ -510,17 +514,22 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 # Display important metrics of an xTuple database in the current configured cluster
 # $1 is database name to inspect
 inspect_database() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  local DATABASE=${1:-$DATABASE}
+  local EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
+                       -c "SELECT getEdition() || ' v' || fetchMetricText('ServerVersion');" 2>/dev/null)
+  if [ -z "$EDITION" ] ; then
+    EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
+                   -c "SELECT fetchMetricText('Application') || ' v' || fetchMetricText('ServerVersion');" 2>/dev/null)
+  fi
 
-    VAL=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $1 -c "SELECT data FROM ( \
-        SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
-        UNION \
-        SELECT 2,'Ap: '||fetchmetrictext('Application')||' v'||fetchmetrictext('ServerVersion') \
-        UNION \
-        SELECT 3,'Pk: '||pkghead_name||' v'||pkghead_version \
-        FROM pkghead) as dummy ORDER BY 1;")
+  local VAL=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT data FROM ( \
+      SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
+      UNION \
+      SELECT 2,'Pk: '||pkghead_name||' v'||pkghead_version \
+      FROM pkghead) as dummy ORDER BY 1;")
 
-    msgbox "${VAL}"
+  msgbox "Ap: $EDITION\n${VAL}"
 
 }
 
@@ -543,8 +552,9 @@ set_database_info_select() {
   fi
 
   while true; do
-    CLUSTER=$(whiptail --title "xTuple Utility v$_REV" --menu "Select cluster to use" \
-                       16 120  7 "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
+    CLUSTER=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                       --menu "Select cluster to use" 0 0 10 \
+                       "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
       return $RET
@@ -565,77 +575,60 @@ set_database_info_select() {
   fi
 }
 
-
-# set the current cluster by entering the parameters manually
-# this can not be run in automatic mode
-# TODO: dialog
 set_database_info_manual() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   [ "$MODE" = "auto" ] && return 127
 
-    if [ -z "$PGHOST" ]; then
-        PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER
-            return $RET
-        else
-            export PGHOST
-        fi
-    fi
-    if [ -z "$PGPORT" ] ; then
-        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER
-            return $RET
-        else
-            export PGPORT
-        fi
-    fi
-    if [ -z "$PGUSER" ] ; then
-        PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            unset PGHOST && unset PGPORT && unset PGUSER
-            return $RET
-        else
-            export PGUSER
-        fi
-    fi
-
-
-}
-
-clear_database_info() {
-echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-
-    unset PGHOST
-    unset PGPORT
-    unset PGUSER
+  dialog --ok-label  "Submit"           \
+         --backtitle "$(window_title)"  \
+         --form      "PostgreSQL connection information" 0 0 0  \
+         "Hostname:"  1 1 "$PGHOST" 1 20 50 0 \
+             "Port:"  2 1 "$PGPORT" 2 20 50 0 \
+         "Username:"  3 1 "$PGUSER" 3 20 50 0 \
+    3>&1 1>&2 2>&3 2> db_connection.ini
+  RET=$?
+  case $RET in
+    $DIALOG_OK)
+      read -d "\n" PGHOST PGPORT PGUSER <<<$(cat db_connection.ini)
+      export PGHOST PGPORT PGUSER
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 # Check that there is a currently selected cluster
 check_database_info() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  RET=0
+  local RET=0
 
   if [ -z "$PGHOST" ] || [ -z "$PGPORT" ] || [ -z "$PGUSER" ]; then
-    whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  \
-             --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60
+    select_database_cluster
     RET=$?
-    if [ "$RET" -eq 0 ] ; then
-      set_database_info_select
-      RET=$?
-    elif [ "$RET" -eq 255 ] ; then
-      # we're using a yesno box as a multiple choice question - Yes/No/Cancel.
-      # whiptail returns 255 on ESC => Cancel.
-      return 255
-    else
-      set_database_info_manual
-      RET=$?
-    fi
+  fi
+  return $RET
+}
+
+select_database_cluster() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+  local RET=0
+
+  # TODO: rewrite this with dialog --extra-button "Enter Manually"
+  whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  \
+           --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60
+  RET=$?
+  if [ "$RET" -eq 0 ] ; then
+    set_database_info_select
+    RET=$?
+  elif [ "$RET" -eq 255 ] ; then
+    # we're using a yesno box as a multiple choice question - Yes/No/Cancel.
+    # whiptail returns 255 on ESC => Cancel.
+    return 255
+  else
+    set_database_info_manual
+    RET=$?
   fi
   return $RET
 }

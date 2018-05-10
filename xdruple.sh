@@ -13,24 +13,24 @@ drupal_menu() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   local MENU
 
-  log "Opened drupal menu"
+  log "Opened xTupleCommerce menu"
 
   while true ; do
-    MENU=$(whiptail --backtitle "xTuple Utility v$_REV" \
-                    --menu "$( menu_title Drupal\ Menu )" 0 0 10 \
+    MENU=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                    --menu "$(menu_title xTupleCommerce Menu)" 0 0 10 \
                     --cancel-button "Cancel" --ok-button "Select" \
                     "1" "Quick Install"           \
                     "=" "======================"  \
-                    "2" "Set up OS"               \
-                    "3" "Set up Deployer"         \
-                    "4" "Set up nginx"            \
-                    "5" "Set up PHP"              \
-                    "6" "Set up Postgres for xTC" \
-                    "7" "Set up PostFix"          \
-                    "8" "Set up Ruby"             \
-                    "9" "Set up crontab"          \
-                   "10" "Set up xTC code"         \
-                   "11" "Set up flywheel"         \
+                    "2" "OS setup"                \
+                    "3" "Deployer setup"          \
+                    "4" "nginx setup"             \
+                    "5" "PHP setup"               \
+                    "6" "Database server setup"   \
+                    "7" "Mail server setup"       \
+                    "8" "Ruby setup"              \
+                    "9" "crontab setup"           \
+                   "10" "xTupleCommerce code"     \
+                   "11" "Flywheel setup"          \
                    "12" "Update a site"           \
                    "13" "Return to main menu"     \
             3>&1 1>&2 2>&3)
@@ -70,9 +70,7 @@ drupal_menu() {
       "10") xtc_code_setup     ;;
       "11") setup_flywheel     ;;
       "12") update_site        ;;
-      "13") webnotes
-            break
-            ;;
+      "13") msgbox "$(cat webnotes)" ; break ;;
       "==") ;;
          *) msgbox "How did you get here? drupal_menu $DRUPALMENU" && break ;;
     esac
@@ -145,8 +143,7 @@ get_deployer_info () {
                             { sub(" *#.*", "");
                               if (length) { print }}' /etc/shells)
     dialog --ok-label  "Submit"                 \
-           --backtitle "Drupal User Setup"      \
-           --title     "Drupal User Setup"      \
+           --backtitle "$(window_title)"        \
            --form      "Enter information about the Drupal user" 0 0 7  \
            "Username:"   1 1 "${DEPLOYER_NAME}" 1 25 50 0               \
            "Password":   2 1 ""                 2 25 50 0               \

@@ -55,13 +55,14 @@ get_github_token() {
     GITHUB_TOKEN=$(git config --get github.token)
   fi
   if [ -z "${GITHUB_TOKEN}" -a -f .githubtoken ] ; then
-    GITHUB_TOKEN=$(cat .githubtoken | tr "[:blank:]" "\\n" | tail -n 1)
+    source .githubtoken
+    export GITHUBNAME GITHUB_TOKEN
   fi
   if [ -z "${GITHUB_TOKEN}" -a "${MODE}" = 'auto' ] ; then
     msgbox "Cannot find your github personal access token.
 Either set GITHUB_TOKEN in your environment,
 write a .githubtoken file in the xtuple-admin-utility directory,
-or run xtuple-utility.sh interactively."
+or run $PROG interactively."
     return 1
   fi
 
@@ -77,7 +78,7 @@ generate_github_token() {
 
   if [ -z "${GITHUBNAME}" -o -z "${GITHUBPASS}" ] ; then
     dialog --ok-label  "Submit"                                 \
-           --backtitle "Generate GitHub Personal Access Token"  \
+           --backtitle "$(window_title)"                        \
            --title     "Generate GitHub Personal Access Token"  \
            --form      "GitHub Credentials" 0 0 3               \
            "GitHub Username:" 1 1 "" 1 20 50 0                  \
@@ -107,7 +108,7 @@ generate_github_token() {
   fi
 
   git config --global github.token ${GITHUB_TOKEN}
-  echo ${GITHUB_TOKEN} >> .githubtoken
+  echo "GITHUBNAME=$GITHUBNAME\nGITHUB_TOKEN=${GITHUB_TOKEN}" >> .githubtoken
 
   msgbox "Your GitHub Personal Access token is: ${GITHUB_TOKEN}.
 Maintain your tokens at https://github.com/settings/tokens

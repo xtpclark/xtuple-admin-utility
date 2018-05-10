@@ -58,9 +58,9 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
       log "xTuple database type set to $DBTYPE via command line argument -x"
       ;;
     h) cat <<-EOUsage
-	Usage: xtuple-utility [OPTION]
+	Usage: $PROG [OPTION]
 	$( menu_title )
-	To get an interactive menu run xtuple-utility.sh with no arguments
+	To get an interactive menu run $PROG with no arguments
 
 	  -h	Show this message
 	  -a	Install all:
@@ -166,9 +166,9 @@ if [ $INSTALLALL ]; then
   DBVERSION="${DBVERSION:-4.11.3}"
   EDITION="${EDITION:-demo}"
   DATABASE="${DATABASE:-xtuple}"
-  MWCNAME="${MWCNAME:-xtuple-web}"
-  PGPORT=5432
-  PGUSER=postgres
+  MWCNAME="${MWCNAME:-web}"
+  PGPORT=${PGPORT:-5432}
+  PGUSER=${PGUSER:-postgres}
 
   NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
   NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"

@@ -10,15 +10,16 @@ postgresql_menu() {
   log "Opened PostgreSQL menu"
 
   while true; do
-      PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title PostgreSQL\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+      PGM=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                     --menu "$(menu_title PostgreSQL Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
           "1" "Install PostgreSQL $PGVER" \
           "2" "List provisioned clusters" \
-          "3" "Select Cluster" \
+          "3" "Select a cluster to work with" \
           "4" "Create new cluster" \
           "5" "Backup Globals" \
           "6" "Restore Globals" \
           "7" "Drop a cluster"      \
-          "8" "Return to main menu" \
+         "10" "Return to main menu" \
           3>&1 1>&2 2>&3)
       RET=$?
 
@@ -27,14 +28,14 @@ postgresql_menu() {
           break
       elif [ $RET -eq 0 ]; then
         case "$PGM" in
-          "1") log_exec install_postgresql $PGVER ;;
-          "2") log_exec list_clusters ;;
-          "3") log_exec select_cluster ;;
-          "4") log_exec provision_cluster ;;
-          "5") log_exec backup_globals ;;
-          "6") log_exec restore_globals   ;;
-          "7") log_exec drop_cluster_menu ;;
-          "8") break ;;
+          "1") install_postgresql $PGVER ;;
+          "2") list_clusters             ;;
+          "3") select_database_cluster   ;;
+          "4") provision_cluster         ;;
+          "5") backup_globals            ;;
+          "6") restore_globals           ;;
+          "7") drop_cluster_menu         ;;
+         "10") break ;;
           *) msgbox "Error. How did you get here?" && break ;;
         esac
       fi
@@ -47,7 +48,8 @@ password_menu() {
   log "Opened password menu"
 
   while true; do
-    PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Reset\ Password\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+    PGM=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                   --menu "$(menu_title Reset Password Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
         "1" "Reset postgres via sudo postgres" \
         "2" "Reset postgres via psql" \
         "3" "Reset admin via sudo postgres" \
@@ -247,12 +249,6 @@ provision_cluster() {
   fi
 }
 
-select_cluster() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-
-  set_database_info_select
-}
-
 # $1 is version
 # $2 is name
 # $3 is mode (auto/manual)
@@ -302,8 +298,8 @@ drop_cluster_menu() {
     return 0
   fi
 
-  CLUSTER=$(whiptail --title "PostgreSQL Clusters" \
-                     --menu "Select cluster to drop" 16 120 10 \
+  CLUSTER=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                     --menu "Select PostgreSQL cluster to drop" 0 0 10 \
                      "${CLUSTERS[@]}" --notags 3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -ne 0 ]; then

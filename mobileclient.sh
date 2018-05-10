@@ -14,7 +14,8 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
     log "Opened Web Client menu"
 
     while true; do
-        PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Web\ Client\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+        PGM=$(whiptail --backtitle "$( window_title )" --title "xTuple Utility v$_REV" \
+                       --menu "$(menu_title Web Client Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install xTuple Web Client" \
             "2" "Remove xTuple Web Client" \
             "3" "Return to main menu" \
@@ -59,7 +60,8 @@ install_webclient_menu() {
     TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | sort -rV | head -10)
     HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
 
-    MENUVER=$(whiptail --backtitle "$( window_title )" --menu "Choose Web Client Version" 15 60 10 --cancel-button "Exit" --ok-button "Select" \
+    MENUVER=$(whiptail --backtitle "$( window_title )" --title "xTuple Utility v$_REV" \
+                       --menu "Choose Web Client Version" 0 0 10 --cancel-button "Exit" --ok-button "Select" \
             $(paste -d '\n' \
             <(seq 0 9) \
             <(echo $TAGVERSIONS | tr ' ' '\n')) \

@@ -18,6 +18,10 @@ http {
     default_type application/octet-stream;
 
     ## FastCGI.
+    map $scheme $fastcgi_https {
+      default off;
+      https   on;
+    }
     include /etc/nginx/conf.d/fastcgi.conf;
 
     ## Default log and error files.

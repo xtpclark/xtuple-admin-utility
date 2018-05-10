@@ -11,7 +11,8 @@ nginx_menu() {
   log "Opened nginx menu"
 
   while true; do
-    NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+    NGM=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                   --menu "$(menu_title nginx Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install nginx" \
             "2" "Configure nginx" \
             "3" "Remove nginx" \
@@ -62,24 +63,23 @@ nginx_prompt() {
     return 127
   fi
 
-  # TODO: dialog
-  NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "nginx host name (the domain comes next)" 8 60 "$NGINX_HOSTNAME" 3>&1 1>&2 2>&3)
+  dialog --ok-label   "Submit"                            \
+         --backtitle  "$(window_title)"                   \
+         --form       "nginx configuration details" 0 0 7 \
+         "Host name:"                 1 1 "$NGINX_HOSTNAME" 1 25 50 0 \
+         "Domain name (example.com):" 2 1 "$NGINX_DOMAIN"   2 25 50 0 \
+         "Site name:"                 3 1 "$NGINX_SITE"     3 25 50 0 \
+         3>&1 1>&2 2> nginx.ini
   RET=$?
-  if [ $RET -ne 0 ]; then
-    return $RET
-  fi
-
-  NGINX_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "nginx domain name (example.com)" 8 60 "$NGINX_DOMAIN" 3>&1 1>&2 2>&3)
-  RET=$?
-  if [ $RET -ne 0 ]; then
-    return $RET
-  fi
-
-  NGINX_SITE=$(whiptail --backtitle "$( window_title )" --inputbox "nginx site name. This will be the name of the config file." 8 60 "$NGINX_SITE" 3>&1 1>&2 2>&3)
-  RET=$?
-  if [ $RET -ne 0 ]; then
-    return $RET
-  fi
+  case $RET in
+    $DIALOG_OK)
+      read -d "\n" NGINX_HOSTNAME NGINX_DOMAIN NGINX_SITE <<<$(cat nginx.ini)
+      export       NGINX_HOSTNAME NGINX_DOMAIN NGINX_SITE
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 
   if (whiptail --title "Generate SSL key" --yesno "Would you like to generate a self signed SSL certificate and key?" 10 60) then
     GEN_SSL=true
@@ -87,17 +87,22 @@ nginx_prompt() {
     GEN_SSL=false
   fi
 
-  NGINX_CERT=$(whiptail --backtitle "$( window_title )" --inputbox "nginx SSL Certificate file path" 8 60 "/etc/xtuple/ssl/$NGINX_SITE.crt" 3>&1 1>&2 2>&3)
+  dialog --ok-label    "Submit"                 \
+         --backtitle  "$(window_title)"         \
+         --form       "nginx SSL details" 0 0 7 \
+         "Certificate file path" 1 1 "/etc/xtuple/ssl/$NGINX_SITE.crt" 1 25 50 0    \
+         "Key file path"         2 1 "/etc/xtuple/ssl/$NGINX_SITE.key" 2 25 50 0    \
+           3>&1 1>&2 2> nginxssl.ini
   RET=$?
-  if [ $RET -ne 0 ]; then
-    return $RET
-  fi
-
-  NGINX_KEY=$(whiptail --backtitle "$( window_title )" --inputbox "nginx SSL Key file path" 8 60 "/etc/xtuple/ssl/$NGINX_SITE.key" 3>&1 1>&2 2>&3)
-  RET=$?
-  if [ $RET -ne 0 ]; then
-    return $RET
-  fi
+  case $RET in
+    $DIALOG_OK)
+      read -d "\n" NGINX_CERT NGINX_KEY <<<$(cat nginxssl.ini)
+      export       NGINX_CERT NGINX_KEY
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 
   new_nginx_port
   local USEDPORTS=$(sudo head --lines 2 /etc/nginx/sites-available/* | grep --only-matching '8[0-9]{3}')
@@ -143,12 +148,13 @@ configure_nginx() {
   sudo rm -f /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
   log "Creating nginx site file"
-  safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/sites-available/$NGINX_SITE
 
   if [ ${RUNTIMEENV} = 'vagrant' ] ; then
     safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
     sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
                                /etc/nginx/sites-enabled
+  else
+    safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/sites-available/$NGINX_SITE
   fi
 
   safecp ${WORKDIR}/templates/nginx/mime.types     /etc/nginx
@@ -157,6 +163,11 @@ configure_nginx() {
 
   sudo cp --recursive ${WORKDIR}/templates/nginx/apps /etc/nginx/
   sudo cp --recursive ${WORKDIR}/templates/nginx/conf.d/* /etc/nginx/conf.d/
+
+  if egrep --quiet --no-messages "^[[:blank:]]*keepalive_timeout" /etc/nginx/nginx.conf ; then
+    back_up_file /etc/nginx/nginx.conf
+    sudo sed -i -e "s/^[[:blank:]]*keepalive_timeout/#&/" /etc/nginx/nginx.conf
+  fi
 
   log "Enabling nginx site"
   sudo ln --symbolic --force /etc/nginx/sites-available/$NGINX_SITE \
@@ -243,10 +254,10 @@ configure_nginx() {
   sudo htpasswd -b -c /var/www/.htpasswd ${HTTP_AUTH_NAME} ${HTTP_AUTH_PASS}
 
   log "Reloading nginx configuration"
-  local OUTPUT="$(service_reload nginx)"
+  service_reload nginx
   RET=$?
   if [ $RET -ne 0 ]; then
-    msgbox "Reloading nginx configuration failed:\n$OUTPUT"
+    msgbox "Reloading nginx configuration failed"
     return $RET
   fi
   msgbox "nginx installed and configured successfully."

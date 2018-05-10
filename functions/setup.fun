@@ -5,7 +5,6 @@
 if [ -z "$SETUP_FUN" ] ; then # {
 SETUP_FUN=true
 
-export GITHUB_TOKEN=${GITHUB_TOKEN:-$(git config --get github.token)}
 export KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
 export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
 export TZ=${TZ:-$(tzselect)}
@@ -38,9 +37,12 @@ read_configs() {
     echo "Missing setup.ini file."
     echo "We'll create a sample for you. Please review."
 
-    #TODO: should TIMEZONE be TZ? why export only that one?
+    # TODO: do we need TIMEZONE?
+    # TODO: why export only time zone info?
+    # TODO: we can default more of these
     cat >> ${WORKDIR}/setup.ini <<-EOSETUP
 	export TIMEZONE=${TIMEZONE}
+	export TZ=${TZ}
 	       PGVER=${PGVER}
 	       BUILD_XT_TAG=v${BUILD_XT_TAG}
 	       ERP_DATABASE_NAME=xtupleerp
@@ -259,7 +261,7 @@ get_os_info() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   dialog --ok-label  "Submit"                           \
-         --backtitle "xTupleCommerce OS Setup"          \
+         --backtitle "$(window_title)"                  \
          --title     "xTupleCommerce OS Setup"          \
          --form      "Enter basic OS information" 0 0 7 \
          "Email Address:"          1 1 "${ECOMM_ADMIN_EMAIL:-admin@${DOMAIN:-xtuple.xd}}" 1 25 50 0 \
@@ -487,7 +489,7 @@ get_environment() {
 
   # TODO: some of this may be specific to xTupleCommerce
   dialog --ok-label  "Submit"                           \
-         --backtitle "xTuple Web Client Setup"          \
+         --backtitle "$(window_title)"                  \
          --title     "Configuration"                    \
          --form      "Configure Web Client Environment" \
          0 0 0 \
@@ -542,7 +544,7 @@ get_xtc_environment() {
   local ECOMM_DB_USERPASS="ChangeMe"
 
   dialog --ok-label  "Submit"                               \
-         --backtitle "xTupleCommerce Setup"                 \
+         --backtitle "$(window_title)"                      \
          --title     "Configuration"                        \
          --form      "Configure xTupleCommerce Environment" \
          0 0 0 \
@@ -618,10 +620,8 @@ webclient_setup() {
   log_exec sudo mkdir --parents $(dirname $XT_ROOT)
   log_exec sudo mkdir --parents /etc/xtuple/${BUILD_XT_TAG}
 
-  echo "Copying ${WORKDIR}/${ERPTARDIR} to /opt/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}"
-  sudo cp -R ${WORKDIR}/${ERPTARDIR} ${XT_ROOT}
-  echo "Setting owner to ${DEPLOYER_NAME} on $(dirname $XT_ROOT)"
-  sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} $(dirname $XT_ROOT)
+  log_exec sudo cp -R ${WORKDIR}/${ERPTARDIR} ${XT_ROOT}
+  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} $(dirname $XT_ROOT)
   turn_on_plv8
   config_webclient_scripts
 
@@ -630,7 +630,7 @@ webclient_setup() {
     APPLY_FOUNDATION='-f'
   fi
 
-  HAS_XTEXT=$(psql -At -U admin ${ERP_DATABASE_NAME} <<EOF
+  local HAS_XTEXT=$(psql -At -U admin ${ERP_DATABASE_NAME} <<EOF
     SELECT 1
       FROM pg_catalog.pg_class JOIN pg_namespace n ON n.oid = relnamespace
      WHERE nspname = 'xt' AND relname = 'ext';
@@ -663,17 +663,14 @@ EOF
     main_menu
   fi
 
+  #TODO: why do we care HERE whether private-extensions exists or not?
   if [[ $HAS_XTEXT != 1 ]]; then
     if [[ -d "${XT_ROOT}/private-extensions" ]] ; then
       scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
       RET=$?
       msgbox "$(cat buildapp_output.log)"
-      if [[ $RET -ne 0 ]]; then
-        main_menu
-      fi
     else
       msgbox "private-extensions does not exist. Contact xTuple for access on github."
-      main_menu
     fi
   fi
 }
@@ -731,8 +728,31 @@ ruby_setup() {
 xtc_code_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  local BUILDTAG
   local STARTDIR=$(pwd)
+  local BUILDTAG TESTDIR 
+
+  # look for the most recently INSTALLED code dir
+  if [ -z "$BUILD_XT" ] ; then
+    for TESTDIR in $(ls -td /opt/xtuple/*/*/xtuple) ; do
+      if [ -d $TESTDIR/.git ] ; then
+        BUILD_XT="$TESTDIR"
+        MWCREFSPEC=$(basename $(dirname $(dirname $BUILD_XT)))
+        break
+      fi
+    done
+  fi
+
+  # if we can't find that, look for the most recently created build dir
+  if [ -z "$BUILD_XT" ] ; then
+    for TESTDIR in $(ls -td "${WORKDIR}/${BUILD_XT_TARGET_NAME:=xTupleREST}*") ; do
+      if [ -d $TESTDIR ] && [[ $TESTDIR =~ ${BUILD_XT_TARGET_NAME}-(.*) ]] ; then
+        BUILD_XT="$TESTDIR"
+        MWCREFSPEC=${BASH_REMATCH[1]}
+        break
+      fi
+    done
+  fi
+  CONFIGDIR=${CONFIGDIR:-$(dirname $(ls -td /etc/xtuple/$MWCREFSPEC/*/config.js | head --lines=1))}
 
   [ -n "$GITHUB_TOKEN" ] || get_github_token || die "Cannot set up xTupleCommerce without a GitHub access token"
 
@@ -749,7 +769,7 @@ xtc_code_setup() {
     else
       BUILDTAG="TAG"
     fi
-    gitco ${REPO} ${BUILD_XT}/.. ${BUILDTAG} || die
+    gitco ${REPO} $(dirname ${BUILD_XT}) ${BUILDTAG} || die
     cd ${BUILD_XT}
     scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
   done

@@ -14,4 +14,4 @@ Group={DEPLOYER_NAME}
 Environment=NODE_ENV=production
 ExecStop=/bin/kill -9 $MAINPID
 SyslogIdentifier={SYSLOGID}
-ExecStart=/usr/local/bin/node {XTDIR}/node-datasource/main.js -c {CONFIGDIR}/config.js
+ExecStart=/usr/local/bin/node {XTDIR}/xtuple/node-datasource/main.js -c {CONFIGDIR}/config.js

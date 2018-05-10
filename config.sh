@@ -19,21 +19,21 @@ XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
 DATABASEDIR=${WORKDIR}/databases
 BACKUPDIR=${WORKDIR}/backups
 
-PGVER=${PGVER:-9.6}
-PGHOST=${PGHOST:-localhost}
-PGUSER=${PGUSER:-postgres}
-POSTLOCALE=$LANG
+export PGVER=${PGVER:-9.6}
+export PGHOST=${PGHOST:-localhost}
+export PGUSER=${PGUSER:-postgres}
+export POSTLOCALE=$LANG
 
 # leave these undefined. otherwise we may waste lots of time looking for avoidable bugs
-PGNAME=
-PGPORT=
+export PGNAME=
+export PGPORT=
 
-NGINX_SITE=
-NGINX_DOMAIN=
-NGINX_HOSTNAME=
-NGINX_PORT=${NGINX_PORT:-8443}
-NGINX_CERT=
-NGINX_KEY=
+export NGINX_SITE=
+export NGINX_DOMAIN=
+export NGINX_HOSTNAME=
+export NGINX_PORT=${NGINX_PORT:-8443}
+export NGINX_CERT=
+export NGINX_KEY=
 
 # generate new certs if the specified ones don't exist
 GEN_SSL=false
@@ -76,7 +76,6 @@ if [ -z "${TZ}" ] ; then
   fi
   echo "Remove ${WORKDIR}/.timezone and unset TZ to reset the timezone"
   sudo locale-gen en_US.UTF-8          || exit 1
-  sudo dpkg-reconfigure locales        || exit 1
   sudo timedatectl set-timezone ${TZ}  || exit 1
 fi
 

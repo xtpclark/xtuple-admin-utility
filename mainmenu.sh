@@ -9,8 +9,8 @@ main_menu() {
 
   while true; do
 
-    CC=$(whiptail --backtitle "$( window_title )" \
-                  --menu "$( menu_title Main\ Menu)" 0 0 10 \
+    CC=$(whiptail --backtitle "$(window_title)"               \
+                  --menu "$(menu_title Main Menu)" 0 0 10     \
                   --cancel-button "Exit" --ok-button "Select" \
                   "1" "Install Base xTuple system"      \
                   "2" "PostgreSQL Maintenance"          \
@@ -27,18 +27,18 @@ main_menu() {
       do_exit
     else
       case "$CC" in
-        "1") log_exec install_postgresql $PGVER
+        "1") install_postgresql $PGVER
              get_cluster_list
              if [ -n "$CLUSTERS" ]; then
                set_database_info_select
              else
-               log_exec provision_cluster $PGVER
+               provision_cluster $PGVER
              fi
-             log_exec create_database
+             create_database
              ;;
         "2") postgresql_menu ;;
         "3") database_menu   ;;
-        "4") selectServer    ;;
+        "4") conman_menu     ;;
         "5") generate_github_token;;
         "6") source ${WORKDIR:-.}/CreatePackages.sh try_deploy_xtau;;
         "7") drupal_menu     ;;

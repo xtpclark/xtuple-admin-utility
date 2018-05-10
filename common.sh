@@ -115,7 +115,7 @@ download() {
 
   log "Downloading $URL to file $DEST"
   if [ "$MODE" = manual ] ; then
-    log_exec sudo wget --output-document="$3" --progress=dot:force "$1" 2>&1 | \
+    log_exec sudo wget --output-document="$DEST" --progress=dot:force "$URL" 2>&1 | \
              awk '/K.*%/ { pct=$(NF-2) ; sub("%", "", pct); print pct }' | \
              whiptail --backtitle "$( window_title )" --gauge "$2" 0 0 100
     RET=${PIPESTATUS[0]}
@@ -124,7 +124,7 @@ download() {
     RET=$?
   fi
   if [ "$RET" -ne 0 ] ; then
-    log "Downloading $URL to file $DEST failed"
+    msgbox "Downloading $URL to file $DEST failed"
     return 1
   fi
   [ -z "$FILEMODE" ] || sudo chmod "$FILEMODE" ${DEST}
@@ -144,19 +144,13 @@ latest_version() {
 }
 
 window_title() {
-  if [ -z "$PGHOST" ] && [ -z "$PGPORT" ] && [ -z "$PGUSER" ]; then
-    echo "xTuple Admin Utility v$_REV -=- Current Connection Info: Not Connected"
-  elif [ ! -z "$PGHOST" ] && [ ! -z "$PGPORT" ] && [ ! -z "$PGUSER" ]; then
-    echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Not Set"
-  else
-    echo "xTuple Admin Utility v$_REV -=- Current Server $PGUSER@$PGHOST:$PGPORT -=- Password Is Set"
-  fi
+  echo "xTuple Admin Utility v$_REV -=- ${PGUSER:-¿user?}@${PGHOST:-¿host?}:${PGPORT:-¿port?} ${PGPASS:+-=- Password is set}"
 }
 
 # $1 is text to display
 menu_title() {
   cat "$WORKDIR"/xtuple.asc
-  echo "$1"
+  echo "$*"
 }
 
 install_prereqs() {
@@ -336,28 +330,29 @@ service_restart () {
 service_reload () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[@]} $@"
   local SERVICE="$1"
+  local RET=0
 
   # TODO: why is this different?
   if [ "$SERVICE" = nginx ] ; then
     log_exec sudo nginx -s reload
-    return
-  fi
-
-  # shutdown node datasource
-  if [ $DISTRO = "ubuntu" ]; then
+    RET=$?
+  elif [ $DISTRO = "ubuntu" ]; then
     case "$CODENAME" in
       "trusty") ;&
       "utopic")
         log_exec sudo service $SERVICE reload
+        RET=$?
         ;;
       "vivid") ;&
       "xenial")
         log_exec sudo systemctl reload $SERVICE
+        RET=$?
         ;;
     esac
   else
-    die "Don't know how to reload a service on $DISTRO $CODENAME"
+    die "Don't know how to reload $SERVICE on $DISTRO $CODENAME"
   fi
+  return $RET
 }
 
 gitco() {
@@ -423,6 +418,7 @@ repo_setup() {
       export BUILD_XT_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
       ;;
     payment-gateways)
+      git clean -d -f -x
       log_exec make
       ;;
     *) echo $REPO does not need special treatment

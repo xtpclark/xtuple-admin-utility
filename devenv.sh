@@ -11,7 +11,8 @@ dev_menu() {
   log "Opened development menu"
 
   while true; do
-      CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Development\ Menu )" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+      CC=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                    --menu "$(menu_title Development Menu)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
           "1" "Install Development Pre-reqs"            \
           "2" "Build & Install Qt 5.5.1"                \
           "3" "Build xTuple"                            \
@@ -127,7 +128,7 @@ build_xtc_dev_env() {
   if [ ${RUNTIMEENV} = 'vagrant' ] ; then
 
     dialog --ok-label "Submit"                           \
-           --backtitle "PostgreSQL User Passwords"       \
+           --backtitle "$(window_title)"                 \
            --title "PostgreSQL Passwords"                \
            --form "Set PostgreSQL Development Passwords" \
            0 0 0 \

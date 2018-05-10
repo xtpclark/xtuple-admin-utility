@@ -6,9 +6,6 @@ if [ -z "$CONMAN_SH" ] ; then # {
 CONMAN_SH=true
 
 WORKDIR=$(pwd)
-#source common.sh
-#source logging.sh
-menu_title=Conman
 
 MYIPADDR=`arp $(hostname) | awk -F'[()]' '{print $2}'`
 
@@ -162,58 +159,59 @@ fi
 
 
 conman_menu() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-    #log "Opened server menu"
+  while true; do
+    [ -n "$CONNECTION" ] || CONNECTION="?"
+    DBM=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                   --menu "$(menu_title Actions on $CONNECTION)" 0 0 10 --cancel-button "Cancel" --ok-button "Select" \
+          "1" "Select a server" \
+          "2" "Connect SSH to $CONNECTION" \
+          "3" "Inspect and connect to PG on $CONNECTION" \
+          "4" "Create tunnel to $CONNECTION" \
+          "5" "View pg_hba.conf on $CONNECTION" \
+          "6" "View disk info on $CONNECTION" \
+          "7" "View EC2 info for $CONNECTION" \
+         "10" "Return to main menu" \
+          3>&1 1>&2 2>&3)
 
-    while true; do
-        DBM=$(whiptail --backtitle "Viewing $CONNECTION" --menu "Actions on $CONNECTION" 20 80 10 --cancel-button "Cancel" --ok-button "Select" \
-            "1" "Connect SSH to $CONNECTION" \
-            "2" "Inspect And Connect to PG on $CONNECTION" \
-            "3" "Create Tunnel to $CONNECTION" \
-            "4" "View pg_hba.conf on $CONNECTION" \
-            "5" "View Disk Info on $CONNECTION" \
-            "6" "View EC2 Info for $CONNECTION" \
-            "9" "Select another Server" \
-            "10" "Exit Program" \
-            3>&1 1>&2 2>&3)
-
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            break
-        else
-            case "$DBM" in
-            "1")  connectSSH ;;
-            "2")  getPGInfo ;;
-            "3")  createTunnel ;;
-	    "4")  readHbaConf ;;
-	    "5")  getDiskInfo ;;
-	    "6")  getEC2Info ;;
-            "9")  selectServer ;;
-            "10")  exit 0 ;;
-            *) msgbox "How did you get here?" && break ;;
-            esac
-        fi
-    done
+    RET=$?
+    if [ $RET -ne 0 ]; then
+      break
+    else
+      case "$DBM" in
+        "1") selectServer ;;
+        "2") connectSSH   ;;
+        "3") getPGInfo    ;;
+        "4") createTunnel ;;
+        "5") readHbaConf  ;;
+        "6") getDiskInfo  ;;
+        "7") getEC2Info   ;;
+       "10") break        ;;
+          *) msgbox "How did you get here?" && break ;;
+      esac
+    fi
+  done
 }
 
 
 selectServer()
 {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-CONNECTIONS=()
+  local CONNECTIONS=()
 
-while read -r line; do
-CONNECTIONS+=("$line" "$line")
-done < <(grep  '^Host ' ~/.ssh/config | grep -v '[?*]' | cut -d ' ' -f 2- | sort)
+  while read -r line; do
+    CONNECTIONS+=("$line" "$line")
+  done < <(grep  '^Host ' ~/.ssh/config | grep -v '[?*]' | cut -d ' ' -f 2- | sort)
 
-  CONNECTION=$(whiptail --title "XTN Servers" --menu "Reading ${HOME}/.ssh/config . Select server to connect to" 40 80 30 "${CONNECTIONS[@]}" --notags 3>&1 1>&2 2>&3)
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        return 0
- fi
-conman_menu
+  CONNECTION=$(whiptail --backtitle "$(window_title)" --title "xTuple Utility v$_REV" \
+                        --menu "XTN Servers from ${HOME}/.ssh/config\nSelect a server to connect to" 0 0 10 \
+                        "${CONNECTIONS[@]}" --notags 3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -ne 0 ]; then
+    return 0
+  fi
 }
 
-
-# selectServer
 fi # }
