@@ -162,6 +162,7 @@ fi
 if [ $INSTALLALL ]; then
   log "Executing full provision..."
   MODE="auto"
+  PRIVATEEXT=true
 
   DBVERSION="${DBVERSION:-4.11.3}"
   EDITION="${EDITION:-demo}"
@@ -174,8 +175,11 @@ if [ $INSTALLALL ]; then
   NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
   get_github_token
-  [ -n "$GITHUBNAME" ]                       || die "Full provisioning needs your GITHUBNAME"
-  [ -n "$GITHUBPASS" -o -n "$GITHUB_TOKEN" ] || die "Full provisioning needs either GITHUBPASS or GITHUB_TOKEN"
+  [ -n "$GITHUBNAME" ]                       || PRIVATEEXT=false
+  [ -n "$GITHUBPASS" -o -n "$GITHUB_TOKEN" ] || PRIVATEEXT=false
+  if ! $PRIVATEEXT ; then
+    msgbox "Commercial provisioning needs a GITHUBNAME and either GITHUBPASS or GITHUB_TOKEN"
+  fi
 
   install_postgresql "$PGVER"
   provision_cluster "$PGVER" "${POSTNAME:-xtuple}" $PGPORT "$LANG" "--start-conf=auto"

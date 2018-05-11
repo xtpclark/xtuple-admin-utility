@@ -42,7 +42,7 @@ GEN_SSL=false
 MWCNAME=
 BUILD_XT_TAG=
 # switch for private extensions to be installed
-PRIVATEEXT=false
+PRIVATEEXT=${PRIVATEEXT:-false}
 
 # optional, but will prompt if missing
 GITHUBNAME=${GITHUBNAME}
