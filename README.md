@@ -11,7 +11,7 @@ git clone https://github.com/xtuple/xtuple-admin-utility.git
 
 cd xtuple-admin-utility && ./xtuple-utility.sh
 
-If you are installing from scratch, choose Quick Install from the main menu. You will be prompted to choose web-enabled or non-web-enabled and then prompted to enter information such as postgresql port, cluster name, postgres user password, admin passwords and so on. Remember what you choose! 
+If you are installing from scratch, choose Quick Install from the main menu. You will be prompted to choose web-enabled or non-web-enabled and then prompted to enter information such as postgresql port, cluster name, postgres user password, admin passwords and so on. Remember what you choose!
 
 For an unattended install on a clean machine, try: ./xtuple-utility.sh -a
 
