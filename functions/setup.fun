@@ -8,7 +8,6 @@ SETUP_FUN=true
 export KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
 export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
 export TZ=${TZ:-$(tzselect)}
-export RUNTIMEENV=${RUNTIMEENV:-'server'}
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 
 source ${WORKDIR:-.}/functions/oatoken.fun
@@ -62,6 +61,51 @@ EOSETUP
   fi
 }
 
+# replace_params_in [ --[no-]backup ] file [ file ... ]
+replace_params () {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local RET=0
+  local RESULT=0
+  local MAKE_BACKUP=true
+  case "$1" in
+    --no-backup) MAKE_BACKUP=false ; shift ;;
+    --backup)    MAKE_BACKUP=true  ; shift ;;
+  esac
+
+  for FILE in $@ ; do
+    if $MAKE_BACKUP ; then
+      back_up_file "$FILE"
+    fi
+    log_exec sudo sed -i \
+                      -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#g"                          \
+                      -e "s#{CONFIGDIR}#$CONFIGDIR#g"                                \
+                      -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#g"                        \
+                      -e "s#{DOMAIN_ALIAS}#${DOMAIN_ALIAS}#g"                        \
+                      -e "s#{DOMAIN_NAME}#${NGINX_DOMAIN}#"                          \
+                      -e "s#{ENVIRONMENT}#${ENVIRONMENT}#g"                          \
+                      -e "s#{ESCAPED_TIMEZONE}#$ESCAPED_TIMEZONE#"                   \
+                      -e "s#{GITHUB_TOKEN}#$GITHUB_TOKEN#g"                          \
+                      -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"                             \
+                      -e "s#LOGDIR#${LOGDIR}#g"                                      \
+                      -e "s#{MAX_EXECUTION_TIME}#$MAX_EXECUTION_TIME#g"              \
+                      -e "s#{MWCNAME}#$MWCNAME#g"                                    \
+                      -e "s#{MWCPORT}#$NGINX_PORT#g"                                 \
+                      -e "s#{SERVER_CRT}#${NGINX_CERT}#g"                            \
+                      -e "s#{SERVER_KEY}#${NGINX_KEY}#g"                             \
+                      -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#g"                  \
+                      -e "s#{TIMEZONE}#$TIMEZONE#"                                   \
+                      -e "s#{TZ}#$TIMEZONE#g"                                        \
+                      -e "s#WEBROOT#${WEBROOT}#g"                                    \
+                      -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#g"  \
+                      $FILE
+    RET=$?
+    if [ $RET -ne 0 ] ; then
+      RESULT=$RET
+    fi
+  done
+  return $RESULT
+}
+
 initial_update() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
@@ -95,8 +139,10 @@ install_npm_node() {
   sudo npm install -g browserify
 }
 
+# $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  PGVER="${1:-$PGVER}"
 
   if [[ -z "${PGVER}" ]]; then
     die "Need to set PGVER before running, e.g.: export PGVER=9.6"
@@ -104,27 +150,46 @@ install_postgresql() {
 
   # check to make sure the PostgreSQL repo is already added on the system
   if [ ! -f /etc/apt/sources.list.d/pgdg.list ] || ! grep -q "apt.postgresql.org" /etc/apt/sources.list.d/pgdg.list; then
-    sudo bash -c "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -"
-    sudo bash -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+    sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main"
   fi
 
-  # We handle this package separately - if create_main_cluster is true, then it can cause issues for our purposes.
+  # get postgresql-common first - if create_main_cluster is true, we might run into problems
   sudo apt-get --quiet --yes install postgresql-common
   sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
 
-  # TODO: do we really want to install plv8?
   sudo apt-get --quiet --yes install \
                           postgresql-${PGVER}         postgresql-client-${PGVER}     \
                           postgresql-contrib-${PGVER} postgresql-server-dev-${PGVER} \
-                          postgresql-client-${PGVER}  postgresql-${PGVER}-plv8       \
        || die "apt-get failed to install PostgreSQL"
+  RET=$?
+  if [ $RET -eq 0 ]; then
+    export PGUSER=postgres
+    export PGHOST=localhost
+    export PGPORT=5432
+  fi
+
+  install_plv8
+}
+
+install_plv8() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local STARTDIR=$(pwd)
+  cd "${WORKDIR}"
+  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
+  tar xf xtuple_plv8.tgz
+  cd xtuple_plv8
+  log_exec echo '' | sudo ./install_plv8.sh || die
+  cd "${WORKDIR}"
+  rm -f xtuple_plv8.tgz
+  cd "${STARTDIR}"
 }
 
 setup_postgresql_cluster() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   PGVER=${1:-${PGVER:-9.6}}
-  local POSTNAME=${2:-$POSTNAME}
+  POSTNAME=${2:-$POSTNAME}
   PGPORT=${3:-${PGPORT:-5432}}
   local POSTLOCALE=${4:-${POSTLOCALE:-en_US.UTF8}}
   local POSTSTART=${5:-${POSTSTART:-"--start-conf=auto"}}
@@ -146,10 +211,10 @@ setup_postgresql_cluster() {
                                  -o log_line_prefix='%t %d %u '        \
                                  -- --auth=trust --auth-host=trust --auth-local=trust
 
-  local POSTDIR=/etc/postgresql/$PGVER/$POSTNAME
+  POSTDIR=/etc/postgresql/$PGVER/$POSTNAME
   back_up_file $POSTDIR/pg_hba.conf
   log "Opening pg_hba.conf for internet access with passwords"
-  cat <<-EOF | sudo tee -a $POSTDIR/pg_hba.conf
+  cat <<-EOF | sudo tee -a $POSTDIR/pg_hba.conf > /dev/null
       hostnossl  all           all             0.0.0.0/0                 reject
       hostssl    all           postgres        0.0.0.0/0                 reject
       hostssl    all           +xtrole         0.0.0.0/0                 md5
@@ -162,7 +227,6 @@ EOF
 
   # rewrite postgresql.conf, fixing the max_locks_per_transaction if necessary
   # and commenting out the plv8.start_proc
-  # alternatively use sed -i, which may be less robust
   log "Customizing postgresql.conf"
   back_up_file $POSTDIR/postgresql.conf
   awk '/^[[:blank:]]*max_locks_per_transaction/ {
@@ -176,7 +240,7 @@ EOF
          if (! MAXLOCKS_FOUND)  { print "max_locks_per_transaction = 256" }
          if (! STARTPROC_FOUND) { print "#plv8.start_proc           = ''xt.js_init''" }
        }' $POSTDIR/postgresql.conf | \
-       sudo tee $POSTDIR/postgresql.conf
+       sudo tee $POSTDIR/postgresql.conf > /dev/null
   RET=$?
   if [ $RET -ne 0 ] ; then
     die "Customizing postgresql.conf failed. Check the log file for any issues."
@@ -284,7 +348,7 @@ get_os_info() {
 
 prepare_os_for_xtc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  if [ "$RUNTIMEENV" = 'server' -a -n "$ROOT_PASSWD" ] ; then
+  if ! $IS_DEV_ENV && [ -n "$ROOT_PASSWD" ] ; then
     echo "root:${ROOT_PASSWD}" | sudo chpasswd
   fi
 
@@ -292,10 +356,10 @@ prepare_os_for_xtc() {
   log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade
   log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing dist-upgrade
 
-  if [ ${RUNTIMEENV} = 'server' ]; then
+  if ! $IS_DEV_ENV ; then
     safecp ${WORKDIR}/templates/ssh/sshd_config.conf /etc/ssh/sshd_config
     service_restart ssh
-  elif [ ${RUNTIMEENV} = 'vagrant' -a -n "$HOST_USERNAME" ] && \
+  elif $IS_DEV_ENV && [ -n "$HOST_USERNAME" ] && \
        ! cut -f1 -d: /etc/passwd | grep --line-regexp --quiet "$HOST_USERNAME" ; then
     eval $(stat --printf 'NFS_UID=%u
                           NFS_GROUP=%G' /var/www)
@@ -304,23 +368,10 @@ prepare_os_for_xtc() {
   fi
 
   generate_p12
-  generate_xdruple_keypairs ${ECOMM_ADMIN_EMAIL} ${ERP_SITE_URL} ${NGINX_ECOM_DOMAIN} ${ROOT_CERT_PASSWD} ${DEPLOY_CERT_PASSWD}
-  if $XTC_HOST_IS_REMOTE ; then
-    ssh root@${ERP_SITE_URL} mkdir --parents /var/xtuple/keys
-    scp ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN_P12} ${ERP_SITE_URL}:/var/xtuple/keys/
-
-     local IP=$(nslookup $URL | awk '/Server:/ { print $2 }')
-     back_up_file /etc/hosts
-     cat <<-EOF | sudo tee -a /etc/hosts
-           $URL            $IP
-           dev.$URL        $IP
-           stage.$URL      $IP
-           live.$URL       $IP
-EOF
-  elif [ "$RUNTIMEENV" = 'server' ] ; then
+  if ! $IS_DEV_ENV ; then
     sudo mkdir --parents /var/xtuple/keys
     safecp ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} /var/xtuple/keys
-  elif [ "$RUNTIMEENV" = 'vagrant' ] ; then
+  elif $IS_DEV_ENV ; then
     sudo mkdir --parents /var/xtuple
     sudo ln --symbolic --force /vagrant/xtuple/keys /var/xtuple/keys
   fi
@@ -455,12 +506,7 @@ config_webclient_scripts() {
         safecp $WORKDIR/templates/xtuple-systemd.service $SERVICEFILE
         ;;
     esac
-    log_exec sudo sed -i -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#"                         \
-                         -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#"                   \
-                         -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#"   \
-                         -e "s#{MWCNAME}#$MWCNAME#"                                     \
-                         -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#"                           \
-                         -e "s#{CONFIGDIR}#$CONFIGDIR#" $SERVICEFILE
+    replace_params --no-backup $SERVICEFILE
   else
     die "Do not know how to configure_web_client_scripts on $DISTRO $CODENAME"
   fi
@@ -477,7 +523,7 @@ get_environment() {
   SITE_TEMPLATE="${SITE_TEMPLATE:-flywheel}"
   ERP_APPLICATION="${ERP_APPLICATION:-xTupleCommerce}"
   ERP_DEBUG="true"
-  WENVIRONMENT="${WENVIRONMENT:-stage}"
+  WORKFLOW_ENV="${WORKFLOW_ENV:-stage}"
 
   DOMAIN=${DOMAIN:-${SITE_TEMPLATE}.xd}
   DOMAIN_ALIAS=${DOMAIN_ALIAS:-${SITE_TEMPLATE}.xtuple.net}
@@ -499,7 +545,7 @@ get_environment() {
         "Application:"  4 1   "${ERP_APPLICATION}"   4 20 50 0 \
            "Web Repo:"  5 1     "${SITE_TEMPLATE}"   5 20 50 0 \
           "ERP Debug:"  6 1         "${ERP_DEBUG}"   6 20 50 0 \
-        "Environment:"  7 1      "${WENVIRONMENT}"   7 20 50 0 \
+        "Environment:"  7 1      "${WORKFLOW_ENV}"   7 20 50 0 \
              "Domain:"  8 1            "${DOMAIN}"   8 20 50 0 \
        "Domain Alias:"  9 1      "${DOMAIN_ALIAS}"   9 20 50 0 \
      "HTTP Auth User:" 10 1    "${HTTP_AUTH_NAME}"  10 20 50 0 \
@@ -512,13 +558,13 @@ get_environment() {
   case $RET in
     $DIALOG_OK)
 
-      read -d "\n" ERP_HOST ERP_DATABASE_NAME ERP_ISS ERP_APPLICATION SITE_TEMPLATE ERP_DEBUG WENVIRONMENT DOMAIN DOMAIN_ALIAS HTTP_AUTH_NAME HTTP_AUTH_PASS DEPLOYER_NAME GITHUB_TOKEN <<<$(cat xtuple_webclient.ini);
+      read -d "\n" ERP_HOST ERP_DATABASE_NAME ERP_ISS ERP_APPLICATION SITE_TEMPLATE ERP_DEBUG WORKFLOW_ENV DOMAIN DOMAIN_ALIAS HTTP_AUTH_NAME HTTP_AUTH_PASS DEPLOYER_NAME GITHUB_TOKEN <<<$(cat xtuple_webclient.ini);
 
       export DEPLOYER_NAME    DOMAIN            DOMAIN_ALIAS
       export ERP_APPLICATION  ERP_DATABASE_NAME ERP_DEBUG ERP_HOST ERP_ISS ERP_SITE_URL
       export GITHUB_TOKEN
       export HTTP_AUTH_NAME    HTTP_AUTH_PASS
-      export NGINX_ECOM_DOMAIN SITE_TEMPLATE WENVIRONMENT
+      export NGINX_ECOM_DOMAIN SITE_TEMPLATE WORKFLOW_ENV
       export ECOMM_ADMIN_EMAIL=admin@${DOMAIN}
       ;;
 
@@ -719,7 +765,7 @@ ruby_setup() {
   # required for theme CSS generation
   sudo gem install compass
 
-  if $ISDEVELOPMENTENV ; then
+  if $IS_DEV_ENV ; then
     # ASCIIDoc, required for documentation generation
     sudo gem install asciidoctor coderay --quiet
   fi
@@ -729,7 +775,7 @@ xtc_code_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   local STARTDIR=$(pwd)
-  local BUILDTAG TESTDIR 
+  local BUILDTAG TESTDIR
 
   # look for the most recently INSTALLED code dir
   if [ -z "$BUILD_XT" ] ; then
@@ -785,7 +831,7 @@ setup_flywheel() {
       -o -z "${ERP_HOST}"          -o -z "${ERP_ISS}"           \
       -o -z "${GITHUB_TOKEN}"      -o -z "${HTTP_AUTH_NAME}"    \
       -o -z "${HTTP_AUTH_PASS}"    -o -z "${SITE_TEMPLATE}"     \
-      -o -z "${WENVIRONMENT}" ] ; then
+      -o -z "${WORKFLOW_ENV}" ] ; then
     get_environment
   fi
 
@@ -798,9 +844,9 @@ setup_flywheel() {
   service_restart xtuple-${ERP_DATABASE_NAME} || die
 
   local SITE_ENV_TMP_WORK=${WORKDIR}/xdruple-sites/${ERP_DATABASE_NAME}
-  local SITE_ENV_TMP=${SITE_ENV_TMP_WORK}/${WENVIRONMENT}
+  local SITE_ENV_TMP=${SITE_ENV_TMP_WORK}/${WORKFLOW_ENV}
   local SITE_ROOT=/var/www
-  local SITE_WEBROOT=${SITE_ROOT}/${WENVIRONMENT}
+  local SITE_WEBROOT=${SITE_ROOT}/${WORKFLOW_ENV}
   local ERP_KEY_FILE_PATH=/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}
 
   # The site template developer
@@ -847,7 +893,7 @@ EOF
     mkdir --parents ${SITE_ENV_TMP}/application/config
     cat <<-EOF    > ${SITE_ENV_TMP}/application/config/environment.xml
 	<?xml version="1.0" encoding="UTF-8" ?>
-	<environment type               = "${WENVIRONMENT}"
+	<environment type               = "${WORKFLOW_ENV}"
 	             xmlns              = "https://xdruple.xtuple.com/schema/environment"
 	             xmlns:xsi          = "http://www.w3.org/2001/XMLSchema-instance"
 	             xsi:schemaLocation = "https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
@@ -869,7 +915,7 @@ EOF
     (echo '127.0.0.1' ${DOMAIN} ${DOMAIN_ALIAS} dev.${DOMAIN_ALIAS} stage.${DOMAIN_ALIAS} live.${DOMAIN_ALIAS}) | sudo tee -a /etc/hosts >/dev/null
     sleep 1
 
-    echo -e "XXX\n45\nMoving WENVIRONMENT=${WENVIRONMENT}\nXXX"
+    echo -e "XXX\n45\nMoving WORKFLOW_ENV=${WORKFLOW_ENV}\nXXX"
     safecp ${SITE_ENV_TMP} ${SITE_WEBROOT}
 
     echo -e "XXX\n50\nRunning console.php install:drupal\nXXX"
@@ -995,13 +1041,12 @@ php_setup() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   mkdir --parents $HOME/.composer
 
-  export RUNTIMEENV=${1:-${RUNTIMEENV:-vagrant}}
-  export TZ=${2:-${TZ:-$(tzselect)}}
-  export DEPLOYER_NAME=${3:-${DEPLOYER_NAME:-$(whoami)}}
-  export GITHUB_TOKEN=${4:-${GITHUB_TOKEN:-$(git config --get github.token)}}
+  export TZ=${1:-${TZ:-$(tzselect)}}
+  export DEPLOYER_NAME=${2:-${DEPLOYER_NAME:-$(whoami)}}
+  export GITHUB_TOKEN=${3:-${GITHUB_TOKEN:-$(git config --get github.token)}}
 
   export MAX_EXECUTION_TIME=60
-  if [ ${RUNTIMEENV} = 'vagrant' ]; then
+  if $IS_DEV_ENV ; then
     export MAX_EXECUTION_TIME=600
   fi
 
@@ -1014,9 +1059,10 @@ php_setup() {
                           php7.1         php7.1-cli      php7.1-xml  \
                           php-pear       php7.1-dev      php7.1-gd   \
                           php7.1-pgsql   php7.1-curl     php7.1-intl \
-                          php7.1-mcrypt  php7.1-mbstring php7.1-soap || die
+                          php7.1-mcrypt  php7.1-mbstring php7.1-soap \
+                          php-zip      || die
 
-  if [ ${RUNTIMEENV} = 'vagrant' ]; then
+  if $IS_DEV_ENV ; then
     sudo apt-get --quiet -y install php-xdebug || die
     safecp ${WORKDIR}/templates/php/mods/xdebug.ini /etc/php/7.1/mods-available || die
   fi
@@ -1026,11 +1072,8 @@ php_setup() {
 
   ESCAPED_TIMEZONE=$(echo ${TZ} | sed -e 's/[]\/$*.^|[]/\\&/g')
   safecp ${WORKDIR}/templates/php/fpm/php.ini /etc/php/7.1/fpm
-  sudo sed -i -e "s/{TZ}/${ESCAPED_TIMEZONE}/g" \
-              -e "s/{MAX_EXECUTION_TIME}/${MAX_EXECUTION_TIME}/g" /etc/php/7.1/fpm/php.ini
-
   safecp ${WORKDIR}/templates/php/cli/php.ini /etc/php/7.1/cli
-  sudo sed -i "s/{TZ}/${ESCAPED_TIMEZONE}/g" /etc/php/7.1/cli/php.ini
+  replace_params --no-backup /etc/php/7.1/fpm/php.ini /etc/php/7.1/cli/php.ini
 
   # Composer
   php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -1039,8 +1082,15 @@ php_setup() {
   php -r "unlink('composer-setup.php');"                || die
   sudo mv composer.phar /usr/local/bin/composer         || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
-  safecp ${WORKDIR}/templates/php/composer/config-${RUNTIMEENV}.json /home/${DEPLOYER_NAME}/.composer/config.json
-  sudo sed -i "s/{GITHUB_TOKEN}/${GITHUB_TOKEN}/g" /home/${DEPLOYER_NAME}/.composer/config.json
+
+  # TODO: are these 2 files supposed to be identical?
+  if $IS_DEV_ENV ; then
+    safecp ${WORKDIR}/templates/php/composer/config-vagrant.json /home/${DEPLOYER_NAME}/.composer/config.json
+  else
+    safecp ${WORKDIR}/templates/php/composer/config-server.json /home/${DEPLOYER_NAME}/.composer/config.json
+  fi
+
+  replace_params --no-backup /home/${DEPLOYER_NAME}/.composer/config.json
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
 
   # PHPUnit (v6.x)

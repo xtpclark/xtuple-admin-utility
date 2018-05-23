@@ -14,10 +14,11 @@ export DEBIAN_FRONTEND=noninteractive
 WORKDIR=$(pwd)
 DEPLOYER_NAME=$(whoami)
 LOG_FILE=$(pwd)/install-$DATE.log
-ISDEVELOPMENTENV=${ISDEVELOPMENTENV:-false}
+IS_DEV_ENV=${IS_DEV_ENV:-false}
 XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
 DATABASEDIR=${WORKDIR}/databases
 BACKUPDIR=${WORKDIR}/backups
+DBTYPE=${DBTYPE:-empty}
 
 export PGVER=${PGVER:-9.6}
 export PGHOST=${PGHOST:-localhost}
@@ -29,8 +30,8 @@ export PGNAME=
 export PGPORT=
 
 export NGINX_SITE=
-export NGINX_DOMAIN=
-export NGINX_HOSTNAME=
+export NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
+export NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 export NGINX_PORT=${NGINX_PORT:-8443}
 export NGINX_CERT=
 export NGINX_KEY=
@@ -55,16 +56,6 @@ DIALOG_HELP=2
 DIALOG_EXTRA=3
 DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
-
-# server | vagrant
-if [ -z "${RUNTIMEENV}" ] ; then
-  if [ -e /vagrant/Vagrantfile ] ; then
-    RUNTIMEENV=vagrant
-  else
-    RUNTIMEENV=server
-  fi
-fi
-export RUNTIMEENV
 
 [ -z "$TZ" -a -e ${WORKDIR}/.timezone ] && source ${WORKDIR}/.timezone
 if [ -z "${TZ}" ] ; then

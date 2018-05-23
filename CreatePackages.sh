@@ -75,7 +75,7 @@ mwc_createinit_static_mwc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
   # create the upstart scripts
-  cat <<-EOF > ${BUILD_CONFIG_INIT}/xtuple-${MWCNAME}.conf
+  cat <<-EOF > ${BUILD_CONFIG_INIT}/xtuple-${ERP_DATABASE_NAME}.conf
 	description "xTuple Node Server"
 	start on filesystem or runlevel [2345]
 	stop on runlevel [!2345]
@@ -91,7 +91,7 @@ EOF
 mwc_createsystemd_static_mwc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-  cat <<-EOF > ${BUILD_CONFIG_SYSTEMD}/xtuple-${MWCNAME}.service
+  cat <<-EOF > ${BUILD_CONFIG_SYSTEMD}/xtuple-${ERP_DATABASE_NAME}.service
 
 	[Unit]
 	Description=xTuple ERP NodeJS Server
@@ -108,7 +108,7 @@ mwc_createsystemd_static_mwc() {
 	Group=xtuple
 	Environment=NODE_ENV=production
 	ExecStop=/bin/kill -9 \$MAINPID
-	SyslogIdentifier=xtuple-$MWCNAME
+	SyslogIdentifier=xtuple-${ERP_DATABASE_NAME}
 	ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource/main.js -c $CONFIGDIR/config.js
 
 EOF
@@ -173,11 +173,15 @@ xtc_build_static_xtuplecommerce() {
 
   CDDREPOURL=http://satis.codedrivendrupal.com
   GITXDDIR=xtuple/xdruple-drupal
-  XDENV=dev
+  local PROJ_STABILITY
 
-  echo "Running: composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}"
+  if $IS_DEV_ENV ; then
+    PROJ_STABILITY=dev
+  else
+    PROJ_STABILITY=stable
+  fi
 
-  composer create-project --stability ${XDENV} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}
+  log_exec composer create-project --stability ${PROJ_STABILITY} --no-interaction --repository-url=${CDDREPOURL} ${GITXDDIR} ${BUILD_XTC_ROOT}
   RET=$?
   [ $? -eq 0 ] || die "composer create-project returned $RET"
 

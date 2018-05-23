@@ -197,7 +197,7 @@ install_webclient() {
 
   turn_on_plv8
   log_exec scripts/build_app.js -c $CONFIGDIR/config.js  || die
-  service_start xtuple-$MWCNAME
+  service_start xtuple-$ERP_DATABASE_NAME                || die
 
   IP="$(hostname -I)"
   msgbox "You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"

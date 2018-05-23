@@ -156,7 +156,7 @@ menu_title() {
 install_prereqs() {
   case "$DISTRO" in
     "ubuntu")
-      if $ISDEVELOPMENTENV ; then
+      if $IS_DEV_ENV ; then
         install_dev_prereqs
       fi
       install_pg_repo
@@ -174,7 +174,7 @@ install_prereqs() {
         die "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
       fi
 
-      if $ISDEVELOPMENTENV ; then
+      if $IS_DEV_ENV ; then
         sudo apt-get --quiet -y install g++ gcc make vim zsh
       fi
 
@@ -240,10 +240,10 @@ test_connection() {
 }
 
 setup_sudo() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
+# echo "In: ${BASH_SOURCE} ${FUNCNAME[@]}"
 
   if [[ ! -f "/etc/sudoers.d/${DEPLOYER_NAME}" ]] || ! grep -q "${DEPLOYER_NAME}" /etc/sudoers.d/${DEPLOYER_NAME}; then
-    printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" | sudo tee -a /etc/sudoers.d/${DEPLOYER_NAME}
+    printf "${DEPLOYER_NAME} ALL=(ALL) NOPASSWD: ALL\n" | sudo tee -a /etc/sudoers.d/${DEPLOYER_NAME} >/dev/null
     sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
   else
     echo "User: $DEPLOYER_NAME already setup in sudoers.d"

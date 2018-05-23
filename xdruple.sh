@@ -106,11 +106,12 @@ drupal_crontab() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   local TMPFILE="${TMPDIR}/crontab.$$"
-  local WEBROOT="${1:-/var/www}"
-  local LOGDIR="${2:-/var/log/xtuple}"
+  WEBROOT="${1:-/var/www}"
+  LOGDIR="${2:-/var/log/xtuple}"
 
   sudo mkdir --parents ${LOGDIR}/cron
-  if ! sed -e "s#WEBROOT#${WEBROOT}#g" -e "s#LOGDIR#${LOGDIR}#g" templates/druple.crontab > ${TMPFILE} ; then
+  cp templates/druple.crontab ${TMPFILE}
+  if ! replace_params --no-backup ${TMPFILE} ; then
     msgbox "Error configuring Drupal crontab. Could not create ${TMPFILE}."
     return 1
   fi
@@ -124,14 +125,13 @@ drupal_crontab() {
 
 get_deployer_info () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  export RUNTIMEENV=${1:-${RUNTIMEENV}}
-  export DEPLOYER_NAME=${2:-${DEPLOYER_NAME}}
-  export DEPLOYER_PASS=${3:-${DEPLOYER_PASS}}
-  export DEPLOYER_SHELL={$4:-${DEPLOYER_SHELL:-/bin/bash}}
+  export DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
+  export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
+  export DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
 
   if [ "$MODE" = "manual" ] ; then
     # TODO: is robbyrussell really necessary?
-    if [ ${RUNTIMEENV} = 'vagrant' ] && ! command -v zsh > /dev/null 2>&1 ; then
+    if $IS_DEV_ENV && ! command -v zsh > /dev/null 2>&1 ; then
       sudo apt-get install --quiet --yes zsh
       sudo su -c 'curl -L https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh | sh'
     fi
@@ -165,10 +165,9 @@ get_deployer_info () {
 
 deployer_setup () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  export RUNTIMEENV=${1:-${RUNTIMEENV}}
-  export DEPLOYER_NAME=${2:-${DEPLOYER_NAME}}
-  export DEPLOYER_PASS=${3:-${DEPLOYER_PASS}}
-  local  DEPLOYER_SHELL={$4:-${DEPLOYER_SHELL:-/bin/bash}}
+  export DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
+  export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
+  local  DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
 
   if ! cut -f1 -d: /etc/passwd | grep --line-regexp --quiet "$DEPLOYER_NAME" ; then
     sudo useradd --base-dir /home --create-home \
@@ -183,22 +182,22 @@ deployer_setup () {
   sudo ssh-keyscan -H github.com    >> $HOME/.ssh/known_hosts
   sudo ssh-keyscan -H bitbucket.org >> $HOME/.ssh/known_hosts
 
-  if [ ${RUNTIMEENV} = 'server' ] && [ -f $HOME/deployer_rsa.pub ] && [ -f $HOME/deployer_rsa ]; then
+  if ! $IS_DEV_ENV && [ -f $HOME/deployer_rsa.pub ] && [ -f $HOME/deployer_rsa ]; then
     back_up_file /home/${DEPLOYER_NAME}/.ssh/authorized_keys
     sudo cat $HOME/deployer_rsa.pub >> /home/${DEPLOYER_NAME}/.ssh/authorized_keys
     safecp $HOME/deployer_rsa     /home/${DEPLOYER_NAME}/.ssh/id_rsa
     safecp $HOME/deployer_rsa.pub /home/${DEPLOYER_NAME}/.ssh/id_rsa.pub
     rm -f $HOME/deployer_rsa $HOME/deployer_rsa.pub
 
-  elif [ ${RUNTIMEENV} = 'vagrant' ] && [[ "$DEPLOYER_SHELL" =~ zsh ]] ; then
+  elif $IS_DEV_ENV && [[ "$DEPLOYER_SHELL" =~ zsh ]] ; then
     safecp ${WORKDIR}/templates/zsh/zshrc.sh /home/${DEPLOYER_NAME}/.zshrc
-    sed -i "s/{DEPLOYER_NAME}/${DEPLOYER_NAME}/g" /home/${DEPLOYER_NAME}/.zshrc
+    replace_params --no-backup /home/${DEPLOYER_NAME}/.zshrc
   fi
 
   sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.ssh
 
-  if [ ${RUNTIMEENV} = 'server' ] && ! sudo grep --quiet --no-messages www-data /etc/sudoers.d/${DEPLOYER_NAME} ; then
-    sudo printf "%%${DEPLOYER_NAME} ALL=(www-data) NOPASSWD: ALL\n" > /etc/sudoers.d/${DEPLOYER_NAME}
+  if ! $IS_DEV_ENV && ! sudo grep --quiet --no-messages www-data /etc/sudoers.d/${DEPLOYER_NAME} ; then
+    echo "%${DEPLOYER_NAME} ALL=(www-data) NOPASSWD: ALL" | sudo tee -a /etc/sudoers.d/${DEPLOYER_NAME} > /dev/null
     sudo chmod 440 /etc/sudoers.d/${DEPLOYER_NAME}
   fi
 }
@@ -238,6 +237,7 @@ EOF
 
 xtc_pg_setup () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  local RET=0
 
   psql --username=postgres <<-EOF
       CREATE USER ${DEPLOYER_NAME} PASSWORD '${DEPLOYER_PASS}';
@@ -250,21 +250,21 @@ xtc_pg_setup () {
       CREATE DATABASE production  WITH OWNER production;
 EOF
 
-  if [ "${RUNTIMEENV}" = 'server' ] ; then
-    log_exec sudo --username postgres cat <<-EOF >> $POSTDIR/pg_hba.conf
-      host         postgres       postgres       127.0.0.1/32              trust
-      host         development    development    127.0.0.1/32              trust
-      host         stage          stage          127.0.0.1/32              trust
-      host         production     production     127.0.0.1/32              trust
-      host         $DEPLOYER_NAME $DEPLOYER_NAME 127.0.0.1/32              trust
-EOF
-    RET=$?
-  elif [ "${RUNTIMEENV}" = "vagrant" ] ; then
+  if $IS_DEV_ENV ; then
     log_exec sudo bash -c "echo 'host         all            all            127.0.0.1/32              trust' >> $POSTDIR/pg_hba.conf"
+    RET=$?
+  else
+    cat <<-EOF | sudo -u postgres tee -a $POSTDIR/pg_hba.conf > /dev/null
+	host         postgres       postgres       127.0.0.1/32              trust
+	host         development    development    127.0.0.1/32              trust
+	host         stage          stage          127.0.0.1/32              trust
+	host         production     production     127.0.0.1/32              trust
+	host         $DEPLOYER_NAME $DEPLOYER_NAME 127.0.0.1/32              trust
+EOF
     RET=$?
   fi
   if [ $RET -ne 0 ] ; then
-    die "Opening pg_hba.conf for xTupleCommerce failed. Check log file and try again. "
+    die "Opening $POSTDIR/pg_hba.conf for xTupleCommerce failed. Check log file and try again."
   fi
   sudo chown postgres $POSTDIR/pg_hba.conf
 

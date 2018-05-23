@@ -23,43 +23,48 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
     a)
       INSTALLALL=true
       ;;
+    D)
+      NGINX_DOMAIN=$OPTARG
+      log "NGINX domain set to $NGINX_DOMAIN via $opt"
+      ;;
     d)
       DATABASE=$OPTARG
-      log "Database name set to $DATABASE via command line argument -d"
-      ;;
-    m)
-      MODE="auto"
-      ;;
-    p)
-      PGVER=$OPTARG
-      log "PostgreSQL Version set to $PGVER via command line argument -p"
+      log "Database name set to $DATABASE via $opt"
       ;;
     H)
       NGINX_HOSTNAME=$OPTARG
-      log "NGINX hostname set to $NGINX_HOSTNAME via command line argument -H"
+      log "NGINX hostname set to $NGINX_HOSTNAME via $opt"
       ;;
-    D)
-      NGINX_DOMAIN=$OPTARG
-      log "NGINX domain set to $NGINX_DOMAIN via command line argument -D"
+    m)
+      MODE="auto"
+      log "MODEX set to $MODE via $opt"
+      ;;
+    n)
+      MWCNAME=$OPTARG
+      log "Instance name set to $MWCNAME via $opt"
+      ;;
+    p)
+      PGVER=$OPTARG
+      log "PostgreSQL version set to $PGVER via $opt"
       ;;
     q)
       BUILDQT=true
-      log "Building and installing Qt at the behest of -q"
+      log "Building and installing Qt at the behest of $opt"
+      ;;
+    t)
+      # type of database to install (demo/quickstart/empty)
+      DBTYPE=$OPTARG
+      log "xTuple database type set to $DBTYPE via $opt"
       ;;
     x)
       # Use a specific version of xTuple (applies to web client and db)
       DBVERSION=$OPTARG
       DATABASE=${DBTYPE}${DBVERSION//./}
-      log "xTuple version set to $DBVERSION via command line argument -x"
-      ;;
-    t)
-      # type of database to install (demo/quickstart/empty)
-      DBTYPE=$OPTARG
-      log "xTuple database type set to $DBTYPE via command line argument -x"
+      log "xTuple version set to $DBVERSION ($DATABASE) via $opt"
       ;;
     h) cat <<-EOUsage
 	Usage: $PROG [OPTION]
-	$( menu_title )
+
 	To get an interactive menu run $PROG with no arguments
 
 	  -h	Show this message
@@ -68,14 +73,15 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
                   demo database $(latest_version db)
                   web API $(latest_version db)
                   xTupleCommerce
-	  -d	Specify database name to create
-	  -p	Override PostgreSQL version
+	  -D	Set NGINX domain [ ${NGINX_DOMAIN:-?} ]
+	  -d	Specify database name to create [ ${DATABASE:-?} ]
+	  -H	Set NGINX hostname [ ${NGINX_HOSTNAME:-?} ]
+	  -m	set mode to "auto" [ manual/interactive ]
+	  -n	Override instance name [ ${MWCNAME:-?} ]
+	  -p	Override PostgreSQL version [ ${PGVER:-?} ]
 	  -q	Build and Install Qt $(latest_version qt_sdk)
-	  -n	Override instance name
-	  -H	Set NGINX hostname
-	  -D	Set NGINX domain
-	  -x	Override xTuple version (web API and database)
-	  -t	Specify the type of database to grab (demo/quickstart/empty)
+	  -t	Specify the type of database to grab (demo/quickstart/empty) [ ${DBTYPE:-?} ]
+	  -x	Specify an xTuple version (web API and database) [ ${DBVERSION:-latest} ]
 EOUsage
       exit 0
       ;;
@@ -158,7 +164,6 @@ else
   log "Remove the file if you want apt-get to update the system"
 fi
 
-# if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
   log "Executing full provision..."
   MODE="auto"

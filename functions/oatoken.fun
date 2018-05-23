@@ -5,56 +5,19 @@
 if [ -z "$OATOKEN_FUN" ] ; then # {
 OATOKEN_FUN=true
 
-# copied from xdruple-server/scripts/host/keygen.sh
-# then added edit of .ssh/config
-generate_xdruple_keypairs() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-  ECOMM_ADMIN_EMAIL=${1:-${ECOMM_ADMIN_EMAIL}}
-  ERP_SITE_URL=${2:-${ERP_SITE_URL}}
-  local SHORTHAND=${3:-${NGINX_ECOM_DOMAIN}}
-  ROOT_CERT_PASSWD=${4:-${ROOT_CERT_PASSWD}}
-  DEPLOY_CERT_PASSWD=${5:-${DEPLOY_CERT_PASSWD}}
-
-  local STARTDIR=$(pwd)
-  local SSHSUBDIR="$HOME/.ssh/${ERP_SITE_URL}"
-
-  mkdir --parents ${SSHSUBDIR}
-  back_up_file "${SSHSUBDIR}/${SHORTHAND}_root_rsa"
-  back_up_file "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
-  rm -f "${SSHSUBDIR}/${SHORTHAND}_root_rsa" "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
-
-  log_exec ssh-keygen -q -b 4096 -t rsa -N "${ROOT_CERT_PASSWD}"   -C "${ECOMM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_root_rsa"
-  log_exec ssh-keygen -q -b 4096 -t rsa -N "${DEPLOY_CERT_PASSWD}" -C "${ECOMM_ADMIN_EMAIL}" -f "${SSHSUBDIR}/${SHORTHAND}_deployer_rsa"
-
-  if $XTC_HOST_IS_REMOTE ; then
-    back_up_file ${SSHSUBDIR}/../config
-    cat >> ${SSHSUBDIR}/../config <<-EOF
-          Host $ERP_SITE_URL
-            User root
-            IdentifyFile ~/.ssh/$ERP_SITE_URL/${SHORTHAND}_root_rsa
-
-          Host $ERP_SITE_URL
-            User ${DEPLOYER_NAME:-deployer}
-            IdentifyFile ~/.ssh/$ERP_SITE_URL/${SHORTHAND}_deployer_rsa
-	EOF
-  fi
-  echo "Out: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-}
-
 # TODO: find commonalities with encryption_setup()
 # TODO: how much of this is important?
 generate_p12() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  NGINX_ECOM_DOMAIN=${NGINX_ECOM_DOMAIN:-'xTupleCommerce'}
   ECOMM_ADMIN_EMAIL=${ECOMM_ADMIN_EMAIL:-"admin@xtuple.xd"}
   ERP_SITE_URL=${ERP_SITE_URL:-'xtuple.xd'}
+  NGINX_ECOM_DOMAIN=${NGINX_ECOM_DOMAIN:-xTupleCommerce}
   KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
   KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp_${WORKDATE}}
 
   export NGINX_ECOM_DOMAIN_P12=${NGINX_ECOM_DOMAIN}.p12
 
-  local SSHSUBDIR="$HOME/.ssh/${NGINX_ECOM_DOMAIN}"
   ROOT_CERT_PASSWD=${ROOT_CERT_PASSWD:-"pass:notasecret"}
 
   mkdir --parents ${KEY_P12_PATH} ${KEYTMP}

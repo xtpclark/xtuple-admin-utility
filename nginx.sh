@@ -47,8 +47,9 @@ install_nginx() {
   RET=$?
   if [ $RET -ne 0 ] ; then
     msgbox "Nginx failed to install:\n$OUTPUT"
+    return $RET
   fi
-  return $RET
+  sudo rm -rf /var/www/html
 }
 
 # Confirm or set all nginx related variables interactively
@@ -149,7 +150,7 @@ configure_nginx() {
 
   log "Creating nginx site file"
 
-  if [ ${RUNTIMEENV} = 'vagrant' ] ; then
+  if $IS_DEV_ENV ; then
     safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
     sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
                                /etc/nginx/sites-enabled
@@ -161,7 +162,7 @@ configure_nginx() {
   safecp ${WORKDIR}/templates/nginx/fastcgi_params /etc/nginx
   safecp ${WORKDIR}/templates/nginx/sites-available/default.conf /etc/nginx/sites-available/default.http.conf
 
-  sudo cp --recursive ${WORKDIR}/templates/nginx/apps /etc/nginx/
+  sudo cp --recursive ${WORKDIR}/templates/nginx/apps     /etc/nginx/
   sudo cp --recursive ${WORKDIR}/templates/nginx/conf.d/* /etc/nginx/conf.d/
 
   if egrep --quiet --no-messages "^[[:blank:]]*keepalive_timeout" /etc/nginx/nginx.conf ; then
@@ -228,18 +229,10 @@ configure_nginx() {
 
   for CONF_FILE in $(sudo egrep --recursive --files-with-matches "{.*}" /etc/nginx | \
                      egrep --invert-match '[0-9]$') ; do
-  #TODO: HOSTNAME and MWCPORT don't appear in the templates
-    sudo sed -i -e "s#{DOMAIN_NAME}#${NGINX_DOMAIN}#"   \
-                -e "s#{DOMAIN_ALIAS}#${DOMAIN_ALIAS}#g" \
-                -e "s#{ENVIRONMENT}#${ENVIRONMENT}#g"   \
-                -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"      \
-                -e "s#{SERVER_CRT}#${NGINX_CERT}#g"     \
-                -e "s#{SERVER_KEY}#${NGINX_KEY}#g"      \
-                -e "s#{MWCPORT}#$NGINX_PORT#g"          \
-                $CONF_FILE
+    replace_params $CONF_FILE
     RET=$?
     if [ $RET -ne 0 ]; then
-      msgbox "Error configuring nginx. Check /etc/nginx/sites-available/$NGINX_SITE and $CONF_FILE"
+      msgbox "Error configuring nginx. Check $CONF_FILE."
       return $RET
     fi
   done

@@ -74,42 +74,6 @@ password_menu() {
 }
 
 # $1 is pg version (9.3, 9.4, etc)
-install_postgresql() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  PGVER="${1:-$PGVER}"
-
-  sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main"
-  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-  sudo apt-get --quiet -y update
-  log_exec sudo apt-get --quiet -y install postgresql-common
-
-  # Let's not install the main cluster by default just to drop it...
-  sudo sed -i -e s/'#create_main_cluster = true'/'create_main_cluster = false'/g /etc/postgresql-common/createcluster.conf
-
-  log_exec sudo apt-get --quiet -y install postgresql-$PGVER postgresql-client-$PGVER postgresql-contrib-$PGVER postgresql-server-dev-$PGVER
-  RET=$?
-  if [ $RET -eq 0 ]; then
-    export PGUSER=postgres
-    export PGHOST=localhost
-    export PGPORT=5432
-  fi
-
-  install_plv8
-}
-
-install_plv8() {
-  local STARTDIR=$(pwd)
-  cd "${WORKDIR}"
-  wget http://updates.xtuple.com/updates/plv8/linux64/xtuple_plv8.tgz
-  tar xf xtuple_plv8.tgz
-  cd xtuple_plv8
-  log_exec echo '' | sudo ./install_plv8.sh || die
-  cd "${WORKDIR}"
-  rm -f xtuple_plv8.tgz
-  cd "${STARTDIR}"
-}
-
-# $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"

@@ -125,8 +125,9 @@ build_xtuple() {
 }
 
 build_xtc_dev_env() {
-  if [ ${RUNTIMEENV} = 'vagrant' ] ; then
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
+  if $IS_DEV_ENV ; then
     dialog --ok-label "Submit"                           \
            --backtitle "$(window_title)"                 \
            --title "PostgreSQL Passwords"                \
@@ -146,7 +147,6 @@ build_xtc_dev_env() {
         return 1
         ;;
     esac
-
   fi
 }
 
