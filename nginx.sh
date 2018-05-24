@@ -150,13 +150,7 @@ configure_nginx() {
 
   log "Creating nginx site file"
 
-  if $IS_DEV_ENV ; then
-    safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
-    sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
-                               /etc/nginx/sites-enabled
-  else
-    safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/sites-available/$NGINX_SITE
-  fi
+  safecp ${WORKDIR}/templates/nginx/nginx-site /etc/nginx/nginx.conf
 
   safecp ${WORKDIR}/templates/nginx/mime.types     /etc/nginx
   safecp ${WORKDIR}/templates/nginx/fastcgi_params /etc/nginx
@@ -174,6 +168,11 @@ configure_nginx() {
   sudo ln --symbolic --force /etc/nginx/sites-available/$NGINX_SITE \
                              /etc/nginx/sites-available/default.http.conf \
                              /etc/nginx/sites-enabled
+  if $IS_DEV_ENV ; then
+    safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
+    sudo ln --symbolic --force /etc/nginx/sites-available/xdruple.conf \
+                               /etc/nginx/sites-enabled
+  fi
 
   export SSL=""
   if [ -f $HOME/${NGINX_DOMAIN}.crt ] && [ -f $HOME/${NGINX_DOMAIN}.key ] ; then
