@@ -76,22 +76,20 @@ generate_github_token() {
   local OAMSG RET
   local OUTPUT=GITHUB_TOKEN_${WORKDATE}.log
 
-  if [ -z "${GITHUBNAME}" -o -z "${GITHUBPASS}" ] ; then
-    dialog --ok-label  "Submit"                                 \
-           --backtitle "$(window_title)"                        \
-           --title     "Generate GitHub Personal Access Token"  \
-           --form      "GitHub Credentials" 0 0 3               \
-           "GitHub Username:" 1 1 "" 1 20 50 0                  \
-           "GitHub Password:" 2 1 "" 2 20 50 0                  \
-           3>&1 1>&2 2> github.ini
-    RET=$?
-    if [ $RET -ne $DIALOG_OK ] ; then
-      return 1
-    fi
-    read -d "\n" GITHUBNAME GITHUBPASS <<<$(cat github.ini)
-    export       GITHUBNAME GITHUBPASS
-    rm -f github.ini
+  dialog --ok-label  "Submit"                                 \
+         --backtitle "$(window_title)"                        \
+         --title     "Generate GitHub Personal Access Token"  \
+         --form      "GitHub Credentials" 0 0 3               \
+         "GitHub Username:" 1 1 "$GITHUBNAME" 1 20 50 0       \
+         "GitHub Password:" 2 1 "${GITHUB_TOKEN:-${GITHUBPASS}}" 2 20 50 0     \
+         3>&1 1>&2 2> github.ini
+  RET=$?
+  if [ $RET -ne $DIALOG_OK ] ; then
+    return 1
   fi
+  read -d "\n" GITHUBNAME GITHUBPASS <<<$(cat github.ini)
+  export       GITHUBNAME GITHUBPASS
+  rm -f github.ini
 
   log "Generating your Github token."
   curl https://api.github.com/authorizations --user ${GITHUBNAME}:${GITHUBPASS} \

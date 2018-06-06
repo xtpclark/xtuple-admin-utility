@@ -91,8 +91,8 @@ nginx_prompt() {
   dialog --ok-label    "Submit"                 \
          --backtitle  "$(window_title)"         \
          --form       "nginx SSL details" 0 0 7 \
-         "Certificate file path" 1 1 "/etc/xtuple/ssl/$NGINX_SITE.crt" 1 25 50 0    \
-         "Key file path"         2 1 "/etc/xtuple/ssl/$NGINX_SITE.key" 2 25 50 0    \
+         "Certificate file path" 1 1 "/etc/nginx/certs/$NGINX_SITE.crt"   1 25 50 0    \
+         "Key file path"         2 1 "/etc/nginx/private/$NGINX_SITE.key" 2 25 50 0    \
            3>&1 1>&2 2> nginxssl.ini
   RET=$?
   case $RET in
@@ -165,8 +165,7 @@ configure_nginx() {
   fi
 
   log "Enabling nginx site"
-  sudo ln --symbolic --force /etc/nginx/sites-available/$NGINX_SITE \
-                             /etc/nginx/sites-available/default.http.conf \
+  sudo ln --symbolic --force /etc/nginx/sites-available/default.http.conf \
                              /etc/nginx/sites-enabled
   if $IS_DEV_ENV ; then
     safecp ${WORKDIR}/templates/nginx/sites-available/xdruple.conf /etc/nginx/sites-available/$NGINX_SITE
@@ -174,16 +173,14 @@ configure_nginx() {
                                /etc/nginx/sites-enabled
   fi
 
+  sudo mkdir --parents /etc/nginx/private /etc/nginx/certs
   export SSL=""
   if [ -f $HOME/${NGINX_DOMAIN}.crt ] && [ -f $HOME/${NGINX_DOMAIN}.key ] ; then
     export SSL="ssl"
-    sudo mkdir --parents /etc/nginx/private /etc/nginx/certs
     sudo mv $HOME/${NGINX_DOMAIN}.key /etc/nginx/private/ || die
     sudo mv $HOME/${NGINX_DOMAIN}.crt /etc/nginx/certs/   || die
 
   else
-    sudo mkdir --parents /etc/xtuple/ssl
-
     # LetsEncrypt will go around here
     log "Generating certificate"
     sudo openssl req -x509 -newkey rsa:4096 \
@@ -197,15 +194,14 @@ configure_nginx() {
   fi
 
   for ENVIRONMENT in dev stage live ; do
-    safecp ${WORKDIR}/templates/nginx/sites-available/stage.conf \
-              /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
+    CONFFILE=/etc/nginx/sites-available/${ENVIRONMENT}.http.conf
+    safecp ${WORKDIR}/templates/nginx/sites-available/stage.conf $CONFFILE && \
+      replace_params --no-backup $CONFFILE
     if [ $RET -ne 0 ]; then
-      msgbox "Error configuring nginx. Check ${ENVIRNOMENT}.http.conf in /etc/nginx/sites-available"
+      msgbox "Error configuring nginx. Check $CONFFILE."
       return $RET
     fi
-    sudo ln --symbolic --force /etc/nginx/sites-available/${ENVIRONMENT}.http.conf \
-                               /etc/nginx/sites-enabled
-
+    sudo ln --symbolic --force $CONFFILE /etc/nginx/sites-enabled
     sudo mkdir --parents ${NGINX_LOG}/${ENVIRONMENT} ${WEBROOT}/${ENVIRONMENT}
 
     # TODO: why is it important to make this live/other distinction here?
@@ -216,23 +212,14 @@ configure_nginx() {
         S=
       fi
       safecp ${WORKDIR}/templates/nginx/sites-available/http${S}.conf \
-             /etc/nginx/sites-available
+             /etc/nginx/sites-available &&
+        replace_params --no-backup /etc/nginx/sites-available/http${S}.conf
       if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx. Check /etc/nginx/sites-available/http${S}.conf"
         return $RET
       fi
       sudo ln --symbolic --force /etc/nginx/sites-available/http${S}.conf \
                                  /etc/nginx/sites-enabled
-    fi
-  done
-
-  for CONF_FILE in $(sudo egrep --recursive --files-with-matches "{.*}" /etc/nginx | \
-                     egrep --invert-match '[0-9]$') ; do
-    replace_params $CONF_FILE
-    RET=$?
-    if [ $RET -ne 0 ]; then
-      msgbox "Error configuring nginx. Check $CONF_FILE."
-      return $RET
     fi
   done
 

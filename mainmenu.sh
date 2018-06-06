@@ -39,7 +39,9 @@ main_menu() {
         "2") postgresql_menu ;;
         "3") database_menu   ;;
         "4") conman_menu     ;;
-        "5") generate_github_token;;
+        "5") get_github_token
+             generate_github_token
+             ;;
         "6") source ${WORKDIR:-.}/CreatePackages.sh try_deploy_xtau;;
         "7") drupal_menu     ;;
         "8") dev_menu        ;;

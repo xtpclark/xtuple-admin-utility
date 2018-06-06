@@ -172,7 +172,7 @@ if [ $INSTALLALL ]; then
   DBVERSION="${DBVERSION:-4.11.3}"
   EDITION="${EDITION:-demo}"
   DATABASE="${DATABASE:-xtuple}"
-  MWCNAME="${MWCNAME:-web}"
+  MWCNAME="${MWCNAME:-xtuple}"
   PGPORT=${PGPORT:-5432}
   PGUSER=${PGUSER:-postgres}
 

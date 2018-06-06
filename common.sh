@@ -12,12 +12,7 @@ log_exec() {
 }
 
 log() {
-  echo "$( timestamp ) xtuple >> $@"
-  echo "$( timestamp ) xtuple >> $@" >> $LOG_FILE
-}
-
-timestamp() {
-  date +"%T"
+  echo "$( date +"%T" ) xtuple >> $@" | tee -a $LOG_FILE
 }
 
 LOG_FILE=$(pwd)/install-$DATE.log
