@@ -53,13 +53,13 @@ generateoasql() {
   cat << EOF > ${WORKDIR}/sql/oa2client.sql
     DELETE FROM xt.oa2client
      WHERE oa2client_client_x509_pub_cert = '${OAPUBKEY}'
-        OR oa2client_client_id = 'xTupleCommerceID';
+        OR oa2client_client_id = '${ERP_ISS}';
     INSERT INTO xt.oa2client (
       oa2client_client_id, oa2client_client_secret, oa2client_client_name,
       oa2client_client_email, oa2client_client_web_site, oa2client_client_type,
       oa2client_active, oa2client_issued, oa2client_delegated_access,
       oa2client_client_x509_pub_cert, oa2client_org
-    ) SELECT 'xTupleCommerceID', xt.uuid_generate_v4(), '${NGINX_ECOM_DOMAIN}',
+    ) SELECT '${ERP_ISS}', xt.uuid_generate_v4(), '${NGINX_ECOM_DOMAIN}',
            '${ECOMM_ADMIN_EMAIL}', '${ERP_SITE_URL}', 'jwt bearer',
            TRUE, now(), TRUE,
            '${OAPUBKEY}', current_database();

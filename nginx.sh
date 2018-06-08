@@ -228,7 +228,7 @@ configure_nginx() {
   sudo apt-get --quiet -y install apache2-utils
 
   if [ -z "${HTTP_AUTH_NAME}" -o -z "${HTTP_AUTH_PASS}" ] ; then
-    get_environment
+    get_xtc_environment
   fi
   sudo htpasswd -b -c /var/www/.htpasswd ${HTTP_AUTH_NAME} ${HTTP_AUTH_PASS}
 

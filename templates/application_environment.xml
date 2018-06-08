@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<environment type               = "{WORKFLOW_ENV}"
+             xmlns              = "https://xdruple.xtuple.com/schema/environment"
+             xmlns:xsi          = "http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation = "https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
+  <xtuple host        = "{ERP_HOST}"
+          database    = "{ERP_DATABASE}"
+          iss         = "{ERP_ISS}"
+          key         = "{ERP_KEY_FILE_PATH}"
+          application = "{ERP_APPLICATION}"
+          debug       = "{ERP_DEBUG}"/>
+</environment>

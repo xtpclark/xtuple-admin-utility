@@ -83,7 +83,7 @@ mwc_createinit_static_mwc() {
 	respawn
 	#setuid xtuple
 	#setgid xtuple
-	chdir /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource
+	chdir /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple/node-datasource
 	exec ./main.js -c $CONFIGDIR/config.js > /var/log/node-datasource-$BUILD_XT_TAG-$MWCNAME.log 2>&1
 EOF
 }
@@ -109,7 +109,7 @@ mwc_createsystemd_static_mwc() {
 	Environment=NODE_ENV=production
 	ExecStop=/bin/kill -9 \$MAINPID
 	SyslogIdentifier=xtuple-${ERP_DATABASE_NAME}
-	ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$MWCNAME/xtuple/node-datasource/main.js -c $CONFIGDIR/config.js
+	ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple/node-datasource/main.js -c $CONFIGDIR/config.js
 
 EOF
 
@@ -259,56 +259,15 @@ xtc_build_xtuplecommerce_envphp() {
   echo "See loadcrm_gitconfig() and checkcrm_gitconfig()"
   echo "Values are from ${HOME}/.gitconfig"
 
-  cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.xml || die
-<?xml version="1.0" encoding="UTF-8" ?>
-<environment type="${ENVIRONMENT}"
-             xmlns="https://xdruple.xtuple.com/schema/environment"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
-  <xtuple host="${ERP_HOST}"
-          database="${ERP_DATABASE}"
-          iss="${ERP_ISS}"
-          key="${ERP_KEY_FILE_PATH}"
-          application="${ERP_APPLICATION}"
-          debug="${ERP_DEBUG}"/>
-</environment>
-EOF
+  echo "Writing out environment.xml"
+  mkdir --parents ${SITE_WEBROOT}/application/config
+  safecp ${WORKDIR}/templates/application_environment.xml ${BUILD_XTC_CONF_DIR}/environment.xml
+  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.xml
 
-  cat << EOF > ${BUILD_XTC_CONF_DIR}/environment.php || die
-<?php
-
-\$configuration = [
-  'environment' => '${ENVIRONMENT}',
-  'xtuple_rest_api' => [
-    'application' => '${ERP_APPLICATION}',
-    'host' => '${ERP_HOST}',
-    'database' => '${ERP_DATABASE}',
-    'iss' => '${ERP_ISS}',
-    'key' => '${ERP_KEY_FILE_PATH}',
-    'debug' => ${ERP_DEBUG},
-  ],
-  'authorize_net' => [
-    'login' => '${COMMERCE_AUTHNET_AIM_LOGIN}',
-    'tran_key' => '${COMMERCE_AUTHNET_AIM_TRANSACTION_KEY}',
-  ],
-  'ups' => [
-    'accountId' => '${UPS_ACCOUNT_ID}',
-    'accessKey' => '${UPS_ACCESS_KEY}',
-    'userId' => '${UPS_USER_ID}',
-    'password' => '${UPS_PASSWORD}',
-    'pickupSchedule' => '${UPS_PICKUP_SCHEDULE}',
-  ],
-  'fedex' => [
-    'beta' => ${FEDEX_BETA},
-    'key' => '${FEDEX_KEY}',
-    'password' => '${FEDEX_PASSWORD}',
-    'accountNumber' => '${FEDEX_ACCOUNT_NUMBER}',
-    'meterNumber' => '${FEDEX_METER_NUMBER}',
-  ],
-  'xdruple_shipping' => [],
-];
-EOF
-
+  echo "Writing out environment.php"
+  mkdir --parents ${SITE_WEBROOT}/application/config
+  safecp ${WORKDIR}/templates/php/application_environment.php ${BUILD_XTC_CONF_DIR}/environment.php
+  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.php
 }
 
 writeout_config() {
@@ -344,7 +303,7 @@ xtau_deploy_mwc() {
   whiptail --yes-button "Yes" --no-button "No Thanks"  --yesno "Would you like to deploy ${ERP_MWC_TARBALL}?" 10 60
   RET=$?
   if [ $RET -eq 0 ] ; then
-    webclient_setup
+    install_webclient
     sudo systemctl daemon-reload
     service_restart xtuple-${ERP_DATABASE_NAME}
 
@@ -376,7 +335,7 @@ your network. See your Administrator."
     # whiptail returns 255 on ESC => Cancel
     return 255
   else
-    webclient_setup
+    install_webclient
     RET=$?
     return $RET
   fi

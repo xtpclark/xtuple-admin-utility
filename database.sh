@@ -521,10 +521,10 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 inspect_database() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
   local DATABASE=${1:-$DATABASE}
-  local EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
+  local ERP_EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
                        -c "SELECT getEdition() || ' v' || fetchMetricText('ServerVersion');" 2>/dev/null)
-  if [ -z "$EDITION" ] ; then
-    EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
+  if [ -z "$ERP_EDITION" ] ; then
+    ERP_EDITION=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE \
                    -c "SELECT fetchMetricText('Application') || ' v' || fetchMetricText('ServerVersion');" 2>/dev/null)
   fi
 
@@ -534,7 +534,7 @@ inspect_database() {
       SELECT 2,'Pk: '||pkghead_name||' v'||pkghead_version \
       FROM pkghead) as dummy ORDER BY 1;")
 
-  msgbox "Ap: $EDITION\n${VAL}"
+  msgbox "Ap: $ERP_EDITION\n${VAL}"
 
 }
 
@@ -698,7 +698,7 @@ webenable_database() {
     log_exec sudo rm -rf $CONFIGDIR
 
     log "Removing old web-enabling code"
-    log_exec sudo rm -rf /opt/xtuple/$BUILD_XT_TAG/$MWCNAME
+    log_exec sudo rm -rf /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME
 
     log "Deleting systemd service file"
     log_exec sudo rm /etc/systemd/system/xtuple-$ERP_DATABASE_NAME.service
@@ -706,9 +706,9 @@ webenable_database() {
     log "Completely removed previous web-enabling installation"
   fi
 
-  # install or update the mobile client
+  # install or update the web client
   ERP_DATABASE_NAME=$DATABASE
-  install_mwc_menu
+  install_webclient_menu
 
   # display results
   NEWVER=$(psql -At -U ${PGUSER} -p ${PGPORT} -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion') AS application;")

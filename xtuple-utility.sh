@@ -18,7 +18,7 @@ mkdir --parents $BACKUPDIR
 setup_sudo
 
 # process command line arguments (see bash man page for getopts info)
-while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
+while getopts ":aD:d:e:H:hmn:p:qt:x:-:" opt; do
   case $opt in
     a)
       INSTALLALL=true
@@ -30,6 +30,10 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
     d)
       DATABASE=$OPTARG
       log "Database name set to $DATABASE via $opt"
+      ;;
+    e)
+      ERP_EDITION=$OPTARG
+      log "Edition set to $ERP_EDITION via $opt"
       ;;
     H)
       NGINX_HOSTNAME=$OPTARG
@@ -75,6 +79,7 @@ while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
                   xTupleCommerce
 	  -D	Set NGINX domain [ ${NGINX_DOMAIN:-?} ]
 	  -d	Specify database name to create [ ${DATABASE:-?} ]
+	  -e    Specify edition to set up [ ${ERP_EDITION:-?} ]
 	  -H	Set NGINX hostname [ ${NGINX_HOSTNAME:-?} ]
 	  -m	set mode to "auto" [ manual/interactive ]
 	  -n	Override instance name [ ${MWCNAME:-?} ]
@@ -99,6 +104,18 @@ done
 if [ $(uname -m) != "x86_64" ]; then
   die "$PROG only runs on 64bit servers"
 fi
+
+case "$ERP_EDITION" in
+  xwd)   ERP_EDITION=distribution  ; PRIVATEEXT=true;;
+  [Dd]*) ERP_EDITION=distribution  ; PRIVATEEXT=true;;
+  [Ee]*) ERP_EDITION=enterprise    ; PRIVATEEXT=true;;
+  [Mm]*) ERP_EDITION=manufacturing ; PRIVATEEXT=true;;
+  xtmfg) ERP_EDITION=manufacturing ; PRIVATEEXT=true;;
+  [Pp]*) ERP_EDITION=postbooks     ;;
+  *)     log "Cannot interpret $ERP_EDITION as an edition name; using postbooks"
+         ERP_EDITION=postbooks
+         ;;
+esac
 
 log "Starting xTuple Admin Utility..."
 

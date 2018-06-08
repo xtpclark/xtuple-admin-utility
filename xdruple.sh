@@ -208,7 +208,8 @@ postfix_setup () {
   DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
   local SERVER_NAME=${2:-${SERVER_NAME:-$(hostname)}}
 
-  sudo apt-get --quiet --yes install postfix
+  # -qq avoids prompts
+  sudo apt-get --quiet --quiet --yes install postfix
   back_up_file /etc/postfix/main.cf
 
   # TODO: why debconf-set-selections instead of >> /etc/postfix/main.conf
@@ -221,9 +222,6 @@ postfix_setup () {
 	postfix postfix/main_mailer_type  select Internet Site
 	postfix postfix/destinations      string localhost
 EOF
-
-  #TODO: remove if possible; this was called during apt-get install and we updated the config above
-  sudo dpkg-reconfigure --unseen-only postfix
 
   #TODO: why is this separate from debconf_set_selections above?
   sudo sed -i -e "/^myhostname/ a\
@@ -250,19 +248,8 @@ xtc_pg_setup () {
       CREATE DATABASE production  WITH OWNER production;
 EOF
 
-  if $IS_DEV_ENV ; then
-    log_exec sudo bash -c "echo 'host         all            all            127.0.0.1/32              trust' >> $POSTDIR/pg_hba.conf"
-    RET=$?
-  else
-    cat <<-EOF | sudo -u postgres tee -a $POSTDIR/pg_hba.conf > /dev/null
-	host         postgres       postgres       127.0.0.1/32              trust
-	host         development    development    127.0.0.1/32              trust
-	host         stage          stage          127.0.0.1/32              trust
-	host         production     production     127.0.0.1/32              trust
-	host         $DEPLOYER_NAME $DEPLOYER_NAME 127.0.0.1/32              trust
-EOF
-    RET=$?
-  fi
+  log_exec sudo bash -c "echo 'host         all            all            127.0.0.1/32              trust' >> $POSTDIR/pg_hba.conf"
+  RET=$?
   if [ $RET -ne 0 ] ; then
     die "Opening $POSTDIR/pg_hba.conf for xTupleCommerce failed. Check log file and try again."
   fi

@@ -168,8 +168,27 @@ install_webclient() {
 
   local STARTDIR=$(pwd)
 
-  log "Installing n..."
+  # TODO: is this necessary?
+  log_exec sudo mkdir --parents /etc/xtuple/${BUILD_XT_TAG}
+
+  if [[ $ISXTAU ]]; then
+    get_environment
+    psql -At -U postgres -l | grep -q ${ERP_DATABASE_NAME} 2>/dev/null
+    RET=$?
+
+    if [[ $RET == 0 ]]; then
+      echo "Database ${ERP_DATABASE_NAME} already exists, good!"
+    else
+      echo "Creating ${ERP_DATABASE_NAME}!"
+      createdb -U admin -p ${PGPORT} ${ERP_DATABASE_NAME}
+      psql -U admin -p ${PGPORT} ${ERP_DATABASE_NAME} -c "CREATE EXTENSION plv8;"
+    fi
+    export ERP_DATABASE=${ERP_DATABASE_NAME}
+  fi
+
   cd $WORKDIR
+
+  log "Installing n..."
   wget https://raw.githubusercontent.com/visionmedia/n/master/bin/n -qO n
   log_exec chmod +x n                                                  || die
   log_exec sudo mv n /usr/bin/n                                        || die
@@ -178,25 +197,70 @@ install_webclient() {
 
   log_exec sudo npm install -g npm@2.x.x                               || die
 
-  log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/xtuple"
-  log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
-  log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$MWCNAME     || die
-  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple || die
+  if [[ -f ${ERP_MWC_TARBALL} ]]; then
+    ERPTARDIR=$(tar -tzf ${ERP_MWC_TARBALL} | head -1 | cut -f1 -d"/")
 
-  gitco xtuple /opt/xtuple/$BUILD_XT_TAG/$MWCNAME $MWCREFSPEC          || die
-  config_webclient_scripts                                             || die
-  cd $XTDIR
-  npm install bower                                                    || die
+    if [ -z "$(ls -A ${ERPTARDIR})" ]; then
+      echo "${ERPTARDIR} is empty or does not exist\nExtracting ${ERP_MWC_TARBALL}"
+      tar xf ${ERP_MWC_TARBALL}
+      turn_on_plv8
+    else
+      echo "${ERPTARDIR} exists and is not empty"
+    fi
+    if [ -z "$BUILD_XT_TAG" ] ; then
+      BUILD_XT_TAG=$(cd ${ERPTARDIR}/xtuple && git describe --abbrev=0 --tags)
+    fi
+    log_exec sudo cp -R ${ERPTARDIR} /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME
+  else
+    log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple"
+    log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
+    log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME     || die
+    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple || die
+    gitco xtuple /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $MWCREFSPEC          || die
+  fi
+
+  config_webclient_scripts                               || die
+  npm install bower                                      || die
 
   if $PRIVATEEXT ; then
-    log "Installing the commercial extensions"
-    gitco private-extensions /opt/xtuple/$BUILD_XT_TAG/$MWCNAME $MWCREFSPEC $GITHUBNAME $GITHUBPASS
-  else
-    log "Not installing the commercial extensions"
+    gitco private-extensions /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $MWCREFSPEC $GITHUBNAME $GITHUBPASS
   fi
 
   turn_on_plv8
-  log_exec scripts/build_app.js -c $CONFIGDIR/config.js  || die
+  cd /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple || die
+
+  local HAS_XTEXT=$(psql -At -U admin ${ERP_DATABASE_NAME} <<EOF
+    SELECT 1
+      FROM pg_catalog.pg_class JOIN pg_namespace n ON n.oid = relnamespace
+     WHERE nspname = 'xt' AND relname = 'ext';
+EOF
+)
+  cd /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple
+  if [[ $HAS_XTEXT == 1 ]]; then
+    echo "${ERP_DATABASE_NAME} has xt.ext so we can preload things that may not exist.  There may be exceptions to doing this."
+    psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/preload.sql
+  fi
+  log_exec scripts/build_app.js -c ${CONFIGDIR}/config.js 2>&1 | tee buildapp_output.log
+  RET=$?
+  msgbox "$(cat buildapp_output.log)"
+  if [[ $RET -ne 0 ]]; then
+    main_menu
+  fi
+
+  if $PRIVATEEXT ; then
+    case $ERP_EDITION in
+      distribution)  EXT_DIR="inventory distribution"               ;;
+      manufacturing) EXT_DIR="inventory manufacturing"              ;;
+      enterprise)    EXT_DIR="inventory manufacturing distribution" ;;
+      *)             EXT_DIR="inventory"                            ;;
+    esac
+    echo "Installing $EXT_DIR extensions" > buildapp_output.log
+    for DIR in $EXT_DIR ; do
+      scripts/build_app.js -c ${CONFIGDIR}/config.js -e /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/private-extensions/source/$DIR  2>&1 | tee -a buildapp_output.log
+    done
+    msgbox "$(cat buildapp_output.log)"
+  fi
+
   service_start xtuple-$ERP_DATABASE_NAME                || die
 
   IP="$(hostname -I)"

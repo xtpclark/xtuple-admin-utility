@@ -27,6 +27,7 @@ loadadmin_gitconfig() {
   fi
 }
 
+# TODO: alter to work in AUTO mode and use whiptail/dialog
 loadcrm_gitconfig() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
@@ -48,6 +49,7 @@ loadcrm_gitconfig() {
   fi
 }
 
+# TODO: alter to work in AUTO mode and use whiptail/dialog
 checkcrm_gitconfig() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
@@ -75,6 +77,7 @@ checkcrm_gitconfig() {
     fi
   fi
 
+  # TODO: for each variable loop { get config ; if (empty) { set env var ; set config } }
   XDREPOPREFIX=$(git config --get xdruple.xdrepoprefix)
   if [[ -z ${XDREPOPREFIX} ]]; then
     XDREPOPREFIX=xd_

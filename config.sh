@@ -19,6 +19,8 @@ XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
 DATABASEDIR=${WORKDIR}/databases
 BACKUPDIR=${WORKDIR}/backups
 DBTYPE=${DBTYPE:-empty}
+ERP_EDITION=${ERP_EDITION:-postbooks}
+ERP_ISS="${ERP_ISS:-xTupleCommerceID}"
 
 export PGVER=${PGVER:-9.6}
 export PGHOST=${PGHOST:-localhost}

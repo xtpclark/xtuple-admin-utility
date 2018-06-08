@@ -71,33 +71,60 @@ replace_params () {
     --no-backup) MAKE_BACKUP=false ; shift ;;
     --backup)    MAKE_BACKUP=true  ; shift ;;
   esac
+  local ERP_KEY_FILE_PATH=/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}
 
   for FILE in $@ ; do
     if $MAKE_BACKUP ; then
       back_up_file "$FILE"
     fi
     log_exec sudo sed -i \
-                      -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#g"                          \
-                      -e "s#{CONFIGDIR}#$CONFIGDIR#g"                                \
-                      -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#g"                        \
-                      -e "s#{DOMAIN_ALIAS}#${DOMAIN_ALIAS}#g"                        \
-                      -e "s#{DOMAIN_NAME}#${NGINX_DOMAIN}#"                          \
-                      -e "s#{ENVIRONMENT}#${ENVIRONMENT}#g"                          \
-                      -e "s#{ESCAPED_TIMEZONE}#$ESCAPED_TIMEZONE#"                   \
-                      -e "s#{GITHUB_TOKEN}#$GITHUB_TOKEN#g"                          \
-                      -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"                             \
-                      -e "s#LOGDIR#${LOGDIR}#g"                                      \
-                      -e "s#{MAX_EXECUTION_TIME}#$MAX_EXECUTION_TIME#g"              \
-                      -e "s#{MWCNAME}#$MWCNAME#g"                                    \
-                      -e "s#{MWCPORT}#$NGINX_PORT#g"                                 \
-                      -e "s#{SERVER_CRT}#${NGINX_CERT}#g"                            \
-                      -e "s#{SERVER_KEY}#${NGINX_KEY}#g"                             \
-                      -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#g"                  \
-                      -e "s#{TIMEZONE}#$TIMEZONE#"                                   \
-                      -e "s#{TZ}#$TIMEZONE#g"                                        \
-                      -e "s#WEBROOT#${WEBROOT}#g"                                    \
-                      -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#g"  \
+                      -e "s#LOGDIR#$LOGDIR#g"                                       \
+                      -e "s#WEBROOT#$WEBROOT#g"                                     \
+                      -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#g"                         \
+                      -e "s#{COMMERCE_AUTHNET_AIM_LOGIN}#$COMMERCE_AUTHNET_AIM_LOGIN#g"                     \
+                      -e "s#{COMMERCE_AUTHNET_AIM_TRANSACTION_KEY}#$COMMERCE_AUTHNET_AIM_TRANSACTION_KEY#g" \
+                      -e "s#{CONFIGDIR}#$CONFIGDIR#g"                               \
+                      -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#g"                       \
+                      -e "s#{DOMAIN_ALIAS}#$DOMAIN_ALIAS#g"                         \
+                      -e "s#{DOMAIN_NAME}#$NGINX_DOMAIN#g"                          \
+                      -e "s#{ECOMM_DB_NAME}#$ECOMM_DB_NAME#g"                       \
+                      -e "s#{ECOMM_DB_USERNAME}#$ECOMM_DB_USERNAME#g"               \
+                      -e "s#{ECOMM_DB_USERPASS}#$ECOMM_DB_USERPASS#g"               \
+                      -e "s#{ECOMM_EMAIL}#$ECOMM_EMAIL#g"                           \
+                      -e "s#{ECOMM_SITE_NAME}#$ECOMM_SITE_NAME#g"                   \
+                      -e "s#{ENVIRONMENT}#$ENVIRONMENT#g"                           \
+                      -e "s#{ERP_APPLICATION}#$ERP_APPLICATION#g"                   \
+                      -e "s#{ERP_DATABASE_NAME}#$ERP_DATABASE_NAME#g"               \
+                      -e "s#{ERP_DATABASE}#$ERP_DATABASE_NAME#g"                    \
+                      -e "s#{ERP_DEBUG}#${ERP_DEBUG:-true}#g"                       \
+                      -e "s#{ERP_HOST}#$ERP_HOST#g"                                 \
+                      -e "s#{ERP_ISS}#$ERP_ISS#g"                                   \
+                      -e "s#{ERP_KEY_FILE_PATH}#$ERP_KEY_FILE_PATH#g"               \
+                      -e "s#{ESCAPED_TIMEZONE}#$ESCAPED_TIMEZONE#g"                 \
+                      -e "s#{FEDEX_ACCOUNT_NUMBER}#$FEDEX_ACCOUNT_NUMBER#g"         \
+                      -e "s#{FEDEX_BETA}#${FEDEX_BETA:-false}#g"                    \
+                      -e "s#{FEDEX_KEY}#$FEDEX_KEY#g"                               \
+                      -e "s#{FEDEX_METER_NUMBER}#$FEDEX_METER_NUMBER#g"             \
+                      -e "s#{FEDEX_PASSWORD}#$FEDEX_PASSWORD#g"                     \
+                      -e "s#{GITHUB_TOKEN}#$GITHUB_TOKEN#g"                         \
+                      -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"                            \
+                      -e "s#{MAX_EXECUTION_TIME}#$MAX_EXECUTION_TIME#g"             \
+                      -e "s#{MWCNAME}#$MWCNAME#g"                                   \
+                      -e "s#{MWCPORT}#$NGINX_PORT#g"                                \
+                      -e "s#{SERVER_CRT}#$NGINX_CERT#g"                             \
+                      -e "s#{SERVER_KEY}#$NGINX_KEY#g"                              \
+                      -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#g"                 \
+                      -e "s#{TIMEZONE}#$TZ#g"                                       \
+                      -e "s#{TZ}#$TZ#g"                                             \
+                      -e "s#{UPS_ACCESS_KEY}#$UPS_ACCESS_KEY#g"                     \
+                      -e "s#{UPS_ACCOUNT_ID}#$UPS_ACCOUNT_ID#g"                     \
+                      -e "s#{UPS_PASSWORD}#$UPS_PASSWORD#g"                         \
+                      -e "s#{UPS_PICKUP_SCHEDULE}#$UPS_PICKUP_SCHEDULE#g"           \
+                      -e "s#{UPS_USER_ID}#$UPS_USER_ID#g"                           \
+                      -e "s#{WORKFLOW_ENV}#$WORKFLOW_ENV#g"                         \
+                      -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#g" \
                       $FILE
+
     RET=$?
     if [ $RET -ne 0 ] ; then
       RESULT=$RET
@@ -229,6 +256,7 @@ EOF
   # and commenting out the plv8.start_proc
   log "Customizing postgresql.conf"
   back_up_file $POSTDIR/postgresql.conf
+  cp $POSTDIR/postgresql.conf ${TMPDIR:=/tmp}/postgresql.conf.$$
   awk '/^[[:blank:]]*max_locks_per_transaction/ {
          if ($2 < 256) { print "#" $0 } ; MAXLOCKS_FOUND = 1 ; next
        }
@@ -239,9 +267,10 @@ EOF
        END {
          if (! MAXLOCKS_FOUND)  { print "max_locks_per_transaction = 256" }
          if (! STARTPROC_FOUND) { print "#plv8.start_proc           = ''xt.js_init''" }
-       }' $POSTDIR/postgresql.conf | \
+       }' $TMPDIR/postgresql.conf.$$ | \
        sudo tee $POSTDIR/postgresql.conf > /dev/null
   RET=$?
+  rm -f ${TMPDIR}/postgresql.conf.$$
   if [ $RET -ne 0 ] ; then
     die "Customizing postgresql.conf failed. Check the log file for any issues."
   fi
@@ -331,15 +360,12 @@ get_os_info() {
          "Email Address:"          1 1 "${ECOMM_ADMIN_EMAIL:-admin@${DOMAIN:-xtuple.xd}}" 1 25 50 0 \
          "URL:"                    2 1 "${ERP_SITE_URL:-${DOMAIN:-xtuple.xd}}"            2 25 50 0 \
          "xTC Domain:"             3 1 "${NGINX_ECOM_DOMAIN:-${DOMAIN:-xtuple.xd}}"       3 25 50 0 \
-         "New Root Password:"      4 1 "" 4 25 50 0   \
-         "Root Cert Password:"     5 1 "" 5 25 50 0   \
-         "Deployer Cert Password:" 6 1 "" 6 25 50 0   \
          3>&1 1>&2 2> osinfo.ini
   RET=$?
   case $RET in
     $DIALOG_OK)
-      read -d "\n" ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSWD ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD <<<$(cat osinfo.ini)
-      export       ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN ROOT_PASSWD ROOT_CERT_PASSWD DEPLOY_CERT_PASSWD
+      read -d "\n" ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN <<<$(cat osinfo.ini)
+      export       ECOMM_ADMIN_EMAIL ERP_SITE_URL NGINX_ECOM_DOMAIN
       ;;
     *) return 1
        ;;
@@ -348,9 +374,6 @@ get_os_info() {
 
 prepare_os_for_xtc() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  if ! $IS_DEV_ENV && [ -n "$ROOT_PASSWD" ] ; then
-    echo "root:${ROOT_PASSWD}" | sudo chpasswd
-  fi
 
   log_exec sudo apt-get --quiet update
   log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade
@@ -479,15 +502,13 @@ config_webclient_scripts() {
     echo "Using port 5432 for PostgreSQL"
   fi
 
-  export XTDIR="/opt/xtuple/$BUILD_XT_TAG/${MWCNAME:-${ERP_DATABASE_NAME}}/xtuple"
-
-  if [ ! -f $XTDIR/node-datasource/sample_config.js ]; then
+  if [ ! -f /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple/node-datasource/sample_config.js ]; then
     die "Cannot find sample_config.js. Check the output or log and try again"
   fi
 
   CONFIGDIR="/etc/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME"
   log_exec sudo rm -rf $CONFIGDIR
-  encryption_setup $CONFIGDIR $XTDIR
+  encryption_setup $CONFIGDIR /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple
   log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /etc/xtuple
 
   if [ $DISTRO = "ubuntu" ]; then
@@ -515,25 +536,12 @@ config_webclient_scripts() {
 get_environment() {
   webenable_database
 
-  DEPLOYER_NAME=${DEPLOYER_NAME}
-
   ERP_DATABASE_NAME=${DATABASE}
-  ERP_ISS="${ERP_ISS:-xTupleCommerceID}"
-
-  SITE_TEMPLATE="${SITE_TEMPLATE:-flywheel}"
-  ERP_APPLICATION="${ERP_APPLICATION:-xTupleCommerce}"
-  ERP_DEBUG="true"
-  WORKFLOW_ENV="${WORKFLOW_ENV:-stage}"
-
-  DOMAIN=${DOMAIN:-${SITE_TEMPLATE}.xd}
-  DOMAIN_ALIAS=${DOMAIN_ALIAS:-${SITE_TEMPLATE}.xtuple.net}
-  HTTP_AUTH_NAME="${HTTP_AUTH_NAME:-Developer}"
-  HTTP_AUTH_PASS="${HTTP_AUTH_PASS:-ChangeMe}"
+  DOMAIN=${DOMAIN:-flywheel.xd}
   ERP_HOST=https://${DOMAIN}:8443
 
   [ -n "${GITHUB_TOKEN}" ] || get_github_token || return 1
 
-  # TODO: some of this may be specific to xTupleCommerce
   dialog --ok-label  "Submit"                           \
          --backtitle "$(window_title)"                  \
          --title     "Configuration"                    \
@@ -541,77 +549,78 @@ get_environment() {
          0 0 0 \
            "ERP Host:"  1 1          "${ERP_HOST}"   1 20 50 0 \
        "ERP Database:"  2 1 "${ERP_DATABASE_NAME}"   2 20 50 0 \
-     "OAuth Token Id:"  3 1           "${ERP_ISS}"   3 20 50 0 \
-        "Application:"  4 1   "${ERP_APPLICATION}"   4 20 50 0 \
-           "Web Repo:"  5 1     "${SITE_TEMPLATE}"   5 20 50 0 \
-          "ERP Debug:"  6 1         "${ERP_DEBUG}"   6 20 50 0 \
-        "Environment:"  7 1      "${WORKFLOW_ENV}"   7 20 50 0 \
-             "Domain:"  8 1            "${DOMAIN}"   8 20 50 0 \
-       "Domain Alias:"  9 1      "${DOMAIN_ALIAS}"   9 20 50 0 \
-     "HTTP Auth User:" 10 1    "${HTTP_AUTH_NAME}"  10 20 50 0 \
-     "HTTP Auth Pass:" 11 1    "${HTTP_AUTH_PASS}"  11 20 50 0 \
-      "Deployer Name:" 12 0     "${DEPLOYER_NAME}"  12 20 50 0 \
-       "GitHub Token:" 13 0      "${GITHUB_TOKEN}"  13 20 50 0 \
+             "Domain:"  3 1            "${DOMAIN}"   3 20 50 0 \
   3>&1 1>&2 2>&3 2> xtuple_webclient.ini
   RET=$?
 
   case $RET in
     $DIALOG_OK)
-
-      read -d "\n" ERP_HOST ERP_DATABASE_NAME ERP_ISS ERP_APPLICATION SITE_TEMPLATE ERP_DEBUG WORKFLOW_ENV DOMAIN DOMAIN_ALIAS HTTP_AUTH_NAME HTTP_AUTH_PASS DEPLOYER_NAME GITHUB_TOKEN <<<$(cat xtuple_webclient.ini);
-
-      export DEPLOYER_NAME    DOMAIN            DOMAIN_ALIAS
-      export ERP_APPLICATION  ERP_DATABASE_NAME ERP_DEBUG ERP_HOST ERP_ISS ERP_SITE_URL
-      export GITHUB_TOKEN
-      export HTTP_AUTH_NAME    HTTP_AUTH_PASS
-      export NGINX_ECOM_DOMAIN SITE_TEMPLATE WORKFLOW_ENV
+      read -d "\n" ERP_HOST ERP_DATABASE_NAME DOMAIN <<<$(cat xtuple_webclient.ini);
+      export ERP_HOST ERP_DATABASE_NAME DOMAIN
       export ECOMM_ADMIN_EMAIL=admin@${DOMAIN}
       ;;
-
-    $DIALOG_CANCEL)
-       main_menu                        ;;
-    $DIALOG_HELP)
-      echo "Help pressed."              ;;
-    $DIALOG_EXTRA)
-      echo "Extra button pressed."      ;;
-    $DIALOG_ITEM_HELP)
-      echo "Item-help button pressed."  ;;
-    $DIALOG_ESC)
-     main_menu                          ;;
+    $DIALOG_CANCEL)    main_menu                       ;;
+    $DIALOG_HELP)      echo "Help pressed"             ;;
+    $DIALOG_EXTRA)     echo "Extra button pressed"     ;;
+    $DIALOG_ITEM_HELP) echo "Item-help button pressed" ;;
+    $DIALOG_ESC)       main_menu                       ;;
   esac
-
 }
 
 get_xtc_environment() {
-  local ECOMM_EMAIL=admin@${DOMAIN}
-  local ECOMM_SITE_NAME='xTupleCommerceSite'
-  local ECOMM_DB_NAME=${ERP_DATABASE_NAME}_xtc
-  local ECOMM_DB_USERNAME="${ERP_DATABASE_NAME}_admin"
-  local ECOMM_DB_USERPASS="ChangeMe"
+  ECOMM_EMAIL=admin@${DOMAIN}
+  ECOMM_SITE_NAME="${ECOMM_SITE_NAME:-xTupleCommerceSite}"
+  ECOMM_DB_NAME=${ERP_DATABASE_NAME}_xtc
+  ECOMM_DB_USERNAME="${ECOMM_DB_USERNAME:-admin}"
+  ECOMM_DB_USERPASS="${ECOMM_DB_USERPASS:-admin}"
+  DEPLOYER_NAME=${DEPLOYER_NAME:-$(whoami)}
+  ERP_ISS="${ERP_ISS:-xTupleCommerceID}"
+  ERP_APPLICATION="${ERP_APPLICATION:-xTupleCommerce}"
+  ERP_DEBUG="${ERP_DEBUG:-true}"
+  WORKFLOW_ENV="${WORKFLOW_ENV:-stage}"
+  HTTP_AUTH_NAME="${HTTP_AUTH_NAME:-Developer}"
+  HTTP_AUTH_PASS="${HTTP_AUTH_PASS:-ChangeMe}"
+
+  if [ -z "$SITE_TEMPLATE" -a -n "$DOMAIN" ] && [[ "$DOMAIN" =~ ^[^.]+\. ]] ; then
+    SITE_TEMPLATE=${BASH_REMATCH[1]}
+  fi
+  SITE_TEMPLATE="${SITE_TEMPLATE:-flywheel}"
+  DOMAIN_ALIAS=${DOMAIN_ALIAS:-${SITE_TEMPLATE}.xtuple.net}
 
   dialog --ok-label  "Submit"                               \
          --backtitle "$(window_title)"                      \
          --title     "Configuration"                        \
          --form      "Configure xTupleCommerce Environment" \
          0 0 0 \
-             "Site Email:" 1 1       "${ECOMM_EMAIL}" 1 20 50 0 \
-              "Site Name:" 2 1   "${ECOMM_SITE_NAME}" 2 20 50 0 \
-    "Ecomm Database Name:" 3 1     "${ECOMM_DB_NAME}" 3 20 50 0 \
-        "Site DB Pg User:" 4 1 "${ECOMM_DB_USERNAME}" 4 20 50 0 \
-        "Site DB Pg Pass:" 5 1 "${ECOMM_DB_USERPASS}" 5 20 50 0 \
+            "Site Email:" 1 1       "${ECOMM_EMAIL}"  1 25 50 0 \
+             "Site Name:" 2 1   "${ECOMM_SITE_NAME}"  2 25 50 0 \
+  "Drupal Database Name:" 3 1     "${ECOMM_DB_NAME}"  3 25 50 0 \
+  "Drupal Postgres User:" 4 1 "${ECOMM_DB_USERNAME}"  4 25 50 0 \
+  "Drupal Postgres Pass:" 5 1 "${ECOMM_DB_USERPASS}"  5 25 50 0 \
+       "OAuth Token Id:"  6 1           "${ERP_ISS}"  6 25 50 0 \
+          "Application:"  7 1   "${ERP_APPLICATION}"  7 25 50 0 \
+         "Website Repo:"  8 1     "${SITE_TEMPLATE}"  8 25 50 0 \
+            "ERP Debug:"  9 1         "${ERP_DEBUG}"  9 25 50 0 \
+          "Environment:" 10 1      "${WORKFLOW_ENV}" 10 25 50 0 \
+         "Domain Alias:" 11 1      "${DOMAIN_ALIAS}" 11 25 50 0 \
+       "HTTP Auth User:" 12 1    "${HTTP_AUTH_NAME}" 12 25 50 0 \
+       "HTTP Auth Pass:" 13 1    "${HTTP_AUTH_PASS}" 13 25 50 0 \
+        "Deployer Name:" 14 0     "${DEPLOYER_NAME}" 14 25 50 0 \
   3>&1 1>&2 2>&3 2> xtuple_commerce.ini
   RET=$?
 
   case $RET in
     $DIALOG_OK)
-      read -d "\n" ECOMM_EMAIL ECOMM_SITE_NAME ECOMM_DB_NAME ECOMM_DB_USERNAME ECOMM_DB_USERPASS <<<$(cat xtuple_commerce.ini);
+      read -d "\n" ECOMM_EMAIL     ECOMM_SITE_NAME                                   \
+                   ECOMM_DB_NAME   ECOMM_DB_USERNAME ECOMM_DB_USERPASS ERP_ISS       \
+                   ERP_APPLICATION SITE_TEMPLATE     ERP_DEBUG         WORKFLOW_ENV  \
+                   DOMAIN_ALIAS    HTTP_AUTH_NAME    HTTP_AUTH_PASS    DEPLOYER_NAME \
+                   <<<$(cat xtuple_commerce.ini)
 
-      export ECOMM_EMAIL=${ECOMM_EMAIL}
-      export ECOMM_SITE_NAME=${ECOMM_SITE_NAME}
-      export ECOMM_DB_NAME=${ECOMM_DB_NAME}
-      export ECOMM_DB_USERNAME=${ECOMM_DB_USERNAME}
-      export ECOMM_DB_USERPASS=${ECOMM_DB_USERPASS}
-      export ECOMM_ADMIN_EMAIL=${ECOM_EMAIL}
+      export ECOMM_EMAIL     ECOMM_SITE_NAME
+      export ECOMM_DB_NAME   ECOMM_DB_USERNAME ECOMM_DB_USERPASS ERP_ISS
+      export ERP_APPLICATION SITE_TEMPLATE     ERP_DEBUG         WORKFLOW_ENV
+      export DOMAIN_ALIAS    HTTP_AUTH_NAME    HTTP_AUTH_PASS    DEPLOYER_NAME
       ;;
     $DIALOG_CANCEL)     main_menu                       ;;
     $DIALOG_HELP)       echo "Help pressed."            ;;
@@ -619,106 +628,6 @@ get_xtc_environment() {
     $DIALOG_ITEM_HELP)  echo "Item-help button pressed.";;
     $DIALOG_ESC)        main_menu                       ;;
   esac
-}
-
-# TODO: why do we have install_webclient in mobileclient.sh and this?
-# TODO: remove partial duplication from mwc_build_static_mwc?
-webclient_setup() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  local APPLY_FOUNDATION=
-
-  if [[ $ISXTAU ]]; then
-    get_environment
-    psql -At -U postgres -l | grep -q ${ERP_DATABASE_NAME} 2>/dev/null
-    RET=$?
-
-    if [[ $RET == 0 ]]; then
-      echo "Database ${ERP_DATABASE_NAME} already exists, good!"
-      export ERP_DATABASE=${ERP_DATABASE_NAME}
-    else
-      echo "Creating ${ERP_DATABASE_NAME}!"
-      createdb -U admin -p ${PGPORT} ${ERP_DATABASE_NAME}
-      psql -U admin -p ${PGPORT} ${ERP_DATABASE_NAME} -c "CREATE EXTENSION plv8;"
-    fi
-  fi
-
-  cd $WORKDIR
-
-  if [[ ! -f ${WORKDIR}/${ERP_MWC_TARBALL} ]]; then
-    die "Could not find ${WORKDIR}/${ERP_MWC_TARBALL}! This is kinda important..."
-  fi
-
-  ERPTARDIR=$(tar -tzf ${ERP_MWC_TARBALL} | head -1 | cut -f1 -d"/")
-
-  if [ -z "$(ls -A ${ERPTARDIR})" ]; then
-    echo "${ERPTARDIR} is empty or does not exist\nExtracting ${ERP_MWC_TARBALL}"
-    tar xf ${ERP_MWC_TARBALL}
-  else
-    echo "${ERPTARDIR} exists and is not empty"
-  fi
-  BUILD_XT_TAG=$(cd ${ERPTARDIR}/xtuple && git describe --abbrev=0 --tags)
-
-  local XT_ROOT=/opt/xtuple/${BUILD_XT_TAG}/${ERP_DATABASE_NAME}
-  if [[ -d "${XT_ROOT}" ]]; then
-    back_up_file $XT_ROOT
-    rm -rf $XT_ROOT
-  fi
-  log_exec sudo mkdir --parents $(dirname $XT_ROOT)
-  log_exec sudo mkdir --parents /etc/xtuple/${BUILD_XT_TAG}
-
-  log_exec sudo cp -R ${WORKDIR}/${ERPTARDIR} ${XT_ROOT}
-  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} $(dirname $XT_ROOT)
-  turn_on_plv8
-  config_webclient_scripts
-
-  local XTAPP=$(psql -At -U admin -p ${PGPORT} ${ERP_DATABASE_NAME} -c "SELECT getEdition();")
-  if [[ ${XTAPP} == "PostBooks" ]]; then
-    APPLY_FOUNDATION='-f'
-  fi
-
-  local HAS_XTEXT=$(psql -At -U admin ${ERP_DATABASE_NAME} <<EOF
-    SELECT 1
-      FROM pg_catalog.pg_class JOIN pg_namespace n ON n.oid = relnamespace
-     WHERE nspname = 'xt' AND relname = 'ext';
-EOF
-)
-  cd ${XT_ROOT}/xtuple
-  if [[ $HAS_XTEXT == 1 ]]; then
-    echo "${ERP_DATABASE_NAME} has xt.ext so we can preload things that may not exist.  There may be exceptions to doing this."
-    psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/preload.sql
-  fi
-
-  cd $XT_ROOT
-  for REPO in * ; do
-    [ -d $XT_ROOT/$REPO ] && cd $XT_ROOT/$REPO && repo_setup $REPO
-  done
-
-  cd $XT_ROOT/xtuple
-  scripts/build_app.js -c ${CONFIGDIR}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
-  RET=$?
-  msgbox "$(cat buildapp_output.log)"
-  if [[ $RET -ne 0 ]]; then
-    main_menu
-  fi
-
-  #TODO: why run this twice?
-  scripts/build_app.js -c ${CONFIGDIR}/config.js ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
-  RET=$?
-  msgbox "$(cat buildapp_output.log)"
-  if [[ $RET -ne 0 ]]; then
-    main_menu
-  fi
-
-  #TODO: why do we care HERE whether private-extensions exists or not?
-  if [[ $HAS_XTEXT != 1 ]]; then
-    if [[ -d "${XT_ROOT}/private-extensions" ]] ; then
-      scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../private-extensions/source/inventory ${APPLY_FOUNDATION} 2>&1 | tee buildapp_output.log
-      RET=$?
-      msgbox "$(cat buildapp_output.log)"
-    else
-      msgbox "private-extensions does not exist. Contact xTuple for access on github."
-    fi
-  fi
 }
 
 load_oauth_site() {
@@ -822,37 +731,49 @@ xtc_code_setup() {
   cd ${STARTDIR}
 }
 
+# update_progress [ -s # ] percentDone [ message-to-display ]
+update_progress() {
+  local SLEEP=1
+  if [ "$1" = -s ] ; then
+    SLEEP="$2"
+    shift 2
+  fi
+  local PCT="$1"
+  shift
+  echo "===== ${PCT}% - $@"
+  # echo -e "XXX\n${PCT}\n$@\nXXX" # for use with whiptail --gauge
+  if [ -n "$SLEEP" ] ; then
+    sleep $SLEEP
+  fi
+}
+
 setup_flywheel() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  get_github_token
 
-  if [   -z "${DEPLOYER_NAME}"     -o -z "${DOMAIN}"            \
-      -o -z "${DOMAIN_ALIAS}"      -o -z "${ERP_APPLICATION}"   \
-      -o -z "${ERP_DATABASE_NAME}" -o -z "${ERP_DEBUG}"         \
-      -o -z "${ERP_HOST}"          -o -z "${ERP_ISS}"           \
-      -o -z "${GITHUB_TOKEN}"      -o -z "${HTTP_AUTH_NAME}"    \
-      -o -z "${HTTP_AUTH_PASS}"    -o -z "${SITE_TEMPLATE}"     \
-      -o -z "${WORKFLOW_ENV}" ] ; then
+  if [ -z "${DOMAIN}" -o -z "${ERP_DATABASE_NAME}" -o -z "${ERP_HOST}" ] ; then
     get_environment
   fi
 
-  if [   -z "${ECOMM_DB_NAME}"     -o -z "${ECOMM_DB_USERNAME}" \
-      -o -z "${ECOMM_DB_USERPASS}" -o -z "${ECOMM_EMAIL}"       \
-      -o -z "${ECOMM_SITE_NAME}" ] ; then
+  if [   -z "${DEPLOYER_NAME}"     -o -z "${DOMAIN_ALIAS}"      \
+      -o -z "${ERP_APPLICATION}"   -o -z "${ECOMM_DB_NAME}"     \
+      -o -z "${ECOMM_DB_USERNAME}" -o -z "${ECOMM_DB_USERPASS}" \
+      -o -z "${ECOMM_EMAIL}"       -o -z "${ECOMM_SITE_NAME}"   \
+      -o -z "${ERP_DEBUG}"         -o -z "${ERP_ISS}"           \
+      -o -z "${HTTP_AUTH_NAME}"    -o -z "${HTTP_AUTH_PASS}"    \
+      -o -z "${SITE_TEMPLATE}"     -o -z "${WORKFLOW_ENV}" ] ; then
     get_xtc_environment
   fi
 
+  # TODO: how do we load API info from gitconfig without overwriting
+  #       get_environment & get_xtc_environment?
+  # loadcrm_gitconfig
+  # checkcrm_gitconfig
+
   service_restart xtuple-${ERP_DATABASE_NAME} || die
 
-  local SITE_ENV_TMP_WORK=${WORKDIR}/xdruple-sites/${ERP_DATABASE_NAME}
-  local SITE_ENV_TMP=${SITE_ENV_TMP_WORK}/${WORKFLOW_ENV}
   local SITE_ROOT=/var/www
   local SITE_WEBROOT=${SITE_ROOT}/${WORKFLOW_ENV}
-  local ERP_KEY_FILE_PATH=/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}
-
-  # The site template developer
-  local SITE_DEV=xtuple
-
-  mkdir --parents ${SITE_ENV_TMP_WORK}
 
   if [ -n ${NGINX_ECOM_DOMAIN_P12} ]; then
     load_oauth_site
@@ -862,92 +783,54 @@ setup_flywheel() {
 
   log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${SITE_ROOT}
 
-  {
-    echo -e "XXX\n0\nCloning ${SITE_TEMPLATE} to ${SITE_ENV_TMP}\nXXX"
-    log_exec "git clone https://${GITHUB_TOKEN}:x-oauth-basic@github.com/${SITE_DEV}/${SITE_TEMPLATE} ${SITE_ENV_TMP}" 2>/dev/null
+  update_progress 0 "Cloning ${SITE_TEMPLATE} to ${SITE_WEBROOT}"
+  sudo rm -rf ${SITE_WEBROOT}
+  gitco ${SITE_TEMPLATE} ${SITE_ROOT} TAG > /dev/null 2>&1
+  cd ${SITE_ROOT}
+  sudo mv ${SITE_TEMPLATE} ${SITE_WEBROOT} || die "Error moving ${SITE_TEMPLATE} to ${SITE_WEBROOT}"
 
-    echo -e "XXX\n10\nRunning submodule update\nXXX"
-    log_exec "cd ${SITE_ENV_TMP} && git submodule update --init --recursive" 2>/dev/null
+  update_progress 10 "Running composer install (takes a while)"
+  # TODO: are these 2 files supposed to be identical?
+  if $IS_DEV_ENV ; then
+    safecp ${WORKDIR}/templates/php/composer/config-vagrant.json /home/${DEPLOYER_NAME}/.composer/config.json
+  else
+    safecp ${WORKDIR}/templates/php/composer/config-server.json /home/${DEPLOYER_NAME}/.composer/config.json
+  fi
+  replace_params --no-backup /home/${DEPLOYER_NAME}/.composer/config.json
+  sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
+  cd ${SITE_WEBROOT}
+  log "Running composer install"
+  composer install > $WORKDIR/composer.log 2>&1 || \
+    die "Error running composer install; see $WORKDIR/composer.log"
 
-    echo -e "XXX\n20\nRunning composer install\nXXX"
-    # Check for composer token
-    GITHUB_TOKEN=$(git config --get github.token)
-    cat <<-EOF > /home/${DEPLOYER_NAME}/.composer/config.json
-	{
-	  "config": {
-	    "github-oauth": {
-	    "github.com": "$GITHUB_TOKEN" },
-	    "process-timeout": 600,
-	    "preferred-install": "source",
-	    "github-protocols": ["ssh", "https", "git"],
-	    "secure-http": false
-	  }
-	}
-EOF
+  update_progress 40 "Writing out environment.xml"
+  mkdir --parents ${SITE_WEBROOT}/application/config
+  safecp ${WORKDIR}/templates/application_environment.xml ${SITE_WEBROOT}/application/config/environment.xml
+  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.xml
 
-    log_exec "cd ${SITE_ENV_TMP} && composer install" 2>/dev/null
+  # TODO: is this the right destination?
+  safecp ${WORKDIR}/templates/php/environment.php ${SITE_WEBROOT}/application/config/environment.php
+  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.php
 
-    echo -e "XXX\n30\nWriting out environment.xml\nXXX"
-    ERP_DATABASE=${ERP_DATABASE_NAME}
-    # TODO: is SITE_ENV_TMP the correct destination?
-    mkdir --parents ${SITE_ENV_TMP}/application/config
-    cat <<-EOF    > ${SITE_ENV_TMP}/application/config/environment.xml
-	<?xml version="1.0" encoding="UTF-8" ?>
-	<environment type               = "${WORKFLOW_ENV}"
-	             xmlns              = "https://xdruple.xtuple.com/schema/environment"
-	             xmlns:xsi          = "http://www.w3.org/2001/XMLSchema-instance"
-	             xsi:schemaLocation = "https://xdruple.xtuple.com/schema/environment schema/environment.xsd">
-	  <xtuple host        = "${ERP_HOST}"
-	          database    = "${ERP_DATABASE}"
-	          iss         = "${ERP_ISS}"
-	          key         = "${ERP_KEY_FILE_PATH}"
-	          application = "${ERP_APPLICATION}"
-	          debug       = "${ERP_DEBUG}"/>
-	</environment>
-EOF
-    sleep 1
+  update_progress 45 "Setting /etc/hosts"
+  (echo '127.0.0.1' ${DOMAIN} ${DOMAIN_ALIAS} dev.${DOMAIN_ALIAS} stage.${DOMAIN_ALIAS} live.${DOMAIN_ALIAS}) | sudo tee -a /etc/hosts >/dev/null
 
-    echo -e "XXX\n35\nCopying ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} to ${ERP_KEY_FILE_PATH}"
-    cp ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} ${ERP_KEY_FILE_PATH} 2>/dev/null
-    sleep 1
+  update_progress 50 "Running installation script ${SITE_WEBROOT}/console_cmd.sh"
+  safecp ${WORKDIR}/templates/php/cli/console_cmd.sh ${SITE_WEBROOT}/console_cmd.sh
+  replace_params --no-backup ${SITE_WEBROOT}/console_cmd.sh
+  cd ${SITE_WEBROOT}
+  sudo chown ${DEPLOYER_NAME}:${DEPLOYER_NAME} console_cmd.sh
+  sudo chmod 744 console_cmd.sh
+  log "Running console_cmd.sh"
+  ./console_cmd.sh > ${WORKDIR}/console_cmd.log 2>&1 || \
+    die"./console_cmd.sh failed in $SITE_WEBROOT; see ${WORKDIR}/console_cmd.log"
 
-    echo -e "XXX\n40\nSetting /etc/hosts\nXXX"
-    (echo '127.0.0.1' ${DOMAIN} ${DOMAIN_ALIAS} dev.${DOMAIN_ALIAS} stage.${DOMAIN_ALIAS} live.${DOMAIN_ALIAS}) | sudo tee -a /etc/hosts >/dev/null
-    sleep 1
+  update_progress 90 "Setting ownership and permissions in ${SITE_WEBROOT}"
+  log_exec sudo chown -R www-data:www-data ${SITE_WEBROOT}/web    || die "Could not chown ${SITE_WEBROOT}/web"
+  log_exec sudo chown -R www-data:www-data ${SITE_WEBROOT}/drupal || die "Could not chown ${SITE_WEBROOT}/drupal"
+  log_exec sudo chmod -R 775 ${SITE_WEBROOT}/web/files || die "Could not chmod ${SITE_WEBROOT}/web/files"
 
-    echo -e "XXX\n45\nMoving WORKFLOW_ENV=${WORKFLOW_ENV}\nXXX"
-    safecp ${SITE_ENV_TMP} ${SITE_WEBROOT}
-
-    echo -e "XXX\n50\nRunning console.php install:drupal\nXXX"
-    local CMD="./console.php install:drupal --db-name=${ECOMM_DB_NAME}     \
-                                            --db-pass=${ECOMM_DB_USERPASS} \
-                                            --db-user=${ECOMM_DB_USERNAME} \
-                                            --user-pass=${ECOMM_DB_USERPASS} \
-                                            --site-mail=${ECOMM_EMAIL}     \
-                                            --site-name=${ECOMM_SITE_NAME}"
-    echo $CMD >> ${SITE_WEBROOT}/console_cmd.sh
-
-    cd ${SITE_WEBROOT}
-    eval $CMD
-    RET=$?
-    [ $? -eq 0 ] || die "console.php install:drupal returned $RET in $(pwd)"
-
-    echo -e "XXX\n80\nSetting permissions on ${SITE_WEBROOT}/web\nXXX"
-    log_exec sudo chown -R www-data:www-data ${SITE_WEBROOT}/web
-    sleep 1
-    echo -e "XXX\n85\nSetting permissions on ${SITE_WEBROOT}/web/files\nXXX"
-    log_exec sudo chmod -R 775 ${SITE_WEBROOT}/web/files
-    sleep 1
-    echo -e "XXX\n90\nSetting permissions on ${SITE_WEBROOT}/drupal\nXXX"
-    log_exec sudo chown -R www-data:www-data ${SITE_WEBROOT}/drupal
-    sleep 1
-    echo -e "XXX\n95\nSetting permissions on ${NGINX_ECOM_DOMAIN_P12}\nXXX"
-    log_exec sudo chown www-data:www-data ${SITE_WEBROOT}/${NGINX_ECOM_DOMAIN_P12}
-
-    echo -e "XXX\n100\nInstallation Complete!\nXXX"
-
-  } | whiptail --title "${SITE_TEMPLATE} - Installing web stuff" --gauge "Please wait while installing" 10 140 8
-
+  update_progress -s 5 100 "Installation Complete!"
 }
 
 # TODO: this isn't called anywhere. should it be?
@@ -1026,7 +909,7 @@ webnotes() {
 	  Pass     admin
 
 	Nginx Config:
-	  Webroot: /var/www/xTupleCommerce/drupal/core
+	  Webroot: /var/www/${WORKFLOW_ENV}/drupal/core
 
 	Please set your nginx config for the xTupleCommerce webroot to:
 	  root /var/www/xTupleCommerce/drupal/core;
@@ -1060,7 +943,7 @@ php_setup() {
                           php-pear       php7.1-dev      php7.1-gd   \
                           php7.1-pgsql   php7.1-curl     php7.1-intl \
                           php7.1-mcrypt  php7.1-mbstring php7.1-soap \
-                          php-zip      || die
+                          php7.1-zip     || die
 
   if $IS_DEV_ENV ; then
     sudo apt-get --quiet -y install php-xdebug || die
@@ -1082,16 +965,6 @@ php_setup() {
   php -r "unlink('composer-setup.php');"                || die
   sudo mv composer.phar /usr/local/bin/composer         || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
-
-  # TODO: are these 2 files supposed to be identical?
-  if $IS_DEV_ENV ; then
-    safecp ${WORKDIR}/templates/php/composer/config-vagrant.json /home/${DEPLOYER_NAME}/.composer/config.json
-  else
-    safecp ${WORKDIR}/templates/php/composer/config-server.json /home/${DEPLOYER_NAME}/.composer/config.json
-  fi
-
-  replace_params --no-backup /home/${DEPLOYER_NAME}/.composer/config.json
-  sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
 
   # PHPUnit (v6.x)
   download https://phar.phpunit.de/phpunit.phar /usr/local/bin/phpunit +x
