@@ -14,6 +14,8 @@ export DEBIAN_FRONTEND=noninteractive
 WORKDIR=$(pwd)
 DEPLOYER_NAME=$(whoami)
 LOG_FILE=$(pwd)/install-$DATE.log
+XTAU_CONFIG=
+
 IS_DEV_ENV=${IS_DEV_ENV:-false}
 XTC_HOST_IS_REMOTE=${XTC_HOST_IS_REMOTE:-false}
 DATABASEDIR=${WORKDIR}/databases
@@ -31,10 +33,13 @@ export POSTLOCALE=$LANG
 export PGNAME=
 export PGPORT=
 
+# TODO: what's the difference between NGINX_DOMAIN and DOMAIN?
+export DOMAIN=flywheel.xd
+
 export NGINX_SITE=
 export NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
 export NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
-export NGINX_PORT=${NGINX_PORT:-8443}
+export WEBAPI_PORT=${WEBAPI_PORT:-8443}
 export NGINX_CERT=
 export NGINX_KEY=
 

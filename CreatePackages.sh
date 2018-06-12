@@ -250,24 +250,18 @@ xtc_build_xtuplecommerce_envphp() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   cd ${WORKDIR}
-  CRMACCT=xTupleBuild
+  CRMACCT=${CRMACCT:-xTupleBuild}
 
   loadcrm_gitconfig
   checkcrm_gitconfig
 
-  echo "Populating the environment.php file with settings for ${CRMACCT}"
-  echo "See loadcrm_gitconfig() and checkcrm_gitconfig()"
-  echo "Values are from ${HOME}/.gitconfig"
+  log "Populating environment.xml file with settings for ${CRMACCT}"
+  log "See loadcrm_gitconfig() and checkcrm_gitconfig()"
 
   echo "Writing out environment.xml"
   mkdir --parents ${SITE_WEBROOT}/application/config
-  safecp ${WORKDIR}/templates/application_environment.xml ${BUILD_XTC_CONF_DIR}/environment.xml
+  safecp ${SITE_WEBROOT}drupal/xdruple/dist/environment.xml.dist ${SITE_WEBROOT}/application/config/environment.xml
   replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.xml
-
-  echo "Writing out environment.php"
-  mkdir --parents ${SITE_WEBROOT}/application/config
-  safecp ${WORKDIR}/templates/php/application_environment.php ${BUILD_XTC_CONF_DIR}/environment.php
-  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.php
 }
 
 writeout_config() {

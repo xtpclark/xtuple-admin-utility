@@ -52,7 +52,7 @@ get_github_token() {
   loadadmin_gitconfig
 
   if [ -z "${GITHUB_TOKEN}" ] ; then
-    GITHUB_TOKEN=$(git config --get github.token)
+    read_config -s git -f
   fi
   if [ -z "${GITHUB_TOKEN}" -a -f .githubtoken ] ; then
     source .githubtoken
@@ -107,6 +107,7 @@ generate_github_token() {
 
   git config --global github.token ${GITHUB_TOKEN}
   echo "GITHUBNAME=$GITHUBNAME\nGITHUB_TOKEN=${GITHUB_TOKEN}" >> .githubtoken
+  write_config -s git GITHUBNAME GITHUB_TOKEN
 
   msgbox "Your GitHub Personal Access token is: ${GITHUB_TOKEN}.
 Maintain your tokens at https://github.com/settings/tokens

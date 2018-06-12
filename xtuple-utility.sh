@@ -18,54 +18,46 @@ mkdir --parents $BACKUPDIR
 setup_sudo
 
 # process command line arguments (see bash man page for getopts info)
-while getopts ":aD:d:e:H:hmn:p:qt:x:-:" opt; do
+while getopts ":ac:D:d:e:H:hmn:p:qt:x:-:" opt; do
   case $opt in
-    a)
-      INSTALLALL=true
+    a) INSTALLALL=true
       ;;
-    D)
-      NGINX_DOMAIN=$OPTARG
-      log "NGINX domain set to $NGINX_DOMAIN via $opt"
-      ;;
-    d)
-      DATABASE=$OPTARG
-      log "Database name set to $DATABASE via $opt"
-      ;;
-    e)
-      ERP_EDITION=$OPTARG
-      log "Edition set to $ERP_EDITION via $opt"
-      ;;
-    H)
-      NGINX_HOSTNAME=$OPTARG
-      log "NGINX hostname set to $NGINX_HOSTNAME via $opt"
-      ;;
-    m)
-      MODE="auto"
-      log "MODEX set to $MODE via $opt"
-      ;;
-    n)
-      MWCNAME=$OPTARG
-      log "Instance name set to $MWCNAME via $opt"
-      ;;
-    p)
-      PGVER=$OPTARG
-      log "PostgreSQL version set to $PGVER via $opt"
-      ;;
-    q)
-      BUILDQT=true
-      log "Building and installing Qt at the behest of $opt"
-      ;;
-    t)
-      # type of database to install (demo/quickstart/empty)
-      DBTYPE=$OPTARG
-      log "xTuple database type set to $DBTYPE via $opt"
-      ;;
-    x)
-      # Use a specific version of xTuple (applies to web client and db)
-      DBVERSION=$OPTARG
-      DATABASE=${DBTYPE}${DBVERSION//./}
-      log "xTuple version set to $DBVERSION ($DATABASE) via $opt"
-      ;;
+    c) XTAU_CONFIG=$OPTARG
+       log "XTAU_CONFIG file set to $XTAU_CONFIG via $opt"
+       ;;
+    D) NGINX_DOMAIN=$OPTARG
+       log "NGINX domain set to $NGINX_DOMAIN via $opt"
+       ;;
+    d) DATABASE=$OPTARG
+       log "Database name set to $DATABASE via $opt"
+       ;;
+    e) ERP_EDITION=$OPTARG
+       log "Edition set to $ERP_EDITION via $opt"
+       ;;
+    H) NGINX_HOSTNAME=$OPTARG
+       log "NGINX hostname set to $NGINX_HOSTNAME via $opt"
+       ;;
+    m) MODE="auto"
+       log "MODEX set to $MODE via $opt"
+       ;;
+    n) MWCNAME=$OPTARG
+       log "Instance name set to $MWCNAME via $opt"
+       ;;
+    p) PGVER=$OPTARG
+       log "PostgreSQL version set to $PGVER via $opt"
+       ;;
+    q) BUILDQT=true
+       log "Building and installing Qt at the behest of $opt"
+       ;;
+    t) # type of database to install (demo/quickstart/empty)
+       DBTYPE=$OPTARG
+       log "xTuple database type set to $DBTYPE via $opt"
+       ;;
+    x) # Use a specific version of xTuple (applies to web client and db)
+       DBVERSION=$OPTARG
+       DATABASE=${DBTYPE}${DBVERSION//./}
+       log "xTuple version set to $DBVERSION ($DATABASE) via $opt"
+       ;;
     h) cat <<-EOUsage
 	Usage: $PROG [OPTION]
 
@@ -77,6 +69,8 @@ while getopts ":aD:d:e:H:hmn:p:qt:x:-:" opt; do
                   demo database $(latest_version db)
                   web API $(latest_version db)
                   xTupleCommerce
+          -c    Read configuration information from the named file
+                (command line arguments override the file contents)
 	  -D	Set NGINX domain [ ${NGINX_DOMAIN:-?} ]
 	  -d	Specify database name to create [ ${DATABASE:-?} ]
 	  -e    Specify edition to set up [ ${ERP_EDITION:-?} ]
@@ -172,6 +166,11 @@ source functions/setup.fun      || die
 source functions/gitvars.fun    || die
 source functions/oatoken.fun    || die
 
+if [ -n "$XTAU_CONFIG" ] ; then
+  read_config -f
+  write_config
+fi
+
 log "Installing pre-requisite packages..."
 if [[ ! -f .already_ran_update ]]; then
   install_prereqs
@@ -229,6 +228,7 @@ if [ $INSTALLALL ]; then
   setup_flywheel
   update_site
   webnotes
+  write_config
 fi
 
 # TODO: build qt in the background?

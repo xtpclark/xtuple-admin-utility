@@ -686,13 +686,12 @@ webenable_database() {
     service_stop xtuple-"$ERP_DATABASE_NAME"
 
     # get the listening port for the node datasource
-    MWCPORT=$(grep -Po '(?<= port: )8[0-9]{3}' $CONFIGDIR/config.js)
-    if [ -z "$MWCPORT" ] && [ "$MODE" = "manual" ]; then
-        MWCPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Web Client Port Number" 8 60 3>&1 1>&2 2>&3)
-    elif [ -z "$MWCPORT" ]; then
+    WEBAPI_PORT=$(grep -Po '(?<= port: )8[0-9]{3}' $CONFIGDIR/config.js)
+    if [ -z "$WEBAPI_PORT" ] && [ "$MODE" = "manual" ]; then
+        WEBAPI_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Web Client Port Number" 8 60 3>&1 1>&2 2>&3)
+    elif [ -z "$WEBAPI_PORT" ]; then
         return 127
     fi
-    NGINX_PORT=$MWCPORT
 
     log "Removing old web-enabling configuration"
     log_exec sudo rm -rf $CONFIGDIR

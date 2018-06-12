@@ -216,7 +216,7 @@ new_postgres_port() {
 
 new_nginx_port() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  NGINX_PORT=$((seq 8443 8500 ; \
+  WEBAPI_PORT=$((seq 8443 8500 ; \
                 sudo head --lines 2 /etc/nginx/sites-available/* | \
                    grep --only-matching '8[0-9]{3}') | \
                sort --numeric-sort | head --lines 1)

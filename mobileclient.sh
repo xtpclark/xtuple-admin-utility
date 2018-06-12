@@ -264,7 +264,7 @@ EOF
   service_start xtuple-$ERP_DATABASE_NAME                || die
 
   IP="$(hostname -I)"
-  msgbox "You should now be able to log on to this server at https://$IP:$NGINX_PORT with username admin and password admin. Make sure you change your password!"
+  msgbox "You should now be able to log on to this server at https://$IP:$WEBAPI_PORT with username admin and password admin. Make sure you change your password!"
   cd $STARTDIR
 }
 

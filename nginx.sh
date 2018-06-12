@@ -108,7 +108,7 @@ nginx_prompt() {
   new_nginx_port
   local USEDPORTS=$(sudo head --lines 2 /etc/nginx/sites-available/* | grep --only-matching '8[0-9]{3}')
   [ -z "$USEDPORTS" ] || USEDPORTS="\nUsed Ports:\n$USEDPORTS"
-  NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "nginx port number.\n$USEDPORTS\n" 18 60 "$NGINX_PORT" 3>&1 1>&2 2>&3)
+  WEBAPI_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "nginx port number.\n$USEDPORTS\n" 18 60 "$WEBAPI_PORT" 3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -ne 0 ]; then
     return $RET
@@ -124,7 +124,7 @@ nginx_prompt() {
 #   NGINX_SITE      - nginx site name which is also the web client instance name
 #   NGINX_CERT      - website certificate which should be per site and a separate file in /etc/xtuple/ssl
 #   NGINX_KEY       - website key with the same requirements
-#   NGINX_PORT      - nginx port to listen to
+#   WEBAPI_PORT     - port to relay web API calls to
 configure_nginx() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   NGINX_HOSTNAME="${1:-$NGINX_HOSTNAME}"
@@ -132,12 +132,12 @@ configure_nginx() {
   NGINX_SITE="${3:-$NGINX_SITE}"
   NGINX_CERT="${4:-$NGINX_CERT}"
   NGINX_KEY="${5:-$NGINX_KEY}"
-  NGINX_PORT="${6:-${NGINX_PORT:-8443}}"
+  WEBAPI_PORT="${6:-${WEBAPI_PORT:-8443}}"
   WEBROOT="${WEBROOT:-/var/www}"
   NGINX_LOG="${NGINX_LOG:-/var/log/nginx}"
 
   if [ -z "$NGINX_HOSTNAME" -o -z "$NGINX_DOMAIN" -o -z "$NGINX_SITE" \
-    -o -z "$NGINX_CERT"     -o -z "$NGINX_KEY"    -o -z "$NGINX_PORT" \
+    -o -z "$NGINX_CERT"     -o -z "$NGINX_KEY"    -o -z "$WEBAPI_PORT" \
     -o -z "$WEBROOT" ] ; then
       die "Insufficient information to configure nginx"
   fi

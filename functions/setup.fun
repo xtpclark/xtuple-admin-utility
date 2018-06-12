@@ -12,53 +12,81 @@ export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 
 source ${WORKDIR:-.}/functions/oatoken.fun
 
-read_configs() {
+# read_config [ -s section ] [ -f ] [ config-file-to-process ]
+# -s only read the named section of the config JSON
+# -f force overwriting all runtime configuration to this point
+#    (default is to ignore parts of the config that have already been set)
+read_config() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  local CONFIGFILE="${1:-${WORKDIR}/CreatePackages-${WORKDATE}.config}"
-  local CONFIGVAR
+  local FORCE=false
+  local SCRIPT SECTION
+  local STARTDIR=$(pwd)
 
-  if [[ -f "$CONFIGFILE" ]]; then
-    source "$CONFIGFILE"
-  fi
+  cd ${WORKDIR}
 
-  rm -f ${WORKDIR}/setup.bak
-
-  for CONFIGVAR in NODE_ENV PGVER BUILD_XT_TAG ERP_MWC_TARBALL XTC_WWW_TARBALL ; do
-    if [[ ${!CONFIGVAR} ]]; then
-     echo "${CONFIGVAR}=${!CONFIGVAR}" | tee -a ${WORKDIR}/setup.bak
-    fi
+  while [[ "$1" =~ - ]] ; do
+    case $1 in
+      -s) SECTION=$2  ; shift ;;
+      -f) FORCE=true          ;;
+    esac
+    shift
   done
 
-  if [[ -f ${WORKDIR}/setup.ini ]]; then
-    source ${WORKDIR}/setup.ini
-  else
-    echo "Missing setup.ini file."
-    echo "We'll create a sample for you. Please review."
-
-    # TODO: do we need TIMEZONE?
-    # TODO: why export only time zone info?
-    # TODO: we can default more of these
-    cat >> ${WORKDIR}/setup.ini <<-EOSETUP
-	export TIMEZONE=${TIMEZONE}
-	export TZ=${TZ}
-	       PGVER=${PGVER}
-	       BUILD_XT_TAG=v${BUILD_XT_TAG}
-	       ERP_DATABASE_NAME=xtupleerp
-	       ERP_DATABASE_BACKUP=manufacturing_demo-${BUILD_XT_TAG}.backup
-	       ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-v${BUILD_XT_TAG}.tar.gz
-	       XTC_DATABASE_NAME=xtuplecommerce
-	       XTC_DATABASE_BACKUP=xTupleCommerce-v${BUILD_XT_TAG}.backup
-	       XTC_WWW_TARBALL=xTupleCommerce-v${BUILD_XT_TAG}.tar.gz
-	       # payment-gateway config
-	       # See https://github.com/bendiy/payment-gateways/tree/initial/gateways
-	       GATEWAY_NAME='Example'
-	       GATEWAY_HOSTNAME='api.example.com'
-	       GATEWAY_BASE_PATH='/v1'
-	       GATEWAY_NODE_LIB_NAME='example'
-EOSETUP
-
+  if [ -z "$XTAU_CONFIG" ] ; then
+    XTAU_CONFIG=${4:-${MWCNAME:-xtau}_config.json}
   fi
+  if [ ! -f $XTAU_CONFIG ] ; then
+    cp templates/xtau_config.json $XTAU_CONFIG
+  fi
+
+  if [ -n "$SECTION" ] && $FORCE ; then
+    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;'
+  elif [ -n "$SECTION" ] ; then
+    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;'
+  elif [ -z "$SECTION" ] && $FORCE ; then
+    SCRIPT='to_entries[] | .value | to_entries[] | select(.value[0] != "") | "[ -n \"$" + .key + "\" ] || " + .key + "=\"" + .value[0] + "\" ;"'
+  else
+    SCRIPT='to_entries[] | .value | to_entries[] | select(.value[0] != "") | "[ -n \"$" + .key + "\" ] || " + .key + "=\"" + .value[0] + "\" ;"'
+  fi
+
+  eval $(jq --raw-output "$SCRIPT" $XTAU_CONFIG)
+  RET=$?
+
+  cd $STARTDIR
+  return $RET
+}
+
+# ideally: write_config -s git GITHUBNAME GITHUB_TOKEN
+# would rewrite the entire file but only changing the GITHUBNAME & GITHUB_TOKEN
+# and add them to the `git` section if none existed
+write_config() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+  local REPLACESECTION=false
+  local SCRIPT SECTION
+  local STARTDIR=$(pwd)
+  if [ -z "$XTAU_CONFIG" ] ; then
+    XTAU_CONFIG=${4:-${MWCNAME:-xtau}_config.json}
+  fi
+
+  cd ${WORKDIR}
+
+  while [[ "$1" =~ - ]] ; do
+    case $1 in
+      -s) SECTION=$2  ; shift ;;
+      -r) REPLACESECTION=true ;;
+    esac
+    shift
+  done
+  if [ ! -f $XTAU_CONFIG ] ; then
+    cp templates/xtau_config.json $XTAU_CONFIG
+  fi
+  jq --raw-output 'def getenv(f): { "key": (.key), "value": [ env[.key], .value[1]] } ; def extract(f): { "key": (.key), "value": .value | with_entries(getenv(.)) } ; with_entries(extract(.value))' $XTAU_CONFIG > $TMPDIR/$XTAU_CONFIG.$$
+  safecp $TMPDIR/$XTAU_CONFIG.$$ $XTAU_CONFIG || die
+  log "xTAU configuration saved in $XTAU_CONFIG"
+
+  cd $STARTDIR
 }
 
 # replace_params_in [ --[no-]backup ] file [ file ... ]
@@ -71,7 +99,7 @@ replace_params () {
     --no-backup) MAKE_BACKUP=false ; shift ;;
     --backup)    MAKE_BACKUP=true  ; shift ;;
   esac
-  local ERP_KEY_FILE_PATH=/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}
+  ERP_KEY_FILE_PATH=${ERP_KEY_FILE_PATH:-/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}}
 
   for FILE in $@ ; do
     if $MAKE_BACKUP ; then
@@ -92,7 +120,6 @@ replace_params () {
                       -e "s#{ECOMM_DB_USERPASS}#$ECOMM_DB_USERPASS#g"               \
                       -e "s#{ECOMM_EMAIL}#$ECOMM_EMAIL#g"                           \
                       -e "s#{ECOMM_SITE_NAME}#$ECOMM_SITE_NAME#g"                   \
-                      -e "s#{ENVIRONMENT}#$ENVIRONMENT#g"                           \
                       -e "s#{ERP_APPLICATION}#$ERP_APPLICATION#g"                   \
                       -e "s#{ERP_DATABASE_NAME}#$ERP_DATABASE_NAME#g"               \
                       -e "s#{ERP_DATABASE}#$ERP_DATABASE_NAME#g"                    \
@@ -110,7 +137,7 @@ replace_params () {
                       -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"                            \
                       -e "s#{MAX_EXECUTION_TIME}#$MAX_EXECUTION_TIME#g"             \
                       -e "s#{MWCNAME}#$MWCNAME#g"                                   \
-                      -e "s#{MWCPORT}#$NGINX_PORT#g"                                \
+                      -e "s#{WEBAPI_PORT}#$WEBAPI_PORT#g"                           \
                       -e "s#{SERVER_CRT}#$NGINX_CERT#g"                             \
                       -e "s#{SERVER_KEY}#$NGINX_KEY#g"                              \
                       -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#g"                 \
@@ -352,14 +379,15 @@ setup_erp_db() {
 
 get_os_info() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+  DOMAIN=${DOMAIN:-flywheel.xd}
 
   dialog --ok-label  "Submit"                           \
          --backtitle "$(window_title)"                  \
          --title     "xTupleCommerce OS Setup"          \
          --form      "Enter basic OS information" 0 0 7 \
-         "Email Address:"          1 1 "${ECOMM_ADMIN_EMAIL:-admin@${DOMAIN:-xtuple.xd}}" 1 25 50 0 \
-         "URL:"                    2 1 "${ERP_SITE_URL:-${DOMAIN:-xtuple.xd}}"            2 25 50 0 \
-         "xTC Domain:"             3 1 "${NGINX_ECOM_DOMAIN:-${DOMAIN:-xtuple.xd}}"       3 25 50 0 \
+         "Email Address:"          1 1 "${ECOMM_ADMIN_EMAIL:-admin@${DOMAIN}}" 1 25 50 0 \
+         "URL:"                    2 1 "${ERP_SITE_URL:-${DOMAIN}}"            2 25 50 0 \
+         "xTC Domain:"             3 1 "${NGINX_ECOM_DOMAIN:-${DOMAIN}}"       3 25 50 0 \
          3>&1 1>&2 2> osinfo.ini
   RET=$?
   case $RET in
@@ -410,19 +438,19 @@ setup_xtuplecommerce_db() {
     echo "Warning or Fail on: CREATE USER xtuplecommerce. Already exists?"
   fi
 
-  psql -At -U postgres -l | grep -q ${XTC_DATABASE_NAME} 2>/dev/null
+  psql -At -U postgres -l | grep -q ${ECOMM_DB_NAME} 2>/dev/null
   RET=$?
   if [[ $RET == 0 ]]; then
-    echo "Database ${XTC_DATABASE_NAME} already exists"
+    echo "Database ${ECOMM_DB_NAME} already exists"
   else
-    echo "Creating ${XTC_DATABASE_NAME}!"
-    createdb -U postgres -O xtuplecommerce -p ${PGPORT} ${XTC_DATABASE_NAME}
+    echo "Creating ${ECOMM_DB_NAME}!"
+    createdb -U postgres -O xtuplecommerce -p ${PGPORT} ${ECOMM_DB_NAME}
 
     if [[ ! -f ${WORKDIR}/db/${XTC_DATABASE_BACKUP} ]]; then
       echo "Could not find ${WORKDIR}/db/${XTC_DATABASE_BACKUP}"
       echo "Don't know what you want me to restore!"
     else
-      pg_restore -U xtuplecommerce -d ${XTC_DATABASE_NAME} ${WORKDIR}/db/${XTC_DATABASE_BACKUP} 2>/dev/null
+      pg_restore -U xtuplecommerce -d ${ECOMM_DB_NAME} ${WORKDIR}/db/${XTC_DATABASE_BACKUP} 2>/dev/null
       RET=$?
       if [[ $RET != 0 ]]; then
         echo "Something messed up with restore of ${XTC_DATABASE_BACKUP}"
@@ -473,7 +501,7 @@ encryption_setup() {
          -e "/saltFile/c\      saltFile: \"$KEYDIR/salt.txt\","   \
          -e "/databases:/c\      databases: [\"$DATABASE\"],"     \
          -e "/port: 5432/c\      port: $PGPORT,"                  \
-         -e "/port: 8443/c\      port: $NGINX_PORT,"              \
+         -e "/port: 8443/c\      port: $WEBAPI_PORT,"              \
          ${CONFIGDIR}/config.js         || die
 
   log "
@@ -492,8 +520,8 @@ Wrote out web client config:
 config_webclient_scripts() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  if [[ -z "$NGINX_PORT" ]]; then
-    export NGINX_PORT=8443
+  if [[ -z "$WEBAPI_PORT" ]]; then
+    export WEBAPI_PORT=8443
     echo "Using port 8443 for Node.js https requests"
   fi
 
@@ -803,14 +831,9 @@ setup_flywheel() {
   composer install > $WORKDIR/composer.log 2>&1 || \
     die "Error running composer install; see $WORKDIR/composer.log"
 
-  update_progress 40 "Writing out environment.xml"
+  update_progress 40 "Updating environment.xml"
   mkdir --parents ${SITE_WEBROOT}/application/config
-  safecp ${WORKDIR}/templates/application_environment.xml ${SITE_WEBROOT}/application/config/environment.xml
-  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.xml
-
-  # TODO: is this the right destination?
-  safecp ${WORKDIR}/templates/php/environment.php ${SITE_WEBROOT}/application/config/environment.php
-  replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.php
+  replace_params ${SITE_WEBROOT}/application/config/environment.xml
 
   update_progress 45 "Setting /etc/hosts"
   (echo '127.0.0.1' ${DOMAIN} ${DOMAIN_ALIAS} dev.${DOMAIN_ALIAS} stage.${DOMAIN_ALIAS} live.${DOMAIN_ALIAS}) | sudo tee -a /etc/hosts >/dev/null
@@ -898,7 +921,7 @@ webnotes() {
 	  Pass      admin
 
 	Web API:
-	  Login at http://xtuple.xd:8888
+	  Login at http://${DOMAIN}:8888
 	  Login at https://${DOMAIN_ALIAS}:8443
 	  User     admin
 	  Pass     admin
@@ -917,7 +940,7 @@ EOF
 }
 
 xtau_deploy_mwc() {
-  read_configs ${WORKDIR}/xtau_mwc-${WORKDATE}.config
+  read_config ${WORKDIR}/${XTAU_CONFIG}
 }
 
 php_setup() {
