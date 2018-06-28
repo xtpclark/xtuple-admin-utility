@@ -129,7 +129,7 @@ get_deployer_info () {
   export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
   export DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
 
-  if [ "$MODE" = "manual" ] ; then
+  if [ "$MODE" = "manual" && ${DEPLOYER_NAME} != $(whoami) ] ; then
     # TODO: is robbyrussell really necessary?
     if $IS_DEV_ENV && ! command -v zsh > /dev/null 2>&1 ; then
       sudo apt-get install --quiet --yes zsh
@@ -208,8 +208,12 @@ postfix_setup () {
   DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
   local SERVER_NAME=${2:-${SERVER_NAME:-$(hostname)}}
 
-  # -qq avoids prompts
   sudo apt-get --quiet --quiet --yes install postfix
+  local RET=$?
+  if [ $RET -ne 0 ] ; then
+    msgbox "Failed to install postfix"
+    return $RET
+  fi
   back_up_file /etc/postfix/main.cf
 
   # TODO: why debconf-set-selections instead of >> /etc/postfix/main.conf
@@ -251,7 +255,8 @@ EOF
   log_exec sudo bash -c "echo 'host         all            all            127.0.0.1/32              trust' >> $POSTDIR/pg_hba.conf"
   RET=$?
   if [ $RET -ne 0 ] ; then
-    die "Opening $POSTDIR/pg_hba.conf for xTupleCommerce failed. Check log file and try again."
+    msgbox "Opening $POSTDIR/pg_hba.conf for xTupleCommerce failed. Check log file and try again."
+    return $RET
   fi
   sudo chown postgres $POSTDIR/pg_hba.conf
 
@@ -259,7 +264,9 @@ EOF
 }
 
 update_site () {
-  msgbox 'ssh -t USER@SITE.xtuplecloud.com "cd /var/www/SITE.xd && ./console.php update:all"'
+  local STARTDIR=$(pwd)
+  cd ${WEBROOT}/${WORKFLOW_ENV} && ./console.php update:all
+  cd $STARTDIR
 }
 
 fi # }

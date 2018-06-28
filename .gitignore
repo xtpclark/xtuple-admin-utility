@@ -21,3 +21,4 @@ sql/oa2client.sql
 *phpunit.phar*
 backups/*.backup
 backups/*.sql
+xtau_config.json*

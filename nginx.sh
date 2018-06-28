@@ -132,8 +132,9 @@ configure_nginx() {
   NGINX_SITE="${3:-$NGINX_SITE}"
   NGINX_CERT="${4:-$NGINX_CERT}"
   NGINX_KEY="${5:-$NGINX_KEY}"
-  WEBAPI_PORT="${6:-${WEBAPI_PORT:-8443}}"
+  WEBAPI_PORT="${6:-${WEBAPI_PORT}}"
   WEBROOT="${WEBROOT:-/var/www}"
+  WORKFLOW_ENV="${WORKFLOW_ENV:-stage}"
   NGINX_LOG="${NGINX_LOG:-/var/log/nginx}"
 
   if [ -z "$NGINX_HOSTNAME" -o -z "$NGINX_DOMAIN" -o -z "$NGINX_SITE" \

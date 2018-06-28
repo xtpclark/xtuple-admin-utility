@@ -135,7 +135,6 @@ list_clusters() {
 # $5 if exists, start at boot
 provision_cluster() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  install_plv8
 
   PGVER="${1:-$PGVER}"
   local POSTNAME="$2"

@@ -155,7 +155,7 @@ install_prereqs() {
         install_dev_prereqs
       fi
       install_pg_repo
-      sudo apt-get --quiet update
+      sudo apt-get --yes --quiet update
       # TODO: prune this list if possible (e.g. build-essential?)
       sudo apt-get --quiet -y install \
                               build-essential bzip2 cups curl dialog git jq       \
@@ -174,7 +174,9 @@ install_prereqs() {
       fi
 
       # Install LE prerequsites
-      source letsencrypt/installLE.sh
+      sudo add-apt-repository -y ppa:certbot/certbot
+      sudo apt-get --yes --quiet update
+      sudo apt-get --yes --quiet install software-properties-common python-certbot-nginx
 
       # fix the background color
       sudo sed -i 's/magenta/blue/g' /etc/newt/palette.ubuntu
@@ -183,7 +185,7 @@ install_prereqs() {
       die "Maybe one day we will support CentOS..."
       ;;
     *)
-      die "Shouldn't reach here! Please report this on GitHub. install_prereqs"
+      die "Please report a bug that install_prereqs tried to process $DISTRO"
       ;;
   esac
 }

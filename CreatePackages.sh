@@ -2,6 +2,9 @@
 # Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
 # See www.xtuple.com/CPAL for the full text of the software license.
 
+# TODO: There's still a bunch of code duplication between this file
+#       and the rest of xTAU. Remove the duplication.
+
 shopt extdebug
 
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
@@ -13,7 +16,7 @@ source ${WORKDIR}/functions/gitvars.fun
 source ${WORKDIR}/functions/setup.fun
 source ${WORKDIR}/functions/oatoken.fun
 
-export NODE_ENV=${NODE_ENV:-production}
+export WORKFLOW_ENV=${WORKFLOW_ENV:-production}
 
 # Create Packages for bundling xTuple REST-API and xTupleCommerce
 
@@ -63,7 +66,7 @@ mwc_build_static_mwc() {
   for REPO in $REPOS ; do
     # TODO: read the BUILDTAG from an external source
     if [ "$REPO" = "xtuple" ] ; then
-      BUILDTAG=${MWCREFSPEC:-TAG}
+      BUILDTAG=${BUILD_XT_TAG:-TAG}
     else
       BUILDTAG="TAG"
     fi
@@ -88,33 +91,6 @@ mwc_createinit_static_mwc() {
 EOF
 }
 
-mwc_createsystemd_static_mwc() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
-
-  cat <<-EOF > ${BUILD_CONFIG_SYSTEMD}/xtuple-${ERP_DATABASE_NAME}.service
-
-	[Unit]
-	Description=xTuple ERP NodeJS Server
-	After=network.target
-
-	[Install]
-	WantedBy=multi-user.target
-
-	[Service]
-	Restart=always
-	StandardOutput=syslog
-	StandardError=syslog
-	User=xtuple
-	Group=xtuple
-	Environment=NODE_ENV=production
-	ExecStop=/bin/kill -9 \$MAINPID
-	SyslogIdentifier=xtuple-${ERP_DATABASE_NAME}
-	ExecStart=/usr/local/bin/node /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple/node-datasource/main.js -c $CONFIGDIR/config.js
-
-EOF
-
-}
-
 remove_git_dirs()
 {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
@@ -132,7 +108,7 @@ mwc_bundle_mwc()
   cd ${WORKDIR}
 
   cat << EOF >  ${BUILD_XT_ROOT}/xtau_config
-  export NODE_ENV=production
+  export WORKFLOW_ENV=production
   export PGVER=${PGVER}
   export BUILD_XT_TAG=${BUILD_XT_TAG}
   export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
@@ -260,7 +236,7 @@ xtc_build_xtuplecommerce_envphp() {
 
   echo "Writing out environment.xml"
   mkdir --parents ${SITE_WEBROOT}/application/config
-  safecp ${SITE_WEBROOT}drupal/xdruple/dist/environment.xml.dist ${SITE_WEBROOT}/application/config/environment.xml
+  safecp ${SITE_WEBROOT}/drupal/xdruple/dist/environment.xml.dist ${SITE_WEBROOT}/application/config/environment.xml
   replace_params --no-backup ${SITE_WEBROOT}/application/config/environment.xml
 }
 
@@ -268,7 +244,7 @@ writeout_config() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
   cat << EOF > ${WORKDIR}/CreatePackages-${WORKDATE}.config
-    NODE_ENV=production
+    WORKFLOW_ENV=${WORKFLOW_ENV}
     PGVER=${PGVER}
     BUILD_XT_TAG=${BUILD_XT_TAG}
     ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
@@ -280,7 +256,7 @@ writeout_xtau_config() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
   cat << EOF > ${WORKDIR}/xtau_mwc-${WORKDATE}.config
-    export NODE_ENV=production
+    export WORKFLOW_ENV=production
     export PGVER=${PGVER}
     export BUILD_XT_TAG=${BUILD_XT_TAG}
     export ERP_MWC_TARBALL=${BUILD_XT_TARGET_NAME}-${BUILD_XT_TAG}.tar.gz
@@ -312,9 +288,9 @@ Port: ${PGPORT}
 Database: ${ERP_DATABASE_NAME}
 User: <Your User>
 Pass: <Your Pass>
-URL: https://${WAN_IP}:8443
-URL: https://${LAN_IP}:8443
-URL: https://${DOMAIN}:8443
+URL: https://${WAN_IP}:${WEBAPI_PORT}
+URL: https://${LAN_IP}:${WEBAPI_PORT}
+URL: https://${DOMAIN}:${WEBAPI_PORT}
 
 You may need to configure your firewall or router to forward incoming traffic from
 ${WAN_IP} to ${LAN_IP}:${PGPORT} if you cannot connect from outside
@@ -335,26 +311,25 @@ your network. See your Administrator."
   fi
 }
 
-# TODO: make each step handle remote hosts
 xtau_deploy_ecommerce() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  prepare_os_for_xtc    # xdruple-server/scripts/common.sh
-  deployer_setup        # xdruple-server/scripts/depoyler.sh
-  install_nginx         # xdruple-server/scripts/nginx-server.sh
+  prepare_os_for_xtc
+  deployer_setup
+  install_nginx
   configure_nginx
-  php_setup             # xdruple-server/scripts/php.sh
-  xtc_pg_setup          # xdruple-server/scripts/postgresql.sh
-  postfix_setup         # xdruple-server/scripts/postfix.sh
-  ruby_setup            # xdruple-server/scripts/ruby.sh
-  # xdruple-server/scripts/zsh.sh - see get_deployer_info and deployer_setup
-  druple_crontab        # xdruple-server/scripts/cron.sh
+  php_setup
+  xtc_pg_setup
+  postfix_setup
+  ruby_setup
+  druple_crontab
 
   xtc_code_setup || die
   setup_flywheel || die
   webnotes
 
   main_menu      || die
+  writeout_config
 }
 
 mwc_only() {
@@ -364,21 +339,20 @@ mwc_only() {
   mwc_build_static_mwc
   encryption_setup ${BUILD_CONFIG_XTUPLE} ${BUILD_XT}
   mwc_createinit_static_mwc
-  mwc_createsystemd_static_mwc
+  config_webclient_scripts
   remove_git_dirs
   mwc_bundle_mwc
 }
 
+# TODO: create and deploy the xtc tarball here?
+# this function does duplicate work and neither part half well.
 xtc_only() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
-  # TODO: this doesn't look right {
   xtc_build_static_xtuplecommerce
   xtc_build_xtuplecommerce_envphp
   xtc_bundle_xtuplecommerce
-  # }
 
-  # TODO: does this go before or after ^^^?
   xtau_deploy_ecommerce
   writeout_config
 }
@@ -390,7 +364,6 @@ build_all() {
   xtc_only
   writeout_config
 }
-
 
 try_deploy_xtau() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"

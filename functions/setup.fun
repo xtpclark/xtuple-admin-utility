@@ -5,9 +5,6 @@
 if [ -z "$SETUP_FUN" ] ; then # {
 SETUP_FUN=true
 
-export KEY_P12_PATH=${KEY_P12_PATH:-${WORKDIR}/private}
-export KEYTMP=${KEYTMP:-${KEY_P12_PATH}/tmp}
-export TZ=${TZ:-$(tzselect)}
 export WORKDATE=${WORKDATE:-$(date "+%m%d%y")}
 
 source ${WORKDIR:-.}/functions/oatoken.fun
@@ -40,16 +37,18 @@ read_config() {
     cp templates/xtau_config.json $XTAU_CONFIG
   fi
 
+  # TODO: There's got to be a better way to express this
   if [ -n "$SECTION" ] && $FORCE ; then
-    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;'
+    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;"'
   elif [ -n "$SECTION" ] ; then
-    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;'
+    SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | "[ -n \"$" + .key + "\" ] || " + .key + "=\"" + .value[0] + "\" ;"'
   elif [ -z "$SECTION" ] && $FORCE ; then
-    SCRIPT='to_entries[] | .value | to_entries[] | select(.value[0] != "") | "[ -n \"$" + .key + "\" ] || " + .key + "=\"" + .value[0] + "\" ;"'
+    SCRIPT='to_entries[] | .value | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;"'
   else
     SCRIPT='to_entries[] | .value | to_entries[] | select(.value[0] != "") | "[ -n \"$" + .key + "\" ] || " + .key + "=\"" + .value[0] + "\" ;"'
   fi
 
+  log "Reading from $XTAU_CONFIG"
   eval $(jq --raw-output "$SCRIPT" $XTAU_CONFIG)
   RET=$?
 
@@ -99,7 +98,10 @@ replace_params () {
     --no-backup) MAKE_BACKUP=false ; shift ;;
     --backup)    MAKE_BACKUP=true  ; shift ;;
   esac
-  ERP_KEY_FILE_PATH=${ERP_KEY_FILE_PATH:-/var/xtuple/keys/${NGINX_ECOM_DOMAIN_P12}}
+
+  if [ -d "$ERP_KEY_FILE_PATH" ] ; then
+    ERP_KEY_FILE_PATH="${ERP_KEY_FILE_PATH}/${NGINX_ECOM_DOMAIN}.p12"
+  fi
 
   for FILE in $@ ; do
     if $MAKE_BACKUP ; then
@@ -109,8 +111,6 @@ replace_params () {
                       -e "s#LOGDIR#$LOGDIR#g"                                       \
                       -e "s#WEBROOT#$WEBROOT#g"                                     \
                       -e "s#{BUILD_XT_TAG}#$BUILD_XT_TAG#g"                         \
-                      -e "s#{COMMERCE_AUTHNET_AIM_LOGIN}#$COMMERCE_AUTHNET_AIM_LOGIN#g"                     \
-                      -e "s#{COMMERCE_AUTHNET_AIM_TRANSACTION_KEY}#$COMMERCE_AUTHNET_AIM_TRANSACTION_KEY#g" \
                       -e "s#{CONFIGDIR}#$CONFIGDIR#g"                               \
                       -e "s#{DEPLOYER_NAME}#$DEPLOYER_NAME#g"                       \
                       -e "s#{DOMAIN_ALIAS}#$DOMAIN_ALIAS#g"                         \
@@ -120,19 +120,15 @@ replace_params () {
                       -e "s#{ECOMM_DB_USERPASS}#$ECOMM_DB_USERPASS#g"               \
                       -e "s#{ECOMM_EMAIL}#$ECOMM_EMAIL#g"                           \
                       -e "s#{ECOMM_SITE_NAME}#$ECOMM_SITE_NAME#g"                   \
+                      -e "s#{ENVIRONMENT}#$WORKFLOW_ENV#g"                          \
                       -e "s#{ERP_APPLICATION}#$ERP_APPLICATION#g"                   \
                       -e "s#{ERP_DATABASE_NAME}#$ERP_DATABASE_NAME#g"               \
                       -e "s#{ERP_DATABASE}#$ERP_DATABASE_NAME#g"                    \
                       -e "s#{ERP_DEBUG}#${ERP_DEBUG:-true}#g"                       \
-                      -e "s#{ERP_HOST}#$ERP_HOST#g"                                 \
+                      -e "s#{WEBAPI_HOST}#$WEBAPI_HOST#g"                                 \
                       -e "s#{ERP_ISS}#$ERP_ISS#g"                                   \
                       -e "s#{ERP_KEY_FILE_PATH}#$ERP_KEY_FILE_PATH#g"               \
                       -e "s#{ESCAPED_TIMEZONE}#$ESCAPED_TIMEZONE#g"                 \
-                      -e "s#{FEDEX_ACCOUNT_NUMBER}#$FEDEX_ACCOUNT_NUMBER#g"         \
-                      -e "s#{FEDEX_BETA}#${FEDEX_BETA:-false}#g"                    \
-                      -e "s#{FEDEX_KEY}#$FEDEX_KEY#g"                               \
-                      -e "s#{FEDEX_METER_NUMBER}#$FEDEX_METER_NUMBER#g"             \
-                      -e "s#{FEDEX_PASSWORD}#$FEDEX_PASSWORD#g"                     \
                       -e "s#{GITHUB_TOKEN}#$GITHUB_TOKEN#g"                         \
                       -e "s#{HOSTNAME}#$NGINX_HOSTNAME#"                            \
                       -e "s#{MAX_EXECUTION_TIME}#$MAX_EXECUTION_TIME#g"             \
@@ -140,14 +136,9 @@ replace_params () {
                       -e "s#{WEBAPI_PORT}#$WEBAPI_PORT#g"                           \
                       -e "s#{SERVER_CRT}#$NGINX_CERT#g"                             \
                       -e "s#{SERVER_KEY}#$NGINX_KEY#g"                              \
-                      -e "s#{SYSLOGID}#xtuple-$ERP_DATABASE_NAME#g"                 \
+                      -e "s#{SYSLOGID}#$SYSLOGID#g"                                 \
                       -e "s#{TIMEZONE}#$TZ#g"                                       \
                       -e "s#{TZ}#$TZ#g"                                             \
-                      -e "s#{UPS_ACCESS_KEY}#$UPS_ACCESS_KEY#g"                     \
-                      -e "s#{UPS_ACCOUNT_ID}#$UPS_ACCOUNT_ID#g"                     \
-                      -e "s#{UPS_PASSWORD}#$UPS_PASSWORD#g"                         \
-                      -e "s#{UPS_PICKUP_SCHEDULE}#$UPS_PICKUP_SCHEDULE#g"           \
-                      -e "s#{UPS_USER_ID}#$UPS_USER_ID#g"                           \
                       -e "s#{WORKFLOW_ENV}#$WORKFLOW_ENV#g"                         \
                       -e "s#{XTDIR}#/opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME#g" \
                       $FILE
@@ -158,16 +149,6 @@ replace_params () {
     fi
   done
   return $RESULT
-}
-
-initial_update() {
-  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-
-  sudo apt-get --quiet update
-  RET=$?
-  if [[ $RET != 0 ]]; then
-    die "apt-get update returned $RET. Log out and back in and try again"
-  fi
 }
 
 check_pgdep() {
@@ -379,7 +360,10 @@ setup_erp_db() {
 
 get_os_info() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  DOMAIN=${DOMAIN:-flywheel.xd}
+
+  if [ -z "${DOMAIN}" -o -z "${ERP_DATABASE_NAME}" -o -z "${WEBAPI_HOST}" ] ; then
+    get_environment
+  fi
 
   dialog --ok-label  "Submit"                           \
          --backtitle "$(window_title)"                  \
@@ -418,13 +402,8 @@ prepare_os_for_xtc() {
     # TODO: HOST_USERNAME is never defined so we'll never get here
   fi
 
-  generate_p12
-  if ! $IS_DEV_ENV ; then
-    sudo mkdir --parents /var/xtuple/keys
-    safecp ${KEYTMP}/${NGINX_ECOM_DOMAIN_P12} /var/xtuple/keys
-  elif $IS_DEV_ENV ; then
-    sudo mkdir --parents /var/xtuple
-    sudo ln --symbolic --force /vagrant/xtuple/keys /var/xtuple/keys
+  if [ "${NGINX_ECOM_DOMAIN}.p12" = ".p12" -a ! -f ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN}.crt ] ; then
+    generate_p12
   fi
 }
 
@@ -566,16 +545,16 @@ get_environment() {
 
   ERP_DATABASE_NAME=${DATABASE}
   DOMAIN=${DOMAIN:-flywheel.xd}
-  ERP_HOST=https://${DOMAIN}:8443
+  WEBAPI_HOST=https://${DOMAIN}:${WEBAPI_PORT}
 
   [ -n "${GITHUB_TOKEN}" ] || get_github_token || return 1
 
-  dialog --ok-label  "Submit"                           \
-         --backtitle "$(window_title)"                  \
-         --title     "Configuration"                    \
-         --form      "Configure Web Client Environment" \
+  dialog --ok-label  "Submit"                        \
+         --backtitle "$(window_title)"               \
+         --title     "Configuration"                 \
+         --form      "Configure Web API Environment" \
          0 0 0 \
-           "ERP Host:"  1 1          "${ERP_HOST}"   1 20 50 0 \
+           "ERP Host:"  1 1          "${WEBAPI_HOST}"   1 20 50 0 \
        "ERP Database:"  2 1 "${ERP_DATABASE_NAME}"   2 20 50 0 \
              "Domain:"  3 1            "${DOMAIN}"   3 20 50 0 \
   3>&1 1>&2 2>&3 2> xtuple_webclient.ini
@@ -583,8 +562,8 @@ get_environment() {
 
   case $RET in
     $DIALOG_OK)
-      read -d "\n" ERP_HOST ERP_DATABASE_NAME DOMAIN <<<$(cat xtuple_webclient.ini);
-      export ERP_HOST ERP_DATABASE_NAME DOMAIN
+      read -d "\n" WEBAPI_HOST ERP_DATABASE_NAME DOMAIN <<<$(cat xtuple_webclient.ini);
+      export WEBAPI_HOST ERP_DATABASE_NAME DOMAIN
       export ECOMM_ADMIN_EMAIL=admin@${DOMAIN}
       ;;
     $DIALOG_CANCEL)    main_menu                       ;;
@@ -596,6 +575,10 @@ get_environment() {
 }
 
 get_xtc_environment() {
+  if [ -z "${DOMAIN}" -o -z "${ERP_DATABASE_NAME}" -o -z "${WEBAPI_HOST}" ] ; then
+    get_environment
+  fi
+
   ECOMM_EMAIL=admin@${DOMAIN}
   ECOMM_SITE_NAME="${ECOMM_SITE_NAME:-xTupleCommerceSite}"
   ECOMM_DB_NAME=${ERP_DATABASE_NAME}_xtc
@@ -607,7 +590,7 @@ get_xtc_environment() {
   ERP_DEBUG="${ERP_DEBUG:-true}"
   WORKFLOW_ENV="${WORKFLOW_ENV:-stage}"
   HTTP_AUTH_NAME="${HTTP_AUTH_NAME:-Developer}"
-  HTTP_AUTH_PASS="${HTTP_AUTH_PASS:-ChangeMe}"
+  HTTP_AUTH_PASS="${HTTP_AUTH_PASS:-admin}"
 
   if [ -z "$SITE_TEMPLATE" -a -n "$DOMAIN" ] && [[ "$DOMAIN" =~ ^[^.]+\. ]] ; then
     SITE_TEMPLATE=${BASH_REMATCH[1]}
@@ -660,7 +643,7 @@ get_xtc_environment() {
 
 load_oauth_site() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
-  [ -e "${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN_P12}" ] || generate_p12  || die
+  generate_p12  || die
   generateoasql || die
 
   psql -U admin -p ${PGPORT} -d ${ERP_DATABASE_NAME} -f ${WORKDIR}/sql/oa2client.sql || die
@@ -682,16 +665,6 @@ install_xtuple_xvfb() {
       log_exec sudo service xtuple-Xvfb start
       ;;
   esac
-}
-
-# TODO: either remove or make this ask for gateway info and do the full config
-gateway_setup() {
-  psql -U admin -p 5432 ${ERP_DATABASE_NAME} <<EOF
-    INSERT INTO paymentgateways.gateway (
-      gateway_name,  gateway_hostname,  gateway_base_path,  gateway_node_lib_name
-    ) SELECT ${GATEWAY_NAME}, ${GATEWAY_HOSTNAME}, ${GATEWAY_BASE_PATH}, ${GATEWAY_NODE_LIB_NAME}
-      WHERE NOT EXISTS (SELECT 1 FROM paymentgateways.gateway WHERE gateway_name = ${GATEWAY_NAME});
-EOF
 }
 
 ruby_setup() {
@@ -719,7 +692,7 @@ xtc_code_setup() {
     for TESTDIR in $(ls -td /opt/xtuple/*/*/xtuple) ; do
       if [ -d $TESTDIR/.git ] ; then
         BUILD_XT="$TESTDIR"
-        MWCREFSPEC=$(basename $(dirname $(dirname $BUILD_XT)))
+        BUILT_XT_TAG=$(basename $(dirname $(dirname $BUILD_XT)))
         break
       fi
     done
@@ -730,12 +703,12 @@ xtc_code_setup() {
     for TESTDIR in $(ls -td "${WORKDIR}/${BUILD_XT_TARGET_NAME:=xTupleREST}*") ; do
       if [ -d $TESTDIR ] && [[ $TESTDIR =~ ${BUILD_XT_TARGET_NAME}-(.*) ]] ; then
         BUILD_XT="$TESTDIR"
-        MWCREFSPEC=${BASH_REMATCH[1]}
+        BUILD_XT_TAG=${BASH_REMATCH[1]}
         break
       fi
     done
   fi
-  CONFIGDIR=${CONFIGDIR:-$(dirname $(ls -td /etc/xtuple/$MWCREFSPEC/*/config.js | head --lines=1))}
+  CONFIGDIR=${CONFIGDIR:-$(dirname $(ls -td /etc/xtuple/$BUILD_XT_TAG/*/config.js | head --lines=1))}
 
   [ -n "$GITHUB_TOKEN" ] || get_github_token || die "Cannot set up xTupleCommerce without a GitHub access token"
 
@@ -748,7 +721,7 @@ xtc_code_setup() {
   for REPO in $REPOS ; do
     # TODO: read the BUILDTAG from an external source
     if [ "$REPO" = "private-extensions" ] ; then
-      BUILDTAG=${MWCREFSPEC:-TAG}
+      BUILDTAG=${BUILD_XT_TAG:-TAG}
     else
       BUILDTAG="TAG"
     fi
@@ -779,10 +752,6 @@ setup_flywheel() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   get_github_token
 
-  if [ -z "${DOMAIN}" -o -z "${ERP_DATABASE_NAME}" -o -z "${ERP_HOST}" ] ; then
-    get_environment
-  fi
-
   if [   -z "${DEPLOYER_NAME}"     -o -z "${DOMAIN_ALIAS}"      \
       -o -z "${ERP_APPLICATION}"   -o -z "${ECOMM_DB_NAME}"     \
       -o -z "${ECOMM_DB_USERNAME}" -o -z "${ECOMM_DB_USERPASS}" \
@@ -793,20 +762,13 @@ setup_flywheel() {
     get_xtc_environment
   fi
 
-  # TODO: how do we load API info from gitconfig without overwriting
-  #       get_environment & get_xtc_environment?
-  # loadcrm_gitconfig
-  # checkcrm_gitconfig
-
   service_restart xtuple-${ERP_DATABASE_NAME} || die
 
   local SITE_ROOT=/var/www
   local SITE_WEBROOT=${SITE_ROOT}/${WORKFLOW_ENV}
 
-  if [ -n ${NGINX_ECOM_DOMAIN_P12} ]; then
+  if [ "${NGINX_ECOM_DOMAIN}.p12" != ".p12" ]; then
     load_oauth_site
-  else
-    die "DOMAIN NOT SET - EXITING!"
   fi
 
   log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} ${SITE_ROOT}
@@ -871,13 +833,10 @@ setup_xtuplecommerce() {
 
   echo "Extracting ${XTC_WWW_TARBALL}"
   log_exec tar xf ${XTC_WWW_TARBALL}
-  if [[ -d "/var/www/xTupleCommerce" ]]; then
-    echo "Moving old /var/www/xTupleCommerce directory to /var/www/xTupleCommerce-${WORKDATE}"
-    back_up_file /var/www/xTupleCommerce
-  fi
+  back_up_file /var/www/${WORKFLOW_ENV}
 
-  sudo mv $WORKDIR/${XTCTARDIR} /var/www/xTupleCommerce
-  sudo chown -R www-data:www-data /var/www/xTupleCommerce
+  sudo mv ${WORKDIR}/${XTCTARDIR} /var/www/${WORKFLOW_ENV}
+  sudo chown -R www-data:www-data /var/www/${WORKFLOW_ENV}
 }
 
 webnotes() {
@@ -922,14 +881,14 @@ webnotes() {
 
 	Web API:
 	  Login at http://${DOMAIN}:8888
-	  Login at https://${DOMAIN_ALIAS}:8443
+	  Login at ${WEBAPI_HOST}
 	  User     admin
 	  Pass     admin
 
 	xTupleCommerce Site Login:
-	  Login at http://${DOMAIN_ALIAS}/login
-	  User     Developer
-	  Pass     admin
+	  Login at http://${WORKFLOW_ENV}.${DOMAIN_ALIAS}/login
+	  User     ${HTTP_AUTH_NAME}
+	  Pass     ${HTTP_AUTH_PASS}
 
 	Nginx Config:
 	  Webroot: /var/www/${WORKFLOW_ENV}/drupal/core

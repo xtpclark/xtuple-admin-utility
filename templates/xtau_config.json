@@ -14,27 +14,28 @@
   "erpdb": {
     "BUILD_XT_TAG":          [ "",     "git tag for the xtuple (and private-extensions) repository" ],
     "ERP_DATABASE_NAME":     [ "",     "Name of the xTuple ERP database to create" ],
-    "ERP_EDITION":           [ "",     "Edition of the ERP system to set up (postbooks, distribution, manufacturing, enterprise)" ],
-    "ERP_HOST":              [ "",     "Host name or IP address where the database server should run" ]
+    "ERP_EDITION":           [ "",     "Edition of the ERP system to set up (postbooks, distribution, manufacturing, enterprise)" ]
   },
 
   "webapi": {
     "CONFIGDIR":             [ "",     "Directory containing the web api config.js" ],
     "MWCNAME":               [ "",     "Name of this web API instance" ],
+    "WEBAPI_HOST":           [ "",     "Host where the web API server is running" ],
     "WEBAPI_PORT":           [ "",     "Port on which the web API is listening" ]
   },
 
   "nginx": {
-    "DOMAIN_NAME":           [ "",     "" ],
     "ERP_KEY_FILE_PATH":     [ "",     "Full path to encryption key" ],
     "HOSTNAME":              [ "",     "" ],
+    "NGINX_DOMAIN":          [ "",     "" ],
+    "NGINX_HOSTNAME":        [ "",     "" ],
+    "NGINX_SITE":            [ "",     "" ],
     "SERVER_CRT":            [ "",     "" ],
     "SERVER_KEY":            [ "",     "" ]
   },
 
   "xtc": {
-    "COMMERCE_AUTHNET_AIM_LOGIN":           [ "",     "self-evident" ],
-    "COMMERCE_AUTHNET_AIM_TRANSACTION_KEY": [ "",     "self-evident" ],
+    "DOMAIN":                [ "",     "" ],
     "DOMAIN_ALIAS":          [ "",     "" ],
     "ECOMM_DB_NAME":         [ "",     "Name of Drupal database" ],
     "ECOMM_DB_USERNAME":     [ "",     "Name of Drupal database admin user" ],
@@ -44,23 +45,11 @@
     "ERP_APPLICATION":       [ "",     "Name of the Drupal application to be installed" ],
     "ERP_DEBUG":             [ "false",  "true = disable SSL checking (**security hole**)" ],
     "ERP_ISS":               [ "",     "" ],
-    "FEDEX_ACCOUNT_NUMBER":  [ "",     "self-evident" ],
-    "FEDEX_KEY":             [ "",     "self-evident" ],
-    "FEDEX_METER_NUMBER":    [ "",     "self-evident" ],
-    "FEDEX_PASSWORD":        [ "",     "self-evident" ],
-    "GATEWAY_BASE_PATH":     [ "",     "" ],
-    "GATEWAY_HOSTNAME":      [ "",     "" ],
-    "GATEWAY_NAME":          [ "",     "" ],
-    "GATEWAY_NODE_LIB_NAME": [ "",     "" ],
     "LOGDIR":                [ "",     "**Parent** directory of website logs" ],
     "MAX_EXECUTION_TIME":    [ "",     "PHP setting" ],
     "SYSLOGID":              [ "",     "`SyslogIdentifier` used to set up xtuple-systemd.service" ],
-    "UPS_ACCESS_KEY":        [ "",     "self-evident" ],
-    "UPS_ACCOUNT_ID":        [ "",     "self-evident" ],
-    "UPS_PASSWORD":          [ "",     "self-evident" ],
-    "UPS_PICKUP_SCHEDULE":   [ "",     "self-evident" ],
-    "UPS_USER_ID":           [ "",     "self-evident" ],
     "WEBROOT":               [ "",     "**Parent** directory of all websites" ],
-    "WORKFLOW_ENV":          [ "",     "Pantheon workflow, typically one of `dev`, `stage`, `live`" ]
+    "WORKFLOW_ENV":          [ "",     "Workflow environment, typically one of `dev`, `stage`, `live`" ]
   }
+
 }

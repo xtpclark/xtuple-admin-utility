@@ -2,19 +2,16 @@
 
 PROG=$0
 
-DATE=$(date +%Y.%m.%d-%H:%M)
-export _REV="1.0"
-export WORKDIR=$(pwd)
+export _REV=$(git describe --all --long | \
+              sed -e "s,^heads/,," -e "s,^tags/,," -e "s,/,_,g")
 export MODE="manual"
 
-#set some defaults
 source config.sh        || die
 source common.sh        || die
 
 mkdir --parents $DATABASEDIR
 mkdir --parents $BACKUPDIR
 
-# sets up sudoer.d
 setup_sudo
 
 # process command line arguments (see bash man page for getopts info)
@@ -70,7 +67,7 @@ while getopts ":ac:D:d:e:H:hmn:p:qt:x:-:" opt; do
                   web API $(latest_version db)
                   xTupleCommerce
           -c    Read configuration information from the named file
-                (command line arguments override the file contents)
+                (overrides other command line options and env variables)
 	  -D	Set NGINX domain [ ${NGINX_DOMAIN:-?} ]
 	  -d	Specify database name to create [ ${DATABASE:-?} ]
 	  -e    Specify edition to set up [ ${ERP_EDITION:-?} ]
@@ -166,11 +163,6 @@ source functions/setup.fun      || die
 source functions/gitvars.fun    || die
 source functions/oatoken.fun    || die
 
-if [ -n "$XTAU_CONFIG" ] ; then
-  read_config -f
-  write_config
-fi
-
 log "Installing pre-requisite packages..."
 if [[ ! -f .already_ran_update ]]; then
   install_prereqs
@@ -180,9 +172,22 @@ else
   log "Remove the file if you want apt-get to update the system"
 fi
 
+read_config -f
+
+if [ -z "${TZ}" ] ; then
+  TZ=$(tzselect) || exit 1
+  if ! grep --quiet --word-regexp --no-messages TZ= \
+            ${HOME}/.bashrc ${HOME}/.bash_profile ${HOME}/.profile ${HOME}/.zprofile ; then
+    echo "export TZ=${TZ}" > ${HOME}/.profile
+  fi
+  sudo locale-gen en_US.UTF-8          || exit 1
+  sudo timedatectl set-timezone ${TZ}  || exit 1
+  write_config
+  echo "'unset TZ', remove $TZ from $XTAU_CONFIG, and restart $PROG to choose a different timezone"
+fi
+
 if [ $INSTALLALL ]; then
   log "Executing full provision..."
-  MODE="auto"
   PRIVATEEXT=true
 
   DBVERSION="${DBVERSION:-4.11.3}"
@@ -196,10 +201,8 @@ if [ $INSTALLALL ]; then
   NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
   get_github_token
-  [ -n "$GITHUBNAME" ]                       || PRIVATEEXT=false
-  [ -n "$GITHUBPASS" -o -n "$GITHUB_TOKEN" ] || PRIVATEEXT=false
-  if ! $PRIVATEEXT ; then
-    msgbox "Commercial provisioning needs a GITHUBNAME and either GITHUBPASS or GITHUB_TOKEN"
+  if [ -z "$GITHUBNAME" ] || [ -z "$GITHUBPASS" -a -z "$GITHUB_TOKEN" ] ; then
+    die "Commercial provisioning needs a GITHUBNAME and either GITHUBPASS or GITHUB_TOKEN"
   fi
 
   install_postgresql "$PGVER"
@@ -213,12 +216,12 @@ if [ $INSTALLALL ]; then
   install_webclient "v$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
   install_nginx
   log_exec sudo mkdir --parents $CONFIGDIR/ssl
-  configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" $CONFIGDIR/ssl/server.{crt,key}
 
   get_os_info
   prepare_os_for_xtc
   get_deployer_info
   deployer_setup
+  configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" $CONFIGDIR/ssl/server.{crt,key}
   php_setup
   xtc_pg_setup
   postfix_setup

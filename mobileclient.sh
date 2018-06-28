@@ -2,8 +2,7 @@
 # Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
 # See www.xtuple.com/CPAL for the full text of the software license.
 
-# TODO: replace MWCREFSPEC with BUILD_XT_TAG everywhere. we may need to distinguish
-# between git tags and the ServerVersion metric. if so, we'll need to be careful.
+# TODO: we may need to distinguish between git tags (BUILD_XT_TAG) and the ServerVersion metric
 
 if [ -z "$MOBILECLIENT_SH" ] ; then # {
 MOBILECLIENT_SH=true
@@ -79,11 +78,9 @@ install_webclient_menu() {
       elif [ $MENUVER -lt 10 ]; then
         read -a tagversionarray <<< $TAGVERSIONS
         BUILD_XT_TAG=${tagversionarray[$MENUVER]}
-        MWCREFSPEC=$BUILD_XT_TAG
       else
         read -a headversionarray <<< $HEADVERSIONS
         BUILD_XT_TAG=${headversionarray[(($MENUVER-10))]}
-        MWCREFSPEC=$BUILD_XT_TAG
       fi
     else
       return $RET
@@ -110,20 +107,10 @@ install_webclient_menu() {
     if (whiptail --title "Private Extensions" --yesno --defaultno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
       log "Installing the commercial extensions"
       PRIVATEEXT=true
-      if [ -z "$GITHUBNAME" ] ; then
-        GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-          return $RET
-        fi
-      fi
-
-      if [ -z "$GITHUBPASS" -a -z "$GITHUB_TOKEN" ] ; then
-        GITHUBPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-          return $RET
-        fi
+      get_github_token
+      RET=$?
+      if [ $RET -ne 0 ]; then
+        return $RET
       fi
     else
       log "Not installing the commercial extensions"
@@ -133,7 +120,7 @@ install_webclient_menu() {
     return 127
   fi
 
-  log_exec install_webclient $BUILD_XT_TAG $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+  log_exec install_webclient $BUILD_XT_TAG $BUILD_XT_TAG $MWCNAME $PRIVATEEXT $DATABASE
 }
 
 
@@ -142,15 +129,13 @@ install_webclient_menu() {
 # $3 is the instance name
 # $4 is to install private extensions
 # $5 is database name
-# $6 is github username
-# $7 is github password
 install_webclient() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
 
   log "Web enabling"
 
   BUILD_XT_TAG="${1:-$BUILD_XT_TAG}"
-  MWCREFSPEC="${2:-$MWCREFSPEC}"
+  BUILD_XT_TAG="${2:-$BUILD_XT_TAG}"
   MWCNAME="${3:-$MWCNAME}"
 
   PRIVATEEXT="${4:-${PRIVATEEXT:-false}}"
@@ -162,9 +147,6 @@ install_webclient() {
   if [ -z "$ERP_DATABASE_NAME" ]; then
     die "No database name passed to install_webclient. exiting."
   fi
-
-  GITHUBNAME="${6:-$GITHUBNAME}"
-  GITHUBPASS="${7:-$GITHUBPASS}"
 
   local STARTDIR=$(pwd)
 
@@ -214,16 +196,17 @@ install_webclient() {
   else
     log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple"
     log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
-    log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME     || die
-    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple || die
-    gitco xtuple /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $MWCREFSPEC          || die
+    log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME  || die
+    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple        || die
+    gitco xtuple /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $BUILD_XT_TAG     || die
   fi
 
   config_webclient_scripts                               || die
   npm install bower                                      || die
 
   if $PRIVATEEXT ; then
-    gitco private-extensions /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $MWCREFSPEC $GITHUBNAME $GITHUBPASS
+    # TODO: BUILD_XT_TAG is not always correct, as it might really be a commit hash
+    gitco private-extensions /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $BUILD_XT_TAG
   fi
 
   turn_on_plv8

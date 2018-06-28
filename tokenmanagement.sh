@@ -54,14 +54,9 @@ get_github_token() {
   if [ -z "${GITHUB_TOKEN}" ] ; then
     read_config -s git -f
   fi
-  if [ -z "${GITHUB_TOKEN}" -a -f .githubtoken ] ; then
-    source .githubtoken
-    export GITHUBNAME GITHUB_TOKEN
-  fi
   if [ -z "${GITHUB_TOKEN}" -a "${MODE}" = 'auto' ] ; then
     msgbox "Cannot find your github personal access token.
-Either set GITHUB_TOKEN in your environment,
-write a .githubtoken file in the xtuple-admin-utility directory,
+Either set GITHUB_TOKEN in your environment, add it to $XTAU_CONFIG,
 or run $PROG interactively."
     return 1
   fi
@@ -76,7 +71,8 @@ generate_github_token() {
   local OAMSG RET
   local OUTPUT=GITHUB_TOKEN_${WORKDATE}.log
 
-  dialog --ok-label  "Submit"                                 \
+  dialog --ok-label  "Get Token"                              \
+         --extra-button --extra-label "Save Token"            \
          --backtitle "$(window_title)"                        \
          --title     "Generate GitHub Personal Access Token"  \
          --form      "GitHub Credentials" 0 0 3               \
@@ -84,12 +80,18 @@ generate_github_token() {
          "GitHub Password:" 2 1 "${GITHUB_TOKEN:-${GITHUBPASS}}" 2 20 50 0     \
          3>&1 1>&2 2> github.ini
   RET=$?
-  if [ $RET -ne $DIALOG_OK ] ; then
-    return 1
-  fi
-  read -d "\n" GITHUBNAME GITHUBPASS <<<$(cat github.ini)
-  export       GITHUBNAME GITHUBPASS
-  rm -f github.ini
+  case $RET in
+    $DIALOG_OK)
+      read -d "\n" GITHUBNAME GITHUBPASS <<<$(cat github.ini)
+      ;;
+    $DIALOG_EXTRA)
+      read -d "\n" GITHUBNAME GITHUB_TOKEN <<<$(cat github.ini)
+      write_config -s git GITHUBNAME GITHUB_TOKEN
+      return 0
+      ;;
+    *) return 1
+      ;;
+  esac
 
   log "Generating your Github token."
   curl https://api.github.com/authorizations --user ${GITHUBNAME}:${GITHUBPASS} \
@@ -105,8 +107,6 @@ generate_github_token() {
     return 1
   fi
 
-  git config --global github.token ${GITHUB_TOKEN}
-  echo "GITHUBNAME=$GITHUBNAME\nGITHUB_TOKEN=${GITHUB_TOKEN}" >> .githubtoken
   write_config -s git GITHUBNAME GITHUB_TOKEN
 
   msgbox "Your GitHub Personal Access token is: ${GITHUB_TOKEN}.
