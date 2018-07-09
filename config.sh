@@ -1,66 +1,87 @@
+#!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
+
+if [ -z "$CONFIG_SH" ] ; then # {
+CONFIG_SH=true
+PROG=${PROG:-$0}
+
 # Actions to take when the utility is run
 ACTIONS=()
 
-WORKING=$(pwd)
+export TMPDIR=${TMPDIR:-/tmp}
+export DEBIAN_FRONTEND=noninteractive
 
-# default configurations
-LOG_FILE=$(pwd)/install-$DATE.log
+WORKDIR=$(pwd)
+DEPLOYER_NAME=$(whoami)
+DATE=${DATE:-$(date +%Y.%m.%d-%H:%M)}
+LOG_FILE=$(pwd)/install-${DATE}
+XTAU_CONFIG=
 
-DATABASEDIR=$(pwd)/databases
-BACKUPDIR=$(pwd)/backups
+IS_DEV_ENV=${IS_DEV_ENV:-false}
+DATABASEDIR=${WORKDIR}/databases
+BACKUPDIR=${WORKDIR}/backups
+DBTYPE=${DBTYPE:-empty}
 
-# leave these undefined. They should never be used in this utility because it would lead to hard to pinpoint easy to fix bugs that cause a disproportionate amount of wasted time.
-PGNAME=
-PGPORT=
+export PGHOST=${PGHOST:-localhost}
+export PGUSER=${PGUSER:-postgres}
+export POSTLOCALE=$LANG
 
-# set these
-PGVER=${PGVER:-9.6}
-PGHOST=${PGHOST:-localhost}
+# leave these undefined. otherwise we may waste lots of time looking for avoidable bugs
+export PGNAME=
+export PGPORT=
 
-# postgres user, required for all postgres/database actions
-PGUSER=${PGUSER:-postgres}
+export NGINX_SITE=
+export NGINX_HOSTNAME="${NGINX_HOSTNAME:-flywheel}"
+export NGINX_DOMAIN="${NGINX_DOMAIN:-flywheel.xd}"
+export NGINX_CERT
+export NGINX_KEY
 
-# usually set to $LANG
-POSTLOCALE=$LANG
-
-# default nginx site to select
-NGINX_SITE=
-# auto populated if site exists, otherwise can be used to create a site
-NGINX_DOMAIN=
-NGINX_HOSTNAME=
-NGINX_PORT=${NGINX_PORT:-8443}
-NGINX_CERT=
-NGINX_KEY=
 # generate new certs if the specified ones don't exist
 GEN_SSL=false
 
-# default mobile web instance to use
-MWCNAME=
-# version tag
-MWCVERSION=
-# switch for private extensions to be installed
-PRIVATEEXT=
-# optional, but will prompt if missing
-GITHUBNAME=
-GITHUBPASS=
+# variables stored in XTAU_CONFIG files must be exported
+export BUILD_XT_TAG
+export CONFIGDIR
+export SITE_TEMPLATE=${SITE_TEMPLATE:-flywheel}
+export DOMAIN_ALIAS=${DOMAIN_ALIAS:-${SITE_TEMPLATE}.xtuple.net}
+export ECOMM_DB_NAME
+export ECOMM_DB_USERNAME
+export ECOMM_DB_USERPASS
+export ECOMM_EMAIL
+export ECOMM_SITE_NAME
+export ERP_APPLICATION
+export ERP_DATABASE_NAME
+export ERP_DEBUG="${ERP_DEBUG:-false}"
+export ERP_EDITION=${ERP_EDITION:-postbooks}
+export ERP_ISS="${ERP_ISS:-xTupleCommerceID}"
+export ERP_KEY_FILE_PATH=${ERP_KEY_FILE_PATH:-/var/xtuple/keys}
+export GITHUBNAME=${GITHUBNAME}
+export GITHUBPASS=${GITHUBPASS}
+export GITHUB_TOKEN
+export HOSTNAME
+export LOGDIR
+export MAX_EXECUTION_TIME
+export MWCNAME
+export PGVER=${PGVER:-9.6}
+export SERVER_CRT
+export SERVER_KEY
+export SYSLOGID
+export TZ
+export WEBAPI_HOST
+export WEBAPI_PORT=${WEBAPI_PORT:-8443}
+export WEBROOT
+export WORKFLOW_ENV
 
-# Variables for xdruple-server
-# Everything below here should be re-worked into it's
-# own script because asking for git credentials at first init of xtau is ugly.
-# git submodule update --init --recursive
-# git submodule foreach git pull origin master
 
-# export SCRIPTS_DIR=$(pwd)/xdruple-server/scripts
-# export CONFIG_DIR=$(pwd)/xdruple-server/config
+PRIVATEEXT=${PRIVATEEXT:-false}
 
-# export TYPE='server'
-export DEPLOYER_NAME=$(whoami)
-# export TIMEZONE=America/New_York
+# return values from `dialog`
+DIALOG_OK=0
+DIALOG_CANCEL=1
+DIALOG_HELP=2
+DIALOG_EXTRA=3
+DIALOG_ITEM_HELP=4
+DIALOG_ESC=255
 
-#sudo locale-gen en_US.UTF-8 && \
-#export DEBIAN_FRONTEND=noninteractive
-#sudo dpkg-reconfigure locales && \
-#sudo echo ${TIMEZONE} > /etc/timezone
-# sudo timedatectl set-timezone ${TIMEZONE}
-
-# mkdir -p ~/.composer
+fi # }

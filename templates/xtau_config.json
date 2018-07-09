@@ -1,0 +1,55 @@
+{
+  "section": { "env var":    [ "value, '' = default",         "description" ] },
+
+  "general": {
+    "PGVER":                 [ "",     "PostgreSQL version" ],
+    "TZ":                    [ "",     "Time zone to set for your server" ]
+  },
+
+  "git": {
+    "GITHUBNAME":            [ "",     "Name of GitHub user" ],
+    "GITHUB_TOKEN":          [ "",     "GitHub proxy for passwords" ]
+  },
+
+  "erpdb": {
+    "BUILD_XT_TAG":          [ "",     "git tag for the xtuple (and private-extensions) repository" ],
+    "ERP_DATABASE_NAME":     [ "",     "Name of the xTuple ERP database to create" ],
+    "ERP_EDITION":           [ "",     "Edition of the ERP system to set up (postbooks, distribution, manufacturing, enterprise)" ]
+  },
+
+  "webapi": {
+    "CONFIGDIR":             [ "",     "Directory containing the web api config.js" ],
+    "MWCNAME":               [ "",     "Name of this web API instance" ],
+    "WEBAPI_HOST":           [ "",     "Host where the web API server is running" ],
+    "WEBAPI_PORT":           [ "",     "Port on which the web API is listening" ]
+  },
+
+  "nginx": {
+    "ERP_KEY_FILE_PATH":     [ "",     "Full path to encryption key" ],
+    "HOSTNAME":              [ "",     "" ],
+    "NGINX_DOMAIN":          [ "",     "" ],
+    "NGINX_HOSTNAME":        [ "",     "" ],
+    "NGINX_SITE":            [ "",     "" ],
+    "SERVER_CRT":            [ "",     "" ],
+    "SERVER_KEY":            [ "",     "" ]
+  },
+
+  "xtc": {
+    "DOMAIN":                [ "",     "" ],
+    "DOMAIN_ALIAS":          [ "",     "" ],
+    "ECOMM_DB_NAME":         [ "",     "Name of Drupal database" ],
+    "ECOMM_DB_USERNAME":     [ "",     "Name of Drupal database admin user" ],
+    "ECOMM_DB_USERPASS":     [ "",     "Password for Drupal database admin user" ],
+    "ECOMM_EMAIL":           [ "",     "email address for xTupleCommerce webmaster" ],
+    "ECOMM_SITE_NAME":       [ "",     "" ],
+    "ERP_APPLICATION":       [ "",     "Name of the Drupal application to be installed" ],
+    "ERP_DEBUG":             [ "false",  "true = disable SSL checking (**security hole**)" ],
+    "ERP_ISS":               [ "",     "" ],
+    "LOGDIR":                [ "",     "**Parent** directory of website logs" ],
+    "MAX_EXECUTION_TIME":    [ "",     "PHP setting" ],
+    "SYSLOGID":              [ "",     "`SyslogIdentifier` used to set up xtuple-systemd.service" ],
+    "WEBROOT":               [ "",     "**Parent** directory of all websites" ],
+    "WORKFLOW_ENV":          [ "",     "Workflow environment, typically one of `dev`, `stage`, `live`" ]
+  }
+
+}

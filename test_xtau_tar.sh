@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2014-2018 by OpenMFG LLC, d/b/a xTuple.
+# See www.xtuple.com/CPAL for the full text of the software license.
 
 POSSIBLE=$(ls -t1 *.tar.gz |  head -n 1)
 

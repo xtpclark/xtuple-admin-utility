@@ -1,106 +1,117 @@
 #!/bin/bash
 
-DATE=`date +%Y.%m.%d-%H:%M`
-export _REV="1.0"
-export WORKDIR=`pwd`
+PROG=$0
+
+export _REV=$(git describe --all --long | \
+              sed -e "s,^heads/,," -e "s,^tags/,," -e "s,/,_,g")
 export MODE="manual"
 
-#set some defaults
-source config.sh
-# import supporting scripts
-source common.sh
-source logging.sh
-# make directories
-mkdir -p $DATABASEDIR
-mkdir -p $BACKUPDIR
+source config.sh        || die
+source common.sh        || die
 
-# sets up sudoer.d
+mkdir --parents $DATABASEDIR
+mkdir --parents $BACKUPDIR
+
 setup_sudo
 
-# process command line arguments
-# start with :, which tells it to be silent about errors
-# a doesn't require an argument, so it doesn't have a : after it
-# d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:mip:n:H:D:qhx:t:-:" opt; do
+# process command line arguments (see bash man page for getopts info)
+while getopts ":ac:D:d:e:H:hmn:p:qt:x:-:" opt; do
   case $opt in
-    a)
-        INSTALLALL=true
-        ;;
-    d)
-        DATABASE=$OPTARG
-        log "Database name set to $DATABASE via command line argument -d"
-        ;;
-    m)
-        MODE="auto"
-        ;;
-    p)
-        PGVER=$OPTARG
-        log "PostgreSQL Version set to $PGVER via command line argument -p"
-        ;;
-    H)
-        # Hostname
-        NGINX_HOSTNAME=$OPTARG
-        log "NGINX hostname set to $NGINX_HOSTNAME via command line argument -H"
-        ;;
-    D)
-        # Domain
-        NGINX_DOMAIN=$OPTARG
-        log "NGINX domain set to $NGINX_DOMAIN via command line argument -D"
-        ;;
-    q)
-        # that is our cue to build the Qt development environment
-        BUILDQT=true
-        log "Building and installing Qt at the behest of -q"
-        ;;
-    x)
-        # Use a specific version of xTuple (applies to web client and db)
-        DBVERSION=$OPTARG
-        DATABASE=${DBTYPE}${DBVERSION//./}
-        log "xTuple MWC Version set to $DBVERSION via command line argument -x"
-        ;;
-    t)
-        # Specify the type of database to grab (demo/quickstart/empty)
-        DBTYPE=$OPTARG
-        log "xTuple Database Type set to $DBTYPE via command line argument -x"
-        ;;
-    h)
-        echo "Usage: xtuple-utility [OPTION]"
-        echo "$( menu_title )"
-        echo "To get an interactive menu run xtuple-utility.sh with no arguments"
-        echo ""
-        echo -e "  -h\tShow this message"
-        echo -e "  -a\tInstall all (PostgreSQL (currently $( latest_version pg )), demo database (currently $( latest_version db )) and web client (currently $( latest_version db )))"
-        echo -e "  -d\tSpecify database name to create"
-        echo -e "  -p\tOverride PostgreSQL version"
-        echo -e "  -q\tBuild and Install Qt (currently $( latest_version qt_sdk ))"
-        echo -e "  -n\tOverride instance name"
-        echo -e "  -H\tSet NGINX hostname"
-        echo -e "  -D\tSet NGINX domain"
-        echo -e "  -x\tOverride xTuple version (applies to web client and database)"
-        echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
-        exit 0;
-        ;;
+    a) INSTALLALL=true
+      ;;
+    c) XTAU_CONFIG=$OPTARG
+       log "XTAU_CONFIG file set to $XTAU_CONFIG via $opt"
+       ;;
+    D) NGINX_DOMAIN=$OPTARG
+       log "NGINX domain set to $NGINX_DOMAIN via $opt"
+       ;;
+    d) DATABASE=$OPTARG
+       log "Database name set to $DATABASE via $opt"
+       ;;
+    e) ERP_EDITION=$OPTARG
+       log "Edition set to $ERP_EDITION via $opt"
+       ;;
+    H) NGINX_HOSTNAME=$OPTARG
+       log "NGINX hostname set to $NGINX_HOSTNAME via $opt"
+       ;;
+    m) MODE="auto"
+       log "MODEX set to $MODE via $opt"
+       ;;
+    n) MWCNAME=$OPTARG
+       log "Instance name set to $MWCNAME via $opt"
+       ;;
+    p) PGVER=$OPTARG
+       log "PostgreSQL version set to $PGVER via $opt"
+       ;;
+    q) BUILDQT=true
+       log "Building and installing Qt at the behest of $opt"
+       ;;
+    t) # type of database to install (demo/quickstart/empty)
+       DBTYPE=$OPTARG
+       log "xTuple database type set to $DBTYPE via $opt"
+       ;;
+    x) # Use a specific version of xTuple (applies to web client and db)
+       DBVERSION=$OPTARG
+       DATABASE=${DBTYPE}${DBVERSION//./}
+       log "xTuple version set to $DBVERSION ($DATABASE) via $opt"
+       ;;
+    h) cat <<-EOUsage
+	Usage: $PROG [OPTION]
+
+	To get an interactive menu run $PROG with no arguments
+
+	  -h	Show this message
+	  -a	Install all:
+                  PostgreSQL $(latest_version pg)
+                  demo database $(latest_version db)
+                  web API $(latest_version db)
+                  xTupleCommerce
+          -c    Read configuration information from the named file
+                (overrides other command line options and env variables)
+	  -D	Set NGINX domain [ ${NGINX_DOMAIN:-?} ]
+	  -d	Specify database name to create [ ${DATABASE:-?} ]
+	  -e    Specify edition to set up [ ${ERP_EDITION:-?} ]
+	  -H	Set NGINX hostname [ ${NGINX_HOSTNAME:-?} ]
+	  -m	set mode to "auto" [ manual/interactive ]
+	  -n	Override instance name [ ${MWCNAME:-?} ]
+	  -p	Override PostgreSQL version [ ${PGVER:-?} ]
+	  -q	Build and Install Qt $(latest_version qt_sdk)
+	  -t	Specify the type of database to grab (demo/quickstart/empty) [ ${DBTYPE:-?} ]
+	  -x	Specify an xTuple version (web API and database) [ ${DBVERSION:-latest} ]
+EOUsage
+      exit 0
+      ;;
     \?)
-        log "Invalid option: -$OPTARG"
-        exit 1;
-        ;;
+      log "Invalid option: -$OPTARG"
+      exit 1
+      ;;
     :)
-        log "Option -$OPTARG requires an argument."
-        exit 1
-        ;;
+      log "Option -$OPTARG requires an argument."
+      exit 1
+      ;;
   esac
 done
 
-if [ `uname -m` != "x86_64" ]; then
-    log "You must run this on a 64bit server only"
-    do_exit
+if [ $(uname -m) != "x86_64" ]; then
+  die "$PROG only runs on 64bit servers"
 fi
+
+case "$ERP_EDITION" in
+  xwd)   ERP_EDITION=distribution  ; PRIVATEEXT=true;;
+  [Dd]*) ERP_EDITION=distribution  ; PRIVATEEXT=true;;
+  [Ee]*) ERP_EDITION=enterprise    ; PRIVATEEXT=true;;
+  [Mm]*) ERP_EDITION=manufacturing ; PRIVATEEXT=true;;
+  xtmfg) ERP_EDITION=manufacturing ; PRIVATEEXT=true;;
+  [Pp]*) ERP_EDITION=postbooks     ;;
+  *)     log "Cannot interpret $ERP_EDITION as an edition name; using postbooks"
+         ERP_EDITION=postbooks
+         ;;
+esac
 
 log "Starting xTuple Admin Utility..."
 
 log "Checking for sudo..."
-if ! which sudo > /dev/null;
-then
+if ! which sudo > /dev/null ; then
   log "Please install sudo and grant yourself access to sudo:"
   log "   # apt-get install sudo"
   log "   # addgroup $USER sudo"
@@ -110,63 +121,48 @@ fi
 test_connection
 RET=$?
 if [ $RET -ne 0 ]; then
-    log "I can't seem to tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
-    do_exit
+  die "I can't tell if you have internet access or not. Please check that you have internet connectivity and that http://files.xtuple.org is online.  "
 fi
 
 # check what distro we are running.
-_DISTRO=`lsb_release -i -s`
-_CODENAME=`lsb_release -c -s`
-case "$_DISTRO" in
-    "Ubuntu")
-        export DISTRO="ubuntu"
-        export CODENAME=$_CODENAME
-        case "$_CODENAME" in
-            "trusty") ;;
-            "utopic") ;;
-            "vivid") ;;
-            "xenial") ;;
-            *) log "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: `lsb_release -r -s`"
-               do_exit
-               ;;
-        esac
-        ;;
-    "Debian")
-        export DISTRO="debian"
-        export CODENAME=$_CODENAME
-        case "$_CODENAME" in
-            "wheezy") ;;
-            "jessie") ;;
-            *) log "We currently only support Debian 7 and 8 Current release: `lsb_release -r -s`"
-               do_exit
-               ;;
-        esac
-        ;;
-    "CentOS")
-        log "Maybe one day we will support CentOS..."
-        do_exit
-        ;;
-    *)
-        log "We do not currently support your distribution."
-        log "Currently Supported: Ubuntu or Debian"
-        log "distro info: "
-        lsb_release -a
-        do_exit
-        ;;
+export DISTRO=$(lsb_release -i -s | tr "[A-Z]" "[a-z]")
+export CODENAME=$(lsb_release -c -s)
+case "$DISTRO" in
+  "ubuntu")
+    case "$CODENAME" in
+      "trusty") ;;
+      "utopic") ;;
+      "vivid") ;;
+      "xenial") ;;
+      *) die "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
+         ;;
+    esac
+    ;;
+  "centos")
+    die "Maybe one day we will support CentOS..."
+    ;;
+  *)
+    log "We do not currently support your distribution."
+    log "Currently Supported: Ubuntu"
+    log "distro info: "
+    lsb_release -a
+    do_exit
+    ;;
 esac
 
 # Load the rest of the scripts
-source postgresql.sh
-source database.sh
-source provision.sh
-source nginx.sh
-source mobileclient.sh
-source openrpt.sh
-source devenv.sh
-source conman.sh
-source tokenmanagement.sh
+source postgresql.sh            || die
+source database.sh              || die
+source xdruple.sh               || die
+source nginx.sh                 || die
+source mobileclient.sh          || die
+source devenv.sh                || die
+source conman.sh                || die
+source tokenmanagement.sh       || die
+source functions/setup.fun      || die
+source functions/gitvars.fun    || die
+source functions/oatoken.fun    || die
 
-# kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
 if [[ ! -f .already_ran_update ]]; then
   install_prereqs
@@ -176,47 +172,80 @@ else
   log "Remove the file if you want apt-get to update the system"
 fi
 
-# if we were given command line options for installation process them now
+read_config -f
+
+if [ -z "${TZ}" ] ; then
+  TZ=$(tzselect) || exit 1
+  if ! grep --quiet --word-regexp --no-messages TZ= \
+            ${HOME}/.bashrc ${HOME}/.bash_profile ${HOME}/.profile ${HOME}/.zprofile ; then
+    echo "export TZ=${TZ}" > ${HOME}/.profile
+  fi
+  sudo locale-gen en_US.UTF-8          || exit 1
+  sudo timedatectl set-timezone ${TZ}  || exit 1
+  write_config
+  echo "'unset TZ', remove $TZ from $XTAU_CONFIG, and restart $PROG to choose a different timezone"
+fi
+
 if [ $INSTALLALL ]; then
-    log "Executing full provision..."
-    MODE="auto"
+  log "Executing full provision..."
+  PRIVATEEXT=true
 
-    DBVERSION="${DBVERSION:-4.10.1}"
-    EDITION="${EDITION:-demo}"
-    DATABASE="${DATABASE:-xtuple}"
-    MWCNAME="${MWCNAME:-xtuple-web}"
-    PGPORT=5432
-    PGUSER=postgres
+  DBVERSION="${DBVERSION:-4.11.3}"
+  EDITION="${EDITION:-demo}"
+  DATABASE="${DATABASE:-xtuple}"
+  MWCNAME="${MWCNAME:-xtuple}"
+  PGPORT=${PGPORT:-5432}
+  PGUSER=${PGUSER:-postgres}
 
-    NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
-    NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
+  NGINX_HOSTNAME="${NGINX_HOSTNAME:-myhost}"
+  NGINX_DOMAIN="${NGINX_DOMAIN:-mydomain.com}"
 
-    install_postgresql "$PGVER"
-    #drop_cluster $PGVER main auto
-    provision_cluster "$PGVER" "${POSTNAME:-xtuple}" 5432 "$LANG" "--start-conf=auto"
-    download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
-    restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
-    log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
-    install_mwc "$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
-    install_nginx
-    log_exec sudo mkdir -p /etc/xtuple/$DBVERSION/$MWCNAME/ssl/
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" /etc/xtuple/$DBVERSION/$MWCNAME/ssl/server.{crt,key} 8443
-    setup_webprint
+  get_github_token
+  if [ -z "$GITHUBNAME" ] || [ -z "$GITHUBPASS" -a -z "$GITHUB_TOKEN" ] ; then
+    die "Commercial provisioning needs a GITHUBNAME and either GITHUBPASS or GITHUB_TOKEN"
+  fi
+
+  install_postgresql "$PGVER"
+  provision_cluster "$PGVER" "${POSTNAME:-xtuple}" $PGPORT "$LANG" "--start-conf=auto"
+  download_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DBVERSION" "$EDITION"
+  restore_database "$DATABASEDIR/$EDITION_$DBVERSION.backup" "$DATABASE"
+
+  install_xtuple_xvfb
+
+  log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
+  install_webclient "v$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
+  install_nginx
+  log_exec sudo mkdir --parents $CONFIGDIR/ssl
+
+  get_os_info
+  prepare_os_for_xtc
+  get_deployer_info
+  deployer_setup
+  configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$MWCNAME" $CONFIGDIR/ssl/server.{crt,key}
+  php_setup
+  xtc_pg_setup
+  postfix_setup
+  ruby_setup
+  drupal_crontab
+  xtc_code_setup
+  setup_flywheel
+  update_site
+  webnotes
+  write_config
 fi
 
-# if we're supposed to build Qt, lets do that before anything else because it takes *FOREVER*
+# TODO: build qt in the background?
+# build Qt before doing anything else because it takes *FOREVER*
 if [ $BUILDQT ]; then
-    log "Building and installing Qt5 from source"
-    install_dev_prereqs
-    build_qt5
+  log "Building and installing Qt5 from source"
+  install_dev_prereqs
+  build_qt5
 fi
 
-# It is okay to run them both, but if either one runs we want to exit after as these
-# are expected to be used headlessly.
+# we expect INSTALLALL and Qt builds to be run headlessly
 if [ $BUILDQT ] || [ $INSTALLALL ]; then
-    do_exit
+  do_exit
 fi
 
-# we load mainmenu.sh last since it calls its menu once it builds it
-# and this is the initial interface for the user
+# load the user interface - mainmenu.sh - after we've set up the basics
 source mainmenu.sh

@@ -1,0 +1,11 @@
+{
+  "config": {
+    "github-oauth": {
+      "github.com": "{GITHUB_TOKEN}"
+    },
+    "process-timeout": 600,
+    "preferred-install": "source",
+    "github-protocols": ["ssh", "https", "git"],
+    "secure-http": false
+  }
+}
