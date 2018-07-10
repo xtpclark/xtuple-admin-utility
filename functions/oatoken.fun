@@ -45,7 +45,7 @@ generate_p12() {
     openssl rsa -in ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN}_private.pem -passin "${ROOT_CERT_PASSWD}" \
                 -pubout -passout "${ROOT_CERT_PASSWD}" > ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN}_public.pem
 
-    mkdir --parents ${ERP_KEY_FILE_PATH}
+    sudo mkdir --parents ${ERP_KEY_FILE_PATH}
     safecp ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN}.key ${ERP_KEY_FILE_PATH}
     safecp ${KEY_P12_PATH}/${NGINX_ECOM_DOMAIN}.p12 ${ERP_KEY_FILE_PATH}
 
