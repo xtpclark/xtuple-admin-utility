@@ -179,6 +179,9 @@ install_webclient() {
 
   log_exec sudo npm install -g npm@2.x.x                               || die
 
+  log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME  || die
+  log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple        || die
+
   if [[ -f ${ERP_MWC_TARBALL} ]]; then
     ERPTARDIR=$(tar -tzf ${ERP_MWC_TARBALL} | head -1 | cut -f1 -d"/")
 
@@ -192,12 +195,10 @@ install_webclient() {
     if [ -z "$BUILD_XT_TAG" ] ; then
       BUILD_XT_TAG=$(cd ${ERPTARDIR}/xtuple && git describe --abbrev=0 --tags)
     fi
-    log_exec sudo cp -R ${ERPTARDIR} /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME
+    log_exec cp -R ${ERPTARDIR} /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME
   else
     log "Cloning xTuple Web Client Source Code to /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/xtuple"
     log "Using version $BUILD_XT_TAG with the given name $MWCNAME"
-    log_exec sudo mkdir --parents /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME  || die
-    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /opt/xtuple        || die
     gitco xtuple /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME $BUILD_XT_TAG     || die
   fi
 
