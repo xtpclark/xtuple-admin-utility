@@ -140,7 +140,7 @@ get_deployer_info () {
   export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
   export DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
 
-  if [ "$MODE" = "manual" && ${DEPLOYER_NAME} != $(whoami) ] ; then
+  if [ "$MODE" = "manual" -a ${DEPLOYER_NAME} != $(whoami) ] ; then
     # TODO: is robbyrussell really necessary?
     if $IS_DEV_ENV && ! command -v zsh > /dev/null 2>&1 ; then
       sudo apt-get install --quiet --yes zsh
