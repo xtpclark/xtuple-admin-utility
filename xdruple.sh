@@ -39,20 +39,7 @@ drupal_menu() {
       break
     fi
     case "$MENU" in
-       "1") get_os_info        && \
-            prepare_os_for_xtc && \
-            get_deployer_info  && \
-            deployer_setup     && \
-            nginx_menu         && \
-            php_setup          && \
-            xtc_pg_setup       && \
-            postfix_setup      && \
-            ruby_setup         && \
-            drupal_crontab     && \
-            xtc_code_setup     && \
-            setup_flywheel     && \
-            update_site        && \
-            webnotes
+       "1") xdruple_quickinstall
             RET=$?
             if [ $RET -ne 0 ] ; then
               msgbox "Quick Install failed or was cancelled"
@@ -75,6 +62,30 @@ drupal_menu() {
          *) msgbox "How did you get here? drupal_menu $DRUPALMENU" && break ;;
     esac
   done
+}
+
+xdruple_quickinstall() {
+  echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
+
+  get_os_info        && \
+  prepare_os_for_xtc && \
+  get_deployer_info  && \
+  deployer_setup     && \
+  install_nginx      && \
+  nginx_prompt       && \
+  configure_nginx    && \
+  php_setup          && \
+  xtc_pg_setup       && \
+  postfix_setup      && \
+  ruby_setup         && \
+  drupal_crontab     && \
+  xtc_code_setup     && \
+  setup_flywheel     && \
+  update_site        && \
+  webnotes
+
+  RET=$?
+  return $RET
 }
 
 get_composer_token() {
