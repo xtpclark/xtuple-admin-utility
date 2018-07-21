@@ -213,7 +213,7 @@ if [ $INSTALLALL ]; then
   install_xtuple_xvfb
 
   log_exec rm -f "$WORKDIR/tmp.backup{,.md5sum}"
-  install_webclient "v$DBVERSION" "v$DBVERSION" "$MWCNAME" false "$DATABASE"
+  install_webclient "v$DBVERSION" "v$DBVERSION" "$MWCNAME" $PRIVATEEXT "$DATABASE"
   install_nginx
   log_exec sudo mkdir --parents $CONFIGDIR/ssl
 
