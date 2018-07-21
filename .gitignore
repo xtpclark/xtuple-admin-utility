@@ -22,3 +22,5 @@ sql/oa2client.sql
 backups/*.backup
 backups/*.sql
 xtau_config.json*
+node_modules
+xtuple_plv8
