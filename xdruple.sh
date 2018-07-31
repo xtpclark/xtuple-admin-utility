@@ -138,7 +138,7 @@ get_deployer_info () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   export DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
   export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
-  export DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
+  export DEPLOYER_SHELL=${3:-${DEPLOYER_SHELL:-/bin/bash}}
 
   if [ "$MODE" = "manual" -a ${DEPLOYER_NAME} != $(whoami) ] ; then
     # TODO: is robbyrussell really necessary?
@@ -178,7 +178,7 @@ deployer_setup () {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   export DEPLOYER_NAME=${1:-${DEPLOYER_NAME}}
   export DEPLOYER_PASS=${2:-${DEPLOYER_PASS}}
-  local  DEPLOYER_SHELL={$3:-${DEPLOYER_SHELL:-/bin/bash}}
+  local DEPLOYER_SHELL=${3:-${DEPLOYER_SHELL:-/bin/bash}}
 
   if ! cut -f1 -d: /etc/passwd | grep --line-regexp --quiet "$DEPLOYER_NAME" ; then
     sudo useradd --base-dir /home --create-home \
