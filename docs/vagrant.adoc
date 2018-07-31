@@ -1,0 +1,73 @@
+= Vagrant
+
+== Prerequisites
+
+* MacOSX or Linux is used.
+* Code of xTupleCommerce projects is placed into `~/Code/Drupal7` directory on the host machine (on your MacOS or Linux).
+* Each xTupleCommerce directory name ends with `.xd`, e.g. `example.xd`.
+
+== Installation
+
+* Update your operating system and packages:
+** _(MacOSX)_ if you use https://brew.sh[Homebrew],
+    make sure `brew doctor` returns `Your system is ready to brew.`
+    and `brew update` returns `Already up-to-date.`.
+** _(Ubuntu Linux)_ run `sudo apt-get update && sudo apt-get upgrade`.
+** run `gem update` (or `sudo gem update`).
+* Download and install the latest version of
+https://www.virtualbox.org/wiki/Downloads[VirtualBox].
+* Download and install the latest version of
+http://downloads.vagrantup.com[Vagrant].
+* Install `link:https://github.com/dotless-de/vagrant-vbguest[vagrant-vbguest]`
+plugin, run `vagrant plugin install vagrant-vbguest`.
+* Install `link:https://github.com/dustymabe/vagrant-sshfs[vagrant-sshfs]`
+plugin, run `vagrant plugin install vagrant-sshfs`.
+* _(MacOSX)_: Install
+`link:https://github.com/BerlinVagrant/vagrant-dns[vagrant-dns]` plugin,
+run `vagrant plugin install vagrant-dns`.
+* Go to the _xtuple-admin-utility_ directory, e.g. `cd ~/Vagrant/xtau`.
+* Copy `vagrant.yaml.template` as `vagrant.yaml`,
+e.g. run `cp config.yaml.dist config.yaml`.
+* Edit `vagrant.yaml` with your local data:
+** ensure the IP address for virtual machine is not used
+(`192.168.33.xyz` pattern is recommended).
+** setup your local
+https://en.wikipedia.org/wiki/List_of_tz_database_time_zones[timezone].
+** setup folders you want to share between virtual and host machines
+(directories are shared via SSHFS).
+** ensure you have the right host machine OS set
+(use `:macos` for MacOSX, `:linux` for Linux, and `:windows` for Windows).
+** provide your
+https://help.github.com/articles/creating-an-access-token-for-command-line-use[Github token].
+** provide your host machine username (run `whoami` in your terminal).
+* Run `vagrant up` to start your virtual machine.
+* Run `vagrant reload`,
+as Ubuntu on virtual host requires restart
+after all updates applied during the installation.
+* _(MacOSX)_ Run `vagrant dns --install` to activate `vagrant-dns` plugin
+(user password will be asked).
+
+== Directories
+
+* xTuple Admin Utility directory
+(where you cloned the `xtuple-admin-utility` repo)
+on the host machine is available as `/vagrant` on the virtual machine.
+
+== Know issues
+
+* *"Bundler, the underlying system Vagrant uses to install plugins, reported an error."*
++
+To resolve the issue download the latest Vagrant image,
+use uninstall tool it's delivered with,
+then install Vagrant again.
+ It should clean-up libraries/dependencies and resolve the issue.
+* *SSH private key not working*
++
+It's recommended to use git only on the host machine,
+as it's usually fully set up there.
+Yet, if you use git on the virtual machine,
+there might be a problem with access to private repos.
+The SSH keys are forwarded from host machine to virtual machine by Vagrant,
+but if they are not in the keychain (for MacOS) they won't work automatically.
+Make sure to run `ssh-add -K ~/.ssh/id_rsa`
+to add your private key to the keychain.

@@ -1,0 +1,34 @@
+# Host machine operating system:
+# - macos    - for MacOSX
+# - linux    - for Linux
+# - windows  - for Windows
+host:
+  os: macos
+  username: ''
+
+github:
+  token: ''
+
+machines:
+  development:
+    vm:
+      box: 'ubuntu/xenial64'
+      ip: '192.168.33.10'
+      forward:
+        ports: false
+        x11: false
+    provider:
+      name: 'virtualbox'
+      memory: 2048
+    provision:
+      shell:
+        path: src/vagrant.sh
+    folders:
+      - host: './'
+        guest: '/vagrant'
+    dns:
+      tld: 'xd'
+      patterns:
+        - '^[\w-]+.xd$'
+    vars:
+      timezone: 'America/New_York'

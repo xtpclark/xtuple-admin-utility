@@ -24,3 +24,21 @@ backups/*.sql
 xtau_config.json*
 node_modules
 xtuple_plv8
+
+# Vagrant-created files
+.vagrant
+
+# Customer configuration for the Vagrantfile (based on vagrant.yaml.template)
+/vagrant.yaml
+
+# "Output" directories: would be available in /vagrant/var.
+# Recommended to add symlinks to the same directories as it would be
+# for a server setup, for example:
+# - /vagrant/var/log → /var/log/xtuple - to organize all the logs created by
+#                                        xTuple processes.
+#
+# To track a new empty directory with a .gitkeep file,
+# remove the /xtuple line, create a directory and a .gitkeep file,
+# stash it, and return the /xtuple line back.
+/var
+!/var/**/.gitkeep
