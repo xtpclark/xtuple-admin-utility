@@ -54,7 +54,7 @@ plugins=(git)
 # User configuration
 
   export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
-  export PATH="/home/{DEPLOYER_NAME}/.composer/vendor/bin":$PATH
+  export PATH="./vendor/bin:/home/{DEPLOYER_NAME}/.composer/vendor/bin":$PATH
 # export MANPATH="/usr/local/man:$MANPATH"
   export COMPOSER_DISABLE_XDEBUG_WARN=1
 

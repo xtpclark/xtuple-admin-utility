@@ -948,20 +948,9 @@ php_setup() {
   sudo mv composer.phar /usr/local/bin/composer         || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
 
-  # PHPUnit (v6.x)
-  download https://phar.phpunit.de/phpunit.phar /usr/local/bin/phpunit +x
-
-  # PHP CodeSniffer
-  download https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar /usr/local/bin/phpcs +x
-
-  # PHP Code Beautifier
-  download https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar /usr/local/bin/phpcbf +x
-
-  # PHP Mess Detector
-  download http://static.phpmd.org/php/latest/phpmd.phar /usr/local/bin/phpmd +x
-
-  # Couscous (User documentation generation)
-  download http://couscous.io/couscous.phar /usr/local/bin/couscous +x
+  if [[ -f /home/"${DEPLOYER_NAME}"/.bashrc ]]; then
+    echo "export PATH=\"./vendor/bin:${PATH}\"" >> /home/"${DEPLOYER_NAME}"/.bashrc
+  fi
 
   # Restart PHP and Nginx
   sudo service php7.1-fpm restart

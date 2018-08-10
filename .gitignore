@@ -3,7 +3,6 @@
 *.md5sum
 cleansockets.sh
 .already_ran_update
-phpunit.phar.1
 mwcbuild*/
 build.log
 xTupleCommerce*
@@ -18,7 +17,6 @@ private/*
 *.config
 sql/oa2client.sql
 *composer.phar*
-*phpunit.phar*
 backups/*.backup
 backups/*.sql
 xtau_config.json*
