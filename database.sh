@@ -297,13 +297,15 @@ restore_database() {
     return 127
   fi
 
+echo "database name: " $DATABASE
+
   service_start postgresql # just in case
   log "Creating database $DATABASE."
-  log_exec psql --q -U $PGUSER -h $PGHOST -p $PGPORT -d postgres <<EOSCRIPT
+  psql -U $PGUSER -h $PGHOST -p $PGPORT -d postgres <<EOSCRIPT
 DO \$\$
 BEGIN
-  IF EXISTS(SELECT 1 FROM pg_database WHERE datname = quote_literal('$DATABASE')) THEN
-    ALTER DATABASE $DATABASE RENAME TO "$DATABASE_$(date +'%Y%m%d_%H%M')";
+  IF EXISTS(SELECT 1 FROM pg_database WHERE datname = quote_ident('$DATABASE')) THEN  
+    ALTER DATABASE $DATABASE RENAME TO "${DATABASE}_$(date +'%Y%m%d_%H%M')";
   END IF;
 END; \$\$
 EOSCRIPT
