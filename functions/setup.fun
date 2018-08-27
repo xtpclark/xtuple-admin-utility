@@ -37,8 +37,6 @@ read_config() {
     cp templates/xtau_config.json $XTAU_CONFIG
   fi
 
-
-
   # TODO: There's got to be a better way to express this
   if [ -n "$SECTION" ] && $FORCE ; then
     SCRIPT=.${SECTION}' | to_entries[] | select(.value[0] != "") | .key + "=\"" + .value[0] + "\" ;"'
@@ -180,8 +178,6 @@ install_npm_node() {
 install_postgresql() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   PGVER="${1:-$PGVER}"
-
-echo "pg ver: " $PGVER
 
   if [[ -z "${PGVER}" ]]; then
     die "Need to set PGVER before running, e.g.: export PGVER=9.6"

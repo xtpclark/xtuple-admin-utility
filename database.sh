@@ -297,8 +297,6 @@ restore_database() {
     return 127
   fi
 
-echo "database name: " $DATABASE
-
   service_start postgresql # just in case
   log "Creating database $DATABASE."
   psql -U $PGUSER -h $PGHOST -p $PGPORT -d postgres <<EOSCRIPT
