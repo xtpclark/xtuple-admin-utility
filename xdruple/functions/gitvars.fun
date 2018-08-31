@@ -36,26 +36,29 @@ fi
 
 
 loadadmin_gitconfig() {
-  log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
-  ADMINVARSLIST=`git config --global -l | grep -E '(github|xdruple)' | cut -d . -f 2-`
+ADMINVARSLIST=`git config --global -l | grep -E '(github|xdruple)' | cut -d . -f 2-`
 
-  if [[ -z ${ADMINVARSLIST} ]]; then
-    echo "No gitconfig vars for Admin?"
-  else
-    for ADMINVAR in ${ADMINVARSLIST}; do
-      export ${ADMINVAR}
-    done
+if [[ -z ${ADMINVARSLIST} ]]; then
+echo "No gitconfig vars for Admin?"
+else
 
-    export GITHUB_TOKEN=$token
-    export UPDATEREADME=$updatereadme
-    export XDREPOPREFIX=$xdrepoprefix
-    export XDWORKDIR=$xdworkdir
-    export XDDREPOURL=$cddrepourl
-    export GITXDDIR=$gitxddir
-  fi
+for ADMINVAR in ${ADMINVARSLIST}; do
+export ${ADMINVAR}
+done
 
-  install_composer
+export GITHUB_TOKEN=$token
+export UPDATEREADME=$updatereadme
+export XDREPOPREFIX=$xdrepoprefix
+export XDWORKDIR=$xdworkdir
+export XDDREPOURL=$cddrepourl
+export GITXDDIR=$gitxddir
+fi
+
+install_composer
+
+
 }
 
 
