@@ -6,8 +6,8 @@ export _REV=$(git describe --all --long | \
               sed -e "s,^heads/,," -e "s,^tags/,," -e "s,/,_,g")
 export MODE="manual"
 
-source config.sh  || die
-source common.sh  || die
+source config.sh        || die
+source common.sh        || die
 
 mkdir --parents $DATABASEDIR
 mkdir --parents $BACKUPDIR
@@ -96,9 +96,6 @@ if [ $(uname -m) != "x86_64" ]; then
   die "$PROG only runs on 64bit servers"
 fi
 
-echo "erp edition: " $ERP_EDITION
-
-
 case "$ERP_EDITION" in
   xwd)   ERP_EDITION=distribution  ; PRIVATEEXT=true;;
   [Dd]*) ERP_EDITION=distribution  ; PRIVATEEXT=true;;
@@ -129,25 +126,14 @@ fi
 
 # check what distro we are running.
 export DISTRO=$(lsb_release -i -s | tr "[A-Z]" "[a-z]")
-echo "distro: " $DISTRO
 export CODENAME=$(lsb_release -c -s)
-echo "codename: " $CODENAME
-
 case "$DISTRO" in
   "ubuntu")
     case "$CODENAME" in
-      "trusty") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      "utopic") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      "vivid") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      "xenial") 
-        log $DISTRO $CODENAME " detected"
-        ;;
+      "trusty") ;;
+      "utopic") ;;
+      "vivid") ;;
+      "xenial") ;;
       *) die "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
          ;;
     esac
@@ -164,9 +150,9 @@ case "$DISTRO" in
     ;;
 esac
 
-# # Load the rest of the scripts
-source postgresql.sh              || die
-source database.sh                || die
+# Load the rest of the scripts
+source postgresql.sh            || die
+source database.sh              || die
 source xdruple.sh               || die
 source nginx.sh                 || die
 source mobileclient.sh          || die
@@ -200,7 +186,6 @@ if [ -z "${TZ}" ] ; then
   echo "'unset TZ', remove $TZ from $XTAU_CONFIG, and restart $PROG to choose a different timezone"
 fi
 
-echo "installall: " $INSTALLALL
 if [ $INSTALLALL ]; then
   log "Executing full provision..."
   PRIVATEEXT=true

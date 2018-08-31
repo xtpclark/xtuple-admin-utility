@@ -716,8 +716,6 @@ xtc_code_setup() {
                 nodejsshim
                 payment-gateways
                 xdruple-extension
-                xtuple
-                private-extensions
               "
 
   for REPO in $REPOS ; do
