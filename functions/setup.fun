@@ -391,10 +391,7 @@ prepare_os_for_xtc() {
   log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade
   log_exec sudo apt-get --quiet --yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing dist-upgrade
 
-  if ! $IS_DEV_ENV ; then
-    safecp ${WORKDIR}/templates/ssh/sshd_config.conf /etc/ssh/sshd_config
-    service_restart ssh
-  elif $IS_DEV_ENV && [ -n "$HOST_USERNAME" ] && \
+  if $IS_DEV_ENV && [ -n "$HOST_USERNAME" ] && \
        ! cut -f1 -d: /etc/passwd | grep --line-regexp --quiet "$HOST_USERNAME" ; then
     eval $(stat --printf 'NFS_UID=%u
                           NFS_GROUP=%G' /var/www)

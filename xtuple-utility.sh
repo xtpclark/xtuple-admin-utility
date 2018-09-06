@@ -13,7 +13,7 @@ mkdir --parents $DATABASEDIR
 mkdir --parents $BACKUPDIR
 
 setup_sudo
-#test commit
+
 # process command line arguments (see bash man page for getopts info)
 while getopts ":ac:D:d:e:H:hmn:p:qt:x:-:" opt; do
   case $opt in
