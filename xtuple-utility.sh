@@ -136,19 +136,13 @@ echo "codename: " $CODENAME
 case "$DISTRO" in
   "ubuntu")
     case "$CODENAME" in
-      "trusty") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      "utopic") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      "vivid") 
-        log $DISTRO $CODENAME " detected"
-        ;;
       "xenial") 
         log $DISTRO $CODENAME " detected"
         ;;
-      *) die "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
+      "bionic") 
+        log $DISTRO $CODENAME " detected"
+        ;;
+      *) die "We currently only support Ubuntu 16.04 LTS, and 18.04 LTS. Current release: $(lsb_release -r -s)"
          ;;
     esac
     ;;
@@ -165,8 +159,8 @@ case "$DISTRO" in
 esac
 
 # # Load the rest of the scripts
-source postgresql.sh              || die
-source database.sh                || die
+source postgresql.sh            || die
+source database.sh              || die
 source xdruple.sh               || die
 source nginx.sh                 || die
 source mobileclient.sh          || die

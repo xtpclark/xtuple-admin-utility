@@ -73,7 +73,7 @@ password_menu() {
   done
 }
 
-# $1 is pg version (9.3, 9.4, etc)
+# $1 is pg version (9.5, 9.6, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
@@ -90,7 +90,7 @@ echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
 }
 
-# $1 is pg version (9.3, 9.4, etc)
+# $1 is pg version (9.5, 9.6, etc)
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
 echo "In: ${BASH_SOURCE} ${FUNCNAME[0]}"

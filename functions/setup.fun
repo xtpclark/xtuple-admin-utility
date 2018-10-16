@@ -174,7 +174,7 @@ install_npm_node() {
   sudo npm install -g browserify
 }
 
-# $1 is pg version (9.3, 9.4, etc)
+# $1 is pg version (9.5, 9.6, etc)
 install_postgresql() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   PGVER="${1:-$PGVER}"
@@ -525,7 +525,8 @@ config_webclient_scripts() {
         safecp $WORKDIR/templates/ubuntu-upstart $SERVICEFILE
         ;;
       "vivid") ;&
-      "xenial")
+      "xenial") ;&
+      "bionic")
         SERVICEFILE="/etc/systemd/system/xtuple-$ERP_DATABASE_NAME.service"
         log "Creating systemd service unit using filename $SERVICEFILE"
         safecp $WORKDIR/templates/xtuple-systemd.service $SERVICEFILE

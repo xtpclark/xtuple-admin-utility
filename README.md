@@ -20,7 +20,7 @@ Help Output:
 To get an interactive menu run xtuple-utility.sh with no arguments
 
   -h    Show this message
-  -a    Install all (PostgreSQL (currently 9.3), demo database (currently 4.9.1) and web client (currently 4.9.1))
+  -a    Install all (PostgreSQL (currently 9.6), demo database (currently 4.11.3) and web client (currently 4.11.3))
   -d    Specify database name to create
   -p    Override PostgreSQL version
   -n    Override instance name
