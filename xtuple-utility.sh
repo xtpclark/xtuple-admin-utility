@@ -136,10 +136,13 @@ echo "codename: " $CODENAME
 case "$DISTRO" in
   "ubuntu")
     case "$CODENAME" in
-      "xenial") 
+      "trusty")
         log $DISTRO $CODENAME " detected"
         ;;
-      "bionic") 
+      "xenial")
+        log $DISTRO $CODENAME " detected"
+        ;;
+      "bionic")
         log $DISTRO $CODENAME " detected"
         ;;
       *) die "We currently only support Ubuntu 16.04 LTS, and 18.04 LTS. Current release: $(lsb_release -r -s)"
