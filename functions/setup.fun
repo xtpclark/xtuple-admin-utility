@@ -727,7 +727,12 @@ xtc_code_setup() {
     fi
     gitco ${REPO} $(dirname ${BUILD_XT}) ${BUILDTAG} || die
     cd ${BUILD_XT}
-    scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
+
+    if [ "$REPO" != "xtuple" ] ; then
+      scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
+    else
+      scripts/build_app.js -c ${CONFIGDIR}/config.js
+    fi
   done
   cd ${STARTDIR}
 }
