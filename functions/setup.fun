@@ -950,6 +950,8 @@ php_setup() {
   php -r "if (hash_file('SHA256', 'composer.phar') === '88068af567884a6266ef255d3d17053f583c9074dc75161b7a35eda8e553849a') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer.phar'); } echo PHP_EOL;" || die
   php composer.phar                                     || die
   sudo mv composer.phar /usr/local/bin/composer         || die
+  sudo chown root:root /usr/local/bin/composer          || die
+  sudo chmod 755 /usr/local/bin/composer                || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
 
   if [[ -f /home/"${DEPLOYER_NAME}"/.bashrc ]]; then
