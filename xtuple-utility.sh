@@ -136,19 +136,16 @@ echo "codename: " $CODENAME
 case "$DISTRO" in
   "ubuntu")
     case "$CODENAME" in
-      "trusty") 
+      "trusty")
         log $DISTRO $CODENAME " detected"
         ;;
-      "utopic") 
+      "xenial")
         log $DISTRO $CODENAME " detected"
         ;;
-      "vivid") 
+      "bionic")
         log $DISTRO $CODENAME " detected"
         ;;
-      "xenial") 
-        log $DISTRO $CODENAME " detected"
-        ;;
-      *) die "We currently only support Ubuntu 14.04 LTS, 14.10, 15.04, and 16.04 LTS. Current release: $(lsb_release -r -s)"
+      *) die "We currently only support Ubuntu 16.04 LTS, and 18.04 LTS. Current release: $(lsb_release -r -s)"
          ;;
     esac
     ;;
@@ -165,10 +162,11 @@ case "$DISTRO" in
 esac
 
 # # Load the rest of the scripts
-source postgresql.sh              || die
-source database.sh                || die
+source postgresql.sh            || die
+source database.sh              || die
 source xdruple.sh               || die
 source nginx.sh                 || die
+source fail2ban.sh              || die
 source mobileclient.sh          || die
 source devenv.sh                || die
 source conman.sh                || die
@@ -246,6 +244,7 @@ if [ $INSTALLALL ]; then
   setup_flywheel
   update_site
   webnotes
+  configure_fail2ban
   write_config
 fi
 
