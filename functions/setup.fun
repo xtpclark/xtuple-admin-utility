@@ -941,10 +941,9 @@ php_setup() {
   replace_params --no-backup /etc/php/7.1/fpm/php.ini /etc/php/7.1/cli/php.ini
 
   # Composer
-  php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-  php -r "if (hash_file('SHA384', 'composer-setup.php') === '544e09ee996cdf60ece3804abc52599c22b1f40f4323403c44d44fdfdd586475ca9813a858088ffbc1f233e9b180f061') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" || die
-  php composer-setup.php                                || die
-  php -r "unlink('composer-setup.php');"                || die
+  php -r "copy('https://getcomposer.org/download/1.7.0/composer.phar', 'composer.phar');"
+  php -r "if (hash_file('SHA256', 'composer.phar') === '88068af567884a6266ef255d3d17053f583c9074dc75161b7a35eda8e553849a') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer.phar'); } echo PHP_EOL;" || die
+  php composer.phar                                     || die
   sudo mv composer.phar /usr/local/bin/composer         || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
 

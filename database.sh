@@ -329,6 +329,9 @@ EOSCRIPT
     return $RET
   fi
 
+  # If database is web enabled, add to config.js
+    find /etc/xtuple -name 'config.js' -exec sed -i "/databases/s/\]\,/\,\ \"$DATABASE\"\]\,/g" {} \;
+
   return 0
 }
 
@@ -387,6 +390,10 @@ drop_database() {
         msgbox "Dropping database $DATABASE failed. Please check the output and correct any issues."
         return $RET
       fi
+
+      # If database is web enabled, update config.js
+      find /etc/xtuple -name 'config.js' -exec sed -i "/databases/s/\,\ \"$DATABASE\"//g" {} \;
+
       msgbox "Dropping database $DATABASE successful"
     else
       return 0
@@ -436,6 +443,10 @@ rename_database() {
     msgbox "Renaming database $SOURCE failed. Please check the output and correct any issues."
     return $RET
   fi
+
+  # If database is web enabled, update config.js
+  find /etc/xtuple -name 'config.js' -exec sed -i "/databases/s/$SOURCE/$DEST/g" {} \;
+
   msgbox "Successfully renamed database $SOURCE to $DEST"
 }
 
