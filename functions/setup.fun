@@ -541,8 +541,8 @@ get_environment() {
   webenable_database
 
   # Check if WEBAPI port is in use and increment if necessary
-  while [ -n "`lsof -Pi :${WEBAPI_PORT} -sTCP:LISTEN -t`" ]; do
-    let WEBAPI_PORT=WEBAPI_PORT+1
+  while ! is_port_open $WEBAPI_PORT tcp ; do
+    (( WEBAPI_PORT++ ))
   done
 
   ERP_DATABASE_NAME=${DATABASE}
