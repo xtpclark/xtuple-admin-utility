@@ -177,10 +177,6 @@ install_prereqs() {
         sudo apt-get --quiet -y install python-software-properties
       fi
 
-      # Install fail2ban and apply default config files
-      install_fail2ban
-      configure_fail2ban
-
       # Install LE prerequsites
       sudo add-apt-repository -y ppa:certbot/certbot
       sudo apt-get --yes --quiet update
