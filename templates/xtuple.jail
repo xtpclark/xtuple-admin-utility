@@ -1,0 +1,21 @@
+[DEFAULT]
+bantime = 5m
+findtime = 5m
+maxretry = 3
+
+[sshd]
+enabled = true
+port    = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+
+${ZNGINX}
+
+${ZPOSTFIX}
+
+[postgresql-iptables]
+enabled  = true
+filter   = postgresql
+action   = iptables[name=postgresql-iptables, port=${ZPGPORT}, protocol=udp]
+           sendmail-whois[name=Postgresql, dest=dest=cloudops@xtuple.com]
+logpath  = /var/log/postgresql/*.log
