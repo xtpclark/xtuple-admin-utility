@@ -60,8 +60,10 @@ configure_fail2ban() {
     install_fail2ban
   fi
 
+  cat ./templates/postgresql-fail2ban > /etc/fail2ban/filter.d/postgresql.conf
+
   if [ -z "$PGPORT" ] && [ "$MODE" = "manual" ]; then
-    PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the PostgreSQL database post number" 8 60 3>&1 1>&2 2>&3)
+    PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the PostgreSQL database port number" 8 60 3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -ne 0 ]; then
       return $RET
@@ -70,63 +72,27 @@ configure_fail2ban() {
     return 127
   fi
 
-  sudo cat > /etc/fail2ban/filter.d/postgresql.conf <<EOF
-[Definition]
+export ZPGPORT=$PGPORT
 
-failregex = <HOST> FATAL:  password authentication failed for user .+$
-            <HOST> FATAL:  no pg_hba.conf entry for host .+$
-            <HOST> FATAL:  pg_hba.conf rejects connection for host .+$
-            <HOST> FATAL:  unsupported frontend protocol .+$
-ignoreregex = : Successful su for (postgres) by root$
-              New session \d+ of user (postgres)\.$
-              Removed session \d+\.$
-EOF
-
-POSTFIX=""
+export ZPOSTFIX=""
   if type "postfix" > /dev/null 2>&1 ; then
-read -d '' POSTFIX <<EOF
-[postfix]
+export ZPOSTFIX="[postfix]
 enabled = true
 mode    = more
 port    = smtp,465,submission
 logpath = %(postfix_log)s
-backend = %(postfix_backend)s
-EOF
+backend = %(postfix_backend)s"
   fi
 
-NGINX=""
+export ZNGINX=""
   if type "nginx" > /dev/null 2>&1 ; then
-read -d '' NGINX <<EOF
-[nginx-http-auth]
+export ZNGINX="[nginx-http-auth]
 enabled = true
 port    = http,https
-logpath = %(nginx_error_log)s
-EOF
+logpath = %(nginx_error_log)s"
   fi
 
-  sudo cat > /etc/fail2ban/jail.d/xtuple.conf <<EOF
-[DEFAULT]
-bantime = 5m
-findtime = 5m
-maxretry = 3
-
-[sshd]
-enabled = true
-port    = ssh
-logpath = %(sshd_log)s
-backend = %(sshd_backend)s
-
-$NGINX
-
-$POSTFIX
-
-[postgresql-iptables]
-enabled  = true
-filter   = postgresql
-action   = iptables[name=postgresql-iptables, port=$PGPORT, protocol=udp]
-           sendmail-whois[name=Postgresql, dest=dest=cloudops@xtuple.com]
-logpath  = /var/log/postgresql/*.log
-EOF
+  envsubst < ./templates/xtuple.jail > /etc/fail2ban/jail.d/xtuple.conf
 
   log "Reloading fail2ban configuration"
   service_reload fail2ban
