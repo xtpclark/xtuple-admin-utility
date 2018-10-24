@@ -174,7 +174,7 @@ install_npm_node() {
   sudo npm install -g browserify
 }
 
-# $1 is pg version (9.3, 9.4, etc)
+# $1 is pg version (9.5, 9.6, etc)
 install_postgresql() {
   echo "In: ${BASH_SOURCE} ${FUNCNAME[0]} $@"
   PGVER="${1:-$PGVER}"
@@ -525,7 +525,8 @@ config_webclient_scripts() {
         safecp $WORKDIR/templates/ubuntu-upstart $SERVICEFILE
         ;;
       "vivid") ;&
-      "xenial")
+      "xenial") ;&
+      "bionic")
         SERVICEFILE="/etc/systemd/system/xtuple-$ERP_DATABASE_NAME.service"
         log "Creating systemd service unit using filename $SERVICEFILE"
         safecp $WORKDIR/templates/xtuple-systemd.service $SERVICEFILE
@@ -726,7 +727,12 @@ xtc_code_setup() {
     fi
     gitco ${REPO} $(dirname ${BUILD_XT}) ${BUILDTAG} || die
     cd ${BUILD_XT}
-    scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
+
+    if [ "$REPO" != "xtuple" ] ; then
+      scripts/build_app.js -c ${CONFIGDIR}/config.js -e ../${REPO}
+    else
+      scripts/build_app.js -c ${CONFIGDIR}/config.js
+    fi
   done
   cd ${STARTDIR}
 }
@@ -940,11 +946,12 @@ php_setup() {
   replace_params --no-backup /etc/php/7.1/fpm/php.ini /etc/php/7.1/cli/php.ini
 
   # Composer
-  php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-  php -r "if (hash_file('SHA384', 'composer-setup.php') === '544e09ee996cdf60ece3804abc52599c22b1f40f4323403c44d44fdfdd586475ca9813a858088ffbc1f233e9b180f061') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" || die
-  php composer-setup.php                                || die
-  php -r "unlink('composer-setup.php');"                || die
+  php -r "copy('https://getcomposer.org/download/1.7.2/composer.phar', 'composer.phar');"
+  php -r "if (hash_file('SHA256', 'composer.phar') === 'ec3428d049ae8877f7d102c2ee050dbd51a160fc2dde323f3e126a3b3846750e') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer.phar'); } echo PHP_EOL;" || die
+  php composer.phar                                     || die
   sudo mv composer.phar /usr/local/bin/composer         || die
+  sudo chown root:root /usr/local/bin/composer          || die
+  sudo chmod 755 /usr/local/bin/composer                || die
   sudo mkdir --parents /home/${DEPLOYER_NAME}/.composer || die
 
   if [[ -f /home/"${DEPLOYER_NAME}"/.bashrc ]]; then

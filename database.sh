@@ -322,7 +322,7 @@ EOSCRIPT
     CREATE EXTENSION IF NOT EXISTS plv8;
 EOSCRIPT
   log "Restoring database $DATABASE from file $1 on server $PGHOST:$PGPORT"
-  pg_restore --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" "$1" 2>restore_output.log
+  pg_restore "$1" | sed -e 's/CREATE SCHEMA/CREATE SCHEMA IF NOT EXISTS/g' | psql --username "$PGUSER" --port "$PGPORT" --host "$PGHOST" --dbname "$DATABASE" 2>restore_output.log
   RET=$?
   if [ $RET -ne 0 ]; then
     msgbox "$(cat restore_output.log)"

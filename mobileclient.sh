@@ -239,8 +239,16 @@ EOF
       *)             EXT_DIR="inventory"                            ;;
     esac
     echo "Installing $EXT_DIR extensions" > buildapp_output.log
+
+    FROZEN=' -f '
+    if [ "$( psql -tA -U admin -p $PGPORT -d $ERP_DATABASE_NAME -c "SELECT 1 FROM xt.ext WHERE ext_location = '/private-extensions' LIMIT 1;" )" = '1' ]
+    then
+      FROZEN = ''
+      echo "Not fresh install"
+    fi
+
     for DIR in $EXT_DIR ; do
-      scripts/build_app.js -c ${CONFIGDIR}/config.js -e /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/private-extensions/source/$DIR  2>&1 | tee -a buildapp_output.log
+      scripts/build_app.js -c ${CONFIGDIR}/config.js -e /opt/xtuple/$BUILD_XT_TAG/$ERP_DATABASE_NAME/private-extensions/source/$DIR $FROZEN 2>&1 | tee -a buildapp_output.log
     done
     msgbox "$(cat buildapp_output.log)"
   fi
