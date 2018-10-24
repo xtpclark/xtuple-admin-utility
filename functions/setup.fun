@@ -946,8 +946,8 @@ php_setup() {
   replace_params --no-backup /etc/php/7.1/fpm/php.ini /etc/php/7.1/cli/php.ini
 
   # Composer
-  php -r "copy('https://getcomposer.org/download/1.7.0/composer.phar', 'composer.phar');"
-  php -r "if (hash_file('SHA256', 'composer.phar') === '88068af567884a6266ef255d3d17053f583c9074dc75161b7a35eda8e553849a') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer.phar'); } echo PHP_EOL;" || die
+  php -r "copy('https://getcomposer.org/download/1.7.2/composer.phar', 'composer.phar');"
+  php -r "if (hash_file('SHA256', 'composer.phar') === 'ec3428d049ae8877f7d102c2ee050dbd51a160fc2dde323f3e126a3b3846750e') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer.phar'); } echo PHP_EOL;" || die
   php composer.phar                                     || die
   sudo mv composer.phar /usr/local/bin/composer         || die
   sudo chown root:root /usr/local/bin/composer          || die
