@@ -20,6 +20,7 @@ main_menu() {
                   "6" "Web Enable a Database"           \
                   "7" "xTupleCommerce Maintenance"      \
                   "8" "Developer Zone"                  \
+                  "9" "Security Maintenance"            \
                   3>&1 1>&2 2>&3)
 
     RET=$?
@@ -45,6 +46,7 @@ main_menu() {
         "6") source ${WORKDIR:-.}/CreatePackages.sh try_deploy_xtau;;
         "7") drupal_menu     ;;
         "8") dev_menu        ;;
+        "9") fail2ban_menu   ;;
         *) msgbox "Don't know how you got here! Please report on GitHub >> mainmenu" && do_exit ;;
       esac
     fi

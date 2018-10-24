@@ -1,0 +1,9 @@
+[Definition]
+
+failregex = <HOST> FATAL:  password authentication failed for user .+$
+            <HOST> FATAL:  no pg_hba.conf entry for host .+$
+            <HOST> FATAL:  pg_hba.conf rejects connection for host .+$
+            <HOST> FATAL:  unsupported frontend protocol .+$
+ignoreregex = : Successful su for (postgres) by root$
+              New session \d+ of user (postgres)\.$
+              Removed session \d+\.$

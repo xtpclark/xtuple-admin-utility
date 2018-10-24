@@ -166,6 +166,7 @@ source postgresql.sh            || die
 source database.sh              || die
 source xdruple.sh               || die
 source nginx.sh                 || die
+source fail2ban.sh              || die
 source mobileclient.sh          || die
 source devenv.sh                || die
 source conman.sh                || die
@@ -243,6 +244,7 @@ if [ $INSTALLALL ]; then
   setup_flywheel
   update_site
   webnotes
+  configure_fail2ban
   write_config
 fi
 
