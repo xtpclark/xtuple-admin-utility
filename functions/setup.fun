@@ -541,7 +541,7 @@ get_environment() {
   webenable_database
 
   # Check if WEBAPI port is in use and increment if necessary
-  while ! is_port_open $WEBAPI_PORT tcp ; do
+  while ! is_port_open $WEBAPI_PORT ; do
     (( WEBAPI_PORT++ ))
   done
 

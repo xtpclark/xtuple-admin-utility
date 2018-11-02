@@ -204,10 +204,20 @@ install_pg_repo() {
   esac
 }
 
-# $1 is the port
-# $2 is protocol
+# check if a network port is available
+# $1 is the port number
 is_port_open() {
-  (echo >/dev/$2/localhost/$1) &>/dev/null && return 0 || return 1
+  local INUSE=0 PORT=$1
+
+  if command -v lsof > /dev/null ; then
+    lsof -P -i :${PORT} -t >/dev/null
+    INUSE=$?
+  else
+    echo >/dev/tcp/localhost/$PORT && echo >/dev/udp/localhost/$PORT &>/dev/null
+    INUSE=$?
+  fi
+  [ $INUSE -eq 0 ] && return 1
+  return 0
 }
 
 new_postgres_port() {
