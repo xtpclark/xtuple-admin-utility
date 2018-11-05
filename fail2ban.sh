@@ -60,7 +60,7 @@ configure_fail2ban() {
     install_fail2ban
   fi
 
-  cat ./templates/postgresql-fail2ban > /etc/fail2ban/filter.d/postgresql.conf
+  cat ./templates/postgresql-fail2ban | sudo tee /etc/fail2ban/filter.d/postgresql.conf > /dev/null
 
   if [ -z "$PGPORT" ] && [ "$MODE" = "manual" ]; then
     PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Enter the PostgreSQL database port number" 8 60 3>&1 1>&2 2>&3)
@@ -92,7 +92,7 @@ port    = http,https
 logpath = %(nginx_error_log)s"
   fi
 
-  envsubst < ./templates/xtuple.jail > /etc/fail2ban/jail.d/xtuple.conf
+  sudo envsubst < ./templates/xtuple.jail > /etc/fail2ban/jail.d/xtuple.conf
 
   log "Reloading fail2ban configuration"
   service_reload fail2ban
