@@ -541,6 +541,11 @@ config_webclient_scripts() {
 get_environment() {
   webenable_database
 
+  # Check if WEBAPI port is in use and increment if necessary
+  while ! is_port_open $WEBAPI_PORT ; do
+    (( WEBAPI_PORT++ ))
+  done
+
   ERP_DATABASE_NAME=${DATABASE}
   DOMAIN=${DOMAIN:-flywheel.xd}
   WEBAPI_HOST=https://${DOMAIN}:${WEBAPI_PORT}
