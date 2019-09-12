@@ -67,7 +67,6 @@ DECLARE
   _buname TEXT;
   _cmd    TEXT;
   _status TEXT;
-  _step   TEXT;
   _pgversion TEXT;
   _bustart TIMESTAMP WITH TIME ZONE;
   _bustop TIMESTAMP WITH TIME ZONE;
@@ -88,9 +87,7 @@ DECLARE
        "mac": { "sep": "/",  "cp": "aws --only-show-errors s3 cp",  "dir": "/tmp" },
        "lin": { "sep": "/",  "cp": "aws --only-show-errors s3 cp", "dir": "/tmp" }
     }'::JSONB;
-  
- 
-  
+   
 BEGIN
 
    CREATE TEMPORARY TABLE IF NOT EXISTS  opsstdout (line SERIAL, data TEXT);
@@ -108,12 +105,10 @@ BEGIN
   _fname := _tmpdir || (_osinfo #>> ARRAY[ _os, 'sep' ]) ||
             _db || '-' || to_char(now(), 'YYYYMMDD-HHmmss') || '.backup';
 
- BEGIN
+  BEGIN
  
  _bustart = CURRENT_TIMESTAMP;
- 
-   RAISE NOTICE 'Checking Existance %:%:%', _host, _port, _db;
-           
+
    EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM '
                          PGPASSWORD=admin psql -AtX -U %s -h %s -p %s postgres -c "
                             SELECT EXISTS( 
@@ -123,9 +118,7 @@ BEGIN
                           _user, _host, _port, _db); 
   
     SELECT data INTO _ckresult FROM opsstdout ORDER BY line DESC LIMIT 1;
-    
-    RAISE NOTICE 'Check Exist = %', _ckresult;
-   
+         
     IF _ckresult IS NULL THEN
     _buvalid := FALSE;
     _status = 'FAILED - SERVER DOES NOT EXIST OR LISTEN';
@@ -148,16 +141,11 @@ BEGIN
          
      INSERT INTO xtadmin.buhead (buhead_host, buhead_port, buhead_username, buhead_dbname, buhead_date, buhead_status, buhead_valid) VALUES (_host, _port, _user, _db, _bustart, _status, _buvalid);    
      RETURN _status;
-     
-    
+        
   END;
-
- BEGIN
 
    EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT version();"'$f$, _user, _host, _port, _db); 
    _pgversion :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
-   
- END;    
  
  BEGIN   
  
@@ -254,57 +242,48 @@ END IF;
  
  -- Check if it is both xTuple and Drupal
    
-BEGIN   
-RAISE NOTICE 'Determining Type % %', _isxTupleDB, _isDrupalDB;
 
-    IF _isxTupleDB AND _isDrupalDB THEN
-     _dbtype = 'xTupleERP And DrupalDB Combined';
-     ELSIF _isxTupleDB AND NOT _isDrupalDB THEN
-     _dbtype = 'xTupleERP';
-     ELSIF NOT _isxTupleDB AND _isDrupalDB THEN
-     _dbtype = 'DrupalDB';
-     ELSIF NOT _isxTupleDB AND NOT _isDrupalDB THEN
-     _dbtype = 'Unknown Type';
-    END IF;
+IF _isxTupleDB AND _isDrupalDB THEN
+  _dbtype = 'xTupleERP And DrupalDB Combined';
+ELSIF _isxTupleDB AND NOT _isDrupalDB THEN
+  _dbtype = 'xTupleERP';
+ELSIF NOT _isxTupleDB AND _isDrupalDB THEN
+  _dbtype = 'DrupalDB';
+ELSIF NOT _isxTupleDB AND NOT _isDrupalDB THEN
+  _dbtype = 'Unknown Type';
+END IF;
     
-END;
- 
-
 BEGIN
 
+  IF _isxTupleDB THEN
 
-IF _isxTupleDB THEN
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''ServerVersion'') "'$f$, _user, _host, _port, _db); 
+  _xtversion :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
 
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''ServerVersion'') "'$f$, _user, _host, _port, _db); 
-_xtversion :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''Application'') "'$f$, _user, _host, _port, _db); 
+  _xtedition :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
 
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''Application'') "'$f$, _user, _host, _port, _db); 
-_xtedition :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''remitto_name''); "'$f$, _user, _host, _port, _db); 
+  _xtremitto :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
 
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''remitto_name''); "'$f$, _user, _host, _port, _db); 
-_xtremitto :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
-
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''RegistrationKey''); "'$f$, _user, _host, _port, _db); 
-_xtregkey :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT fetchmetrictext(''RegistrationKey''); "'$f$, _user, _host, _port, _db); 
+  _xtregkey :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
  
-EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT pkghead_name,pkghead_version FROM pkghead ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
-_xtpkgs :=   data FROM opsstdoutjson ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT pkghead_name,pkghead_version FROM pkghead ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
+  _xtpkgs :=   data FROM opsstdoutjson ORDER BY line DESC LIMIT 1;
 
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT gltrans_created::text FROM gltrans order by 1 desc limit 1;"'$f$, _user, _host, _port, _db); 
-_xtlastgl :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT gltrans_created::text FROM gltrans order by 1 desc limit 1;"'$f$, _user, _host, _port, _db); 
+  _xtlastgl :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
   
-EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT pg_database_size(CURRENT_DATABASE())::text; "'$f$, _user, _host, _port, _db); 
-_dbsize :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT pg_database_size(CURRENT_DATABASE())::text; "'$f$, _user, _host, _port, _db); 
+  _dbsize :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
 
-IF _hasxTExt THEN
-EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT ext_name FROM xt.ext ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
-_xtexts :=   data FROM opsstdoutjson ORDER BY line DESC LIMIT 1;
-END IF;
-
-END IF;
-
-
-
+    IF _hasxTExt THEN
+     EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT ext_name FROM xt.ext ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
+     _xtexts :=   data FROM opsstdoutjson ORDER BY line DESC LIMIT 1;
+    END IF;
+    
+  END IF;
 END;
 
 -- Maybe we select something about drupal.
@@ -315,7 +294,6 @@ BEGIN
    _bustart := clock_timestamp()::timestamp with time zone;
    
    RAISE NOTICE 'Starting pg_dump of %:%:%', _host, _port, _db;
-   _step := 'Dump';
    _cmd := format('PGPASSWORD=admin pg_dump -h %s -p %s -U %s -Fc -f %s %s 2>&1',
                   _host, _port, _user, _fname, _db);
    _cmd := replace(_cmd, ';', '');
@@ -334,8 +312,7 @@ BEGIN
      _xfstart := clock_timestamp()::timestamp with time zone;
     BEGIN
       RAISE NOTICE 'Starting copy of % to %/%', _db, _dest, _buname;
-      _step :='Copy';
-      _cmd := format('%s %s %s/%s', (_osinfo #>> ARRAY[_os, 'cp']), _fname, _dest, _buname);
+       _cmd := format('%s %s %s/%s', (_osinfo #>> ARRAY[_os, 'cp']), _fname, _dest, _buname);
        EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM '%s'$f$, _cmd);
       _status :='OK';
       _buvalid := TRUE;
