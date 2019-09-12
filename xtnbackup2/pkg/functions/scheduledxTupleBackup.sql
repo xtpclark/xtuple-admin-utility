@@ -5,30 +5,6 @@
 -- PASSWORD Option
 -- CRMACCT, i.e. s3://xtnbackups/bak_CRMACCT
 
-CREATE OR REPLACE FUNCTION getServerOS()
-RETURNS varchar AS
-$$
-  SELECT CASE
-    WHEN os_version LIKE '%w64%'
-      OR os_version LIKE '%w32%'
-      OR os_version LIKE '%mingw%'
-      OR os_version LIKE '%visual%'
-      THEN 'win'
-    WHEN os_version LIKE '%linux%'
-      THEN 'lin'
-    WHEN os_version LIKE '%mac%' 
-      OR os_version LIKE '%darwin%'
-      OR os_version LIKE '%osx%'
-      OR os_version LIKE '%apple%'
-      THEN 'mac'
-    ELSE
-    'UNKNOWN'
-    END
-    FROM lower(version()) AS os_version;
-$$
-LANGUAGE SQL;
-
-
 DROP FUNCTION IF EXISTS scheduledxtuplebackup(text,integer,text,text);
 CREATE OR REPLACE FUNCTION scheduledxTupleBackup(pHost     TEXT    = NULL,
                                                  pPort     INTEGER = NULL,
@@ -282,7 +258,7 @@ BEGIN
      EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT ext_name FROM xt.ext ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
      _xtexts :=   data FROM opsstdoutjson ORDER BY line DESC LIMIT 1;
     END IF;
-    
+
   END IF;
 END;
 

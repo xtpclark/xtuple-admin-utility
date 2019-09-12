@@ -24,6 +24,7 @@
 
 
   <script file="tables/adminlogtable.sql" />
+  <script file="functions/getServerOS.sql" />
   <script file="functions/scheduledxTupleBackup.sql" />
 
   <loadappscript file="client/scripts/initMenu.js"              name="initMenu"      order="1"/>
