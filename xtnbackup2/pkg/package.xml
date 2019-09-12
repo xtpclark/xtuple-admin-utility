@@ -1,10 +1,10 @@
 <package id="xtadmin"
-         name="xTuple Database Tools"
+         name="xTuple Backup Manager"
          developer="xTuple"
-         descrip="xTuple Database Tools"
+         descrip="xTuple Backup Manager"
          version="1.0,0"
          updater="2.2.5">
-  <pkgnotes>PostgreSQL Database Management Tools
+  <pkgnotes>xTuple Backup Manager
 
         Version 1.0, the full text of which (including xTuple-specific Exhibits)
         is available at www.xtuple.com/CPAL.  By using this software, you agree
@@ -17,8 +17,8 @@
       SELECT compareVersion(fetchMetricText('ServerVersion'), '3.7.0') >= 0;
     </query>
     <message>
-      This version of the xTuple Database Tools package only works with xTuple ERP
-      version 3.0.x or higher.
+      This version of the xTuple Backup Manager package only works with xTuple ERP
+      version 3.7.0 or higher.
     </message>
   </prerequisite>
 
@@ -30,8 +30,8 @@
   <loadappscript file="client/scripts/initMenu.js"              name="initMenu"      order="1"/>
   <loadappscript file="client/scripts/dspBackupManager.js"      name="dspBackupManager" order="0"/>
   
-  <loadmetasql file="client/metasql/inventoryDays-detail.mql" order="0">Inventory Days of Stock</loadmetasql>
+  <loadmetasql file="client/metasql/backupmanager-detail.mql" order="0">xTuple Backup Manager</loadmetasql>
   
-  <loadreport  file="client/reports/InventoryDays.xml" />
+  <!--// <loadreport  file="client/reports/BackupManager.xml" /> //-->
 
 </package>
