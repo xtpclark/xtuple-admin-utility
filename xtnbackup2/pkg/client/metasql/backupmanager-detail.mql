@@ -1,0 +1,77 @@
+-- Group: backupmanager
+-- Name:  detail
+-- Notes: 
+
+SELECT * 
+  FROM xtadmin.buhead
+WHERE (TRUE)
+
+<? if exists('user_name') ?>
+  AND buhead_username ~* <? value('user_name') ?>
+<? endif ?>
+
+<? if exists('session_duration') ?>
+  AND session_duration > <? value('session_duration') ?>
+<? endif ?>
+
+<? if exists('crmacct_number') ?>
+  AND crmacct_number ~* <? value('crmacct_number') ?>
+<? endif ?>
+
+<? if exists('command_tag') ?>
+  AND command_tag ~* <? value('command_tag') ?>
+<? endif ?>
+
+<? if exists('database_name') ?>
+  AND buhead_dbname ~* <? value('database_name') ?>
+<? endif ?>
+
+<? if exists('connection_from') ?>
+  AND connection_from ~* <? value('connection_from') ?>
+<? endif ?>
+
+<? if exists('error_severity') ?>
+  AND error_severity ~* <? value('error_severity') ?>
+<? endif ?>
+
+<? if exists('added_by_server') ?>
+  AND added_by_server ~* <? value('added_by_server') ?>
+<? endif ?>
+
+<? if exists('message') ?>
+  AND message ~* <? value('message') ?>
+<? endif ?>
+
+<? if exists('process_id') ?>
+  AND process_id = <? value('process_id') ?>
+<? endif ?>
+
+<? if exists('session_id') ?>
+  AND session_id ~* <? value('session_id') ?>
+<? endif ?>
+
+<? if exists('application_name') ?>
+  AND application_name ~* <? value('application_name') ?>
+<? endif ?>
+
+<? if exists('ipinfo_data') ?>
+  AND ipinfo_data ~* <? value('ipinfo_data') ?>
+<? endif ?>
+
+<? if exists('query') ?>
+  AND query ~* <? value('query') ?>
+<? endif ?>
+
+<? if exists('startDate') ?>
+    AND log_time::DATE >= <? value('startDate') ?>::DATE
+<? endif ?>
+
+<? if exists('endDate') ?>
+    AND log_time::DATE <= <? value('endDate') ?>::DATE
+<? endif ?>
+
+<? if exists('search_pattern') ?>
+  AND user_name || crmacct_number|| database_name ||command_tag|| connection_from || error_severity || added_by_server || message || process_id || session_id || application_name || ipinfo_data || session_duration || query ~* <? value('search_pattern') ?>
+<? endif ?>
+
+ORDER BY buhead_dbname;
