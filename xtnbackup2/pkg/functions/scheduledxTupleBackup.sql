@@ -1,10 +1,3 @@
--- intended to be called via scheduled MetaSQL query
--- https://docs.aws.amazon.com/cli/latest/userguide/install-windows.html
--- https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html
--- https://docs.aws.amazon.com/cli/latest/userguide/install-macos.html
--- PASSWORD Option
--- CRMACCT, i.e. s3://xtnbackups/bak_CRMACCT
-
 DROP FUNCTION IF EXISTS scheduledxtuplebackup(text,integer,text,text);
 CREATE OR REPLACE FUNCTION scheduledxTupleBackup(pHost     TEXT    = NULL,
                                                  pPort     INTEGER = NULL,
@@ -147,13 +140,11 @@ BEGIN
     
    EXCEPTION WHEN OTHERS THEN
    _status := 'Check FAIL';
-   --_ckresult := SELECT data FROM opsstdout ORDER BY line DESC LIMIT 1;
-    RAISE NOTICE 'Result of _ckresult is %', _ckresult;
+   _ckresult := SELECT data FROM opsstdout ORDER BY line DESC LIMIT 1;
+    RAISE NOTICE 'xTuple DB Check Result of Metric Check is %, %', _ckresult, _status;
 
  END;
 
-
--- If it is xTUple, Does it have xt.ext?
 IF _isxTupleDB THEN    
   BEGIN   
     
@@ -185,10 +176,6 @@ IF _isxTupleDB THEN
 
 END IF;
 
-
-
--- Check if it is drupal 
- 
  BEGIN   
    EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM '
                          PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "
@@ -214,10 +201,6 @@ END IF;
     RAISE NOTICE 'Result of Drupal _ckresult is %', _ckresult;
 
  END;
- 
- 
- -- Check if it is both xTuple and Drupal
-   
 
 IF _isxTupleDB AND _isDrupalDB THEN
   _dbtype = 'xTupleERP And DrupalDB Combined';
@@ -261,8 +244,6 @@ BEGIN
 
   END IF;
 END;
-
--- Maybe we select something about drupal.
 
 BEGIN
 
