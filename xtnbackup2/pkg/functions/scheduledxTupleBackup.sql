@@ -140,7 +140,7 @@ BEGIN
     
    EXCEPTION WHEN OTHERS THEN
    _status := 'Check FAIL';
-   _ckresult := SELECT data FROM opsstdout ORDER BY line DESC LIMIT 1;
+   _ckresult := data FROM opsstdout ORDER BY line DESC LIMIT 1;
     RAISE NOTICE 'xTuple DB Check Result of Metric Check is %, %', _ckresult, _status;
 
  END;
