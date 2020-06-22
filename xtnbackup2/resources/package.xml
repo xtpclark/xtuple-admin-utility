@@ -1,5 +1,5 @@
-<package id="xtadmin"
-         name="xTuple Backup Manager"
+<package id="resources"
+         name="xtadmin"
          developer="xTuple"
          descrip="xTuple Backup Manager"
          version="1.0,0"
