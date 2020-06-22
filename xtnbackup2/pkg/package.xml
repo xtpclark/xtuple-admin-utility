@@ -32,6 +32,6 @@
   
   <loadmetasql file="client/metasql/backupmanager-detail.mql" order="0">xTuple Backup Manager</loadmetasql>
   
-  <!--// <loadreport  file="client/reports/BackupManager.xml" /> //-->
+<loadreport  file="client/reports/BackupManager.xml" />
 
 </package>
