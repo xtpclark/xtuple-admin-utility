@@ -6,6 +6,7 @@ SELECT *
   FROM xtadmin.buhead
 WHERE (TRUE)
 
+/*
 <? if exists('user_name') ?>
   AND buhead_username ~* <? value('user_name') ?>
 <? endif ?>
@@ -73,5 +74,7 @@ WHERE (TRUE)
 <? if exists('search_pattern') ?>
   AND user_name || crmacct_number|| database_name ||command_tag|| connection_from || error_severity || added_by_server || message || process_id || session_id || application_name || ipinfo_data || session_duration || query ~* <? value('search_pattern') ?>
 <? endif ?>
+
+*/
 
 ORDER BY buhead_dbname;

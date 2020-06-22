@@ -1,8 +1,9 @@
-DROP FUNCTION IF EXISTS scheduledxtuplebackup(text,integer,text,text);
+DROP FUNCTION IF EXISTS scheduledxtuplebackup(text,integer,text,text, bool);
 CREATE OR REPLACE FUNCTION scheduledxTupleBackup(pHost     TEXT    = NULL,
                                                  pPort     INTEGER = NULL,
                                                  pUser     TEXT    = NULL,
-                                                 pDatabase TEXT    = NULL)
+                                                 pDatabase TEXT    = NULL,
+                                                 pDebug	   BOOL    = FALSE)
   RETURNS TEXT AS $$
 DECLARE
   _result INTEGER := 0;
@@ -12,6 +13,7 @@ DECLARE
   _port   INTEGER := pPort;
   _user   TEXT    := COALESCE(pUser, 'admin');
   _db     TEXT    := COALESCE(pDatabase, current_database());
+  _debug  BOOL    := COALESCE(pDebug,'false');
   
   -- local checks from db running/logging process.
   _tmpdir TEXT    := fetchmetrictext('XTNLocalTempDir'); -- /xtdba
@@ -55,7 +57,7 @@ DECLARE
     '{ "win": { "sep": "\\", "cp": "aws --only-show-errors s3 cp",                "dir": "C:\\Windows\\Temp" },
        "mac": { "sep": "/",  "cp": "aws --only-show-errors s3 cp",  "dir": "/tmp" },
        "lin": { "sep": "/",  "cp": "aws --only-show-errors s3 cp", "dir": "/tmp" }
-    }'::JSONB;
+    }'::JSONB; 
    
 BEGIN
 
@@ -128,7 +130,10 @@ BEGIN
                          _user, _host, _port, _db); 
   
     SELECT data INTO _ckresult FROM opsstdout ORDER BY line DESC LIMIT 1;
+    
+    IF _debug THEN
     RAISE NOTICE 'Metric Check - Result of _ckresult is %', _ckresult;
+    END IF;
     
     IF _ckresult = 'true' THEN
     _isxTupleDB := TRUE;
@@ -141,8 +146,11 @@ BEGIN
    EXCEPTION WHEN OTHERS THEN
    _status := 'Check FAIL';
    _ckresult := data FROM opsstdout ORDER BY line DESC LIMIT 1;
+   
+   IF _debug THEN
     RAISE NOTICE 'xTuple DB Check Result of Metric Check is %, %', _ckresult, _status;
-
+   END IF;
+   
  END;
 
 IF _isxTupleDB THEN    
@@ -158,7 +166,10 @@ IF _isxTupleDB THEN
                          _user, _host, _port, _db); 
   
     SELECT data INTO _ckresult FROM opsstdout ORDER BY line DESC LIMIT 1;
+    
+    IF _debug THEN
     RAISE NOTICE 'XT.EXT Check - Result of _ckresult is %', _ckresult;
+    END IF;
     
     IF _ckresult = 'true' THEN
      _hasxTExt := TRUE;
@@ -170,8 +181,9 @@ IF _isxTupleDB THEN
     
    EXCEPTION WHEN OTHERS THEN
    _status := 'Check XT.EXT FAIL';
+   IF _debug THEN
     RAISE NOTICE 'Result of _ckresult is %', _ckresult;
-
+   END IF;
   END;
 
 END IF;
@@ -186,8 +198,10 @@ END IF;
                          _user, _host, _port, _db); 
   
     SELECT data INTO _ckresult FROM opsstdout ORDER BY line DESC LIMIT 1;
+    IF _debug THEN
     RAISE NOTICE 'drupal watchdog Check - Result of _ckresult is %', _ckresult;
-
+    END IF;
+    
     IF _ckresult = 'true' THEN
     _isDrupalDB := TRUE;
     ELSE
@@ -198,8 +212,10 @@ END IF;
     
    EXCEPTION WHEN OTHERS THEN
    _status := 'Check FAIL';
+   IF _debug THEN
     RAISE NOTICE 'Result of Drupal _ckresult is %', _ckresult;
-
+   END IF;
+   
  END;
 
 IF _isxTupleDB AND _isDrupalDB THEN
@@ -234,8 +250,8 @@ BEGIN
   EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT gltrans_created::text FROM gltrans order by 1 desc limit 1;"'$f$, _user, _host, _port, _db); 
   _xtlastgl :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
   
-  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT pg_database_size(CURRENT_DATABASE())::text; "'$f$, _user, _host, _port, _db); 
-  _dbsize :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+--  EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT pg_database_size(CURRENT_DATABASE())::text; "'$f$, _user, _host, _port, _db); 
+--  _dbsize :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
 
     IF _hasxTExt THEN
      EXECUTE format($f$COPY opsstdoutjson (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT array_to_json(array_agg(row_to_json(t))) from ( SELECT ext_name FROM xt.ext ORDER BY 1) t;"'$f$, _user, _host, _port, _db); 
@@ -249,8 +265,14 @@ BEGIN
 
   BEGIN
    _bustart := clock_timestamp()::timestamp with time zone;
-   
+
+    EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM 'PGPASSWORD=admin psql -AtX -U %s -h %s -p %s %s -c "SELECT pg_database_size(CURRENT_DATABASE())::text; "'$f$, _user, _host, _port, _db); 
+  _dbsize :=  data FROM opsstdout ORDER BY line DESC LIMIT 1;
+
+   IF _debug THEN
    RAISE NOTICE 'Starting pg_dump of %:%:%', _host, _port, _db;
+   END IF;
+   
    _cmd := format('PGPASSWORD=admin pg_dump -h %s -p %s -U %s -Fc -f %s %s 2>&1',
                   _host, _port, _user, _fname, _db);
    _cmd := replace(_cmd, ';', '');
@@ -268,9 +290,17 @@ BEGIN
     IF _status = 'CPOK' AND _dest IS NOT NULL THEN
      _xfstart := clock_timestamp()::timestamp with time zone;
     BEGIN
-      RAISE NOTICE 'Starting copy of % to %/%', _db, _dest, _buname;
+    IF _debug THEN
+      RAISE NOTICE 'Starting % copy of % to %/%', _fname, _db, _dest, _buname;
+    END IF;
        _cmd := format('%s %s %s/%s', (_osinfo #>> ARRAY[_os, 'cp']), _fname, _dest, _buname);
+      
+      IF _debug THEN
+      RAISE NOTICE 'Command: %', _cmd;
+      END IF;
+      
        EXECUTE format($f$COPY opsstdout (data) FROM PROGRAM '%s'$f$, _cmd);
+
       _status :='OK';
       _buvalid := TRUE;
        EXCEPTION WHEN OTHERS THEN
