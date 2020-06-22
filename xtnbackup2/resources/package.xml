@@ -28,7 +28,7 @@
   <script file="functions/scheduledxTupleBackup.sql" />
 
   <loadappscript file="client/scripts/initMenu.js"              name="initMenu"      order="1"/>
-  <loadappscript file="client/scripts/dspBackupManager.js"      name="dspBackupManager" order="0"/>
+  <loadappscript file="client/scripts/backupmanager.js"      name="backupmanager" order="0"/>
   
   <loadmetasql file="client/metasql/backupmanager-detail.mql" order="0">xTuple Backup Manager</loadmetasql>
   

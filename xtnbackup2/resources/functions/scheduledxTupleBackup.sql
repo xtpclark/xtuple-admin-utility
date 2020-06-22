@@ -51,7 +51,7 @@ DECLARE
   _hasxTExt BOOLEAN;
   _dbtype TEXT;
    
-  _os     TEXT    := getserveros();
+  _os     TEXT    := xtadmin.getserveros();
   _osinfo JSONB   :=
     -- vvv must exactly match what the ^^^^^ function returns
     '{ "win": { "sep": "\\", "cp": "aws --only-show-errors s3 cp",                "dir": "C:\\Windows\\Temp" },
