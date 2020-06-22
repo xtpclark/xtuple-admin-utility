@@ -7,7 +7,7 @@ function backupmanager() {
 }
 
 function init() {
-  var srMenu = mainwindow.findChild("menu.sales.reports");
+  var srMenu = mainwindow.findChild("menu.sys.utilities");
   var tmpaction = srMenu.addAction(qsTr("Backup Manager"), mainwindow);
   tmpaction.objectName = "custom.backupmanager";
   //tmpaction.enabled = privileges.check("ViewBackupManager");

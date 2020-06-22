@@ -9,62 +9,51 @@ mywindow.setParameterWidgetVisible(true);
 
 var _pw = mywindow.parameterWidget();
 
-_pw.append(qsTr("buhead_id"), 			"buhead_id", 			ParameterWidget.Text); 			
-_pw.append(qsTr("buhead_database"), 	"buhead_database", 		ParameterWidget.Text); 	
-_pw.append(qsTr("buhead_username"), 	"buhead_username", 		ParameterWidget.Text); 	
-_pw.append(qsTr("buhead_date"), 		"buhead_date", 			ParameterWidget.Date); 		
-_pw.append(qsTr("buhead_status"), 		"buhead_status", 		ParameterWidget.Text); 		
-_pw.append(qsTr("buhead_valid"), 		"buhead_valid", 		ParameterWidget.Text); 		
-_pw.append(qsTr("buhead_dbtype"), 		"buhead_dbtype", 		ParameterWidget.Text); 		
-_pw.append(qsTr("buhead_hasext"), 		"buhead_hasext", 		ParameterWidget.Text); 		
-_pw.append(qsTr("buhead_filename"), 	"buhead_filename", 		ParameterWidget.Text); 	
-_pw.append(qsTr("buhead_dbsize"), 		"buhead_dbsize", 		ParameterWidget.Text); 	  
-_pw.append(qsTr("buhead_bustart"), 		"buhead_bustart", 		ParameterWidget.Date); 	  
-_pw.append(qsTr("buhead_bustop"), 		"buhead_bustop", 		ParameterWidget.Date); 	  
-_pw.append(qsTr("buhead_xfstart"), 		"buhead_xfstart", 		ParameterWidget.Date); 	  
-_pw.append(qsTr("buhead_xfstop"), 		"buhead_xfstop", 		ParameterWidget.Date); 	  
-_pw.append(qsTr("buhead_lastgl"), 		"buhead_lastgl", 		ParameterWidget.Date); 	  
-_pw.append(qsTr("buhead_host"), 		"buhead_host", 			ParameterWidget.Text); 	  
-_pw.append(qsTr("buhead_port"), 		"buhead_port", 			ParameterWidget.Text); 	  
-_pw.append(qsTr("buhead_dbname"), 		"buhead_dbname", 		ParameterWidget.Text); 	  
-_pw.append(qsTr("buhead_filename"), 	"buhead_filename", 		ParameterWidget.Text); 	
-_pw.append(qsTr("buhead_appver"), 		"buhead_appver", 		ParameterWidget.Text);     
-_pw.append(qsTr("buhead_pkgs"), 		"buhead_pkgs", 			ParameterWidget.Text);       
-_pw.append(qsTr("buhead_exts"), 		"buhead_exts", 			ParameterWidget.Text);       
-_pw.append(qsTr("buhead_edition"), 		"buhead_edition", 		ParameterWidget.Text);    
-_pw.append(qsTr("buhead_storurl"), 		"buhead_storurl", 		ParameterWidget.Text);    
-_pw.append(qsTr("buhead_regkey"), 		"buhead_regkey", 		ParameterWidget.Text);     
-_pw.append(qsTr("buhead_remitto"), 		"buhead_remitto", 		ParameterWidget.Text);    
-_pw.append(qsTr("buhead_pgversion"), 	"buhead_pgversion", 	ParameterWidget.Text);  
-_pw.append(qsTr("buhead_backend_pid"), 	"buhead_backend_pid", 	ParameterWidget.Text);
-_pw.applyDefaultFilterSet();
+_pw.append(qsTr("Database"), 	"buhead_dbname", 		ParameterWidget.Text); 	
+_pw.append(qsTr("Date"), 	"buhead_date", 		ParameterWidget.Date); 	
 
+_pw.applyDefaultFilterSet();
 var _list = mywindow.list();
-_list.addColumn(qsTr("buhead_id"), 			-1, Qt.AlignLeft, true, 	"buhead_id"); 			
-_list.addColumn(qsTr("buhead_database"), 	-1, Qt.AlignLeft, true, 	"buhead_database"); 	
-_list.addColumn(qsTr("buhead_username"), 	-1, Qt.AlignLeft, true, 	"buhead_username"); 	
-_list.addColumn(qsTr("buhead_date"), 		-1, Qt.AlignLeft, true, 	"buhead_date"); 		
-_list.addColumn(qsTr("buhead_status"), 		-1, Qt.AlignLeft, true, 	"buhead_status"); 		
-_list.addColumn(qsTr("buhead_valid"), 		-1, Qt.AlignLeft, true, 	"buhead_valid"); 		
-_list.addColumn(qsTr("buhead_dbtype"), 		-1, Qt.AlignLeft, true, 	"buhead_dbtype"); 		
-_list.addColumn(qsTr("buhead_hasext"), 		-1, Qt.AlignLeft, true, 	"buhead_hasext"); 		
-_list.addColumn(qsTr("buhead_filename"), 	-1, Qt.AlignLeft, true, 	"buhead_filename"); 	
-_list.addColumn(qsTr("buhead_dbsize"), 		-1, Qt.AlignLeft, true, 	"buhead_dbsize"); 	  
-_list.addColumn(qsTr("buhead_bustart"), 	-1, Qt.AlignLeft, true, 	"buhead_bustart"); 	  
-_list.addColumn(qsTr("buhead_bustop"), 		-1, Qt.AlignLeft, true, 	"buhead_bustop"); 	  
-_list.addColumn(qsTr("buhead_xfstart"), 	-1, Qt.AlignLeft, true, 	"buhead_xfstart"); 	  
-_list.addColumn(qsTr("buhead_xfstop"), 		-1, Qt.AlignLeft, true, 	"buhead_xfstop"); 	  
-_list.addColumn(qsTr("buhead_lastgl"), 		-1, Qt.AlignLeft, true, 	"buhead_lastgl"); 	  
-_list.addColumn(qsTr("buhead_host"), 		-1, Qt.AlignLeft, true, 	"buhead_host"); 	  
-_list.addColumn(qsTr("buhead_port"), 		-1, Qt.AlignLeft, true, 	"buhead_port"); 	  
-_list.addColumn(qsTr("buhead_dbname"), 		-1, Qt.AlignLeft, true, 	"buhead_dbname"); 	  
-_list.addColumn(qsTr("buhead_filename"), 	-1, Qt.AlignLeft, true,    	"buhead_filename"); 	
-_list.addColumn(qsTr("buhead_appver"), 		-1, Qt.AlignLeft, true,     "buhead_appver");     
-_list.addColumn(qsTr("buhead_pkgs"), 		-1, Qt.AlignLeft, true,     "buhead_pkgs");       
-_list.addColumn(qsTr("buhead_exts"), 		-1, Qt.AlignLeft, true,     "buhead_exts");       
-_list.addColumn(qsTr("buhead_edition"), 	-1, Qt.AlignLeft, true,     "buhead_edition");    
-_list.addColumn(qsTr("buhead_storurl"), 	-1, Qt.AlignLeft, true,     "buhead_storurl");    
-_list.addColumn(qsTr("buhead_regkey"), 		-1, Qt.AlignLeft, true,     "buhead_regkey");     
-_list.addColumn(qsTr("buhead_remitto"), 	-1, Qt.AlignLeft, true,     "buhead_remitto");    
-_list.addColumn(qsTr("buhead_pgversion"), 	-1, Qt.AlignLeft, true,   	"buhead_pgversion");  
-_list.addColumn(qsTr("buhead_backend_pid"), -1, Qt.AlignLeft, true, 	"buhead_backend_pid");
+
+_list.addColumn(qsTr("ID"), 			-1, Qt.AlignLeft, false, 	"buhead_id"); 			
+_list.addColumn(qsTr("Host"), 		-1, Qt.AlignLeft, true, 	"buhead_host"); 	  
+_list.addColumn(qsTr("Port"), 		-1, Qt.AlignLeft, true, 	"buhead_port"); 	  
+_list.addColumn(qsTr("DBName"), 		-1, Qt.AlignLeft, true, 	"buhead_dbname"); 
+_list.addColumn(qsTr("DBType"), 		-1, Qt.AlignLeft, true, 	"buhead_dbtype"); 		
+_list.addColumn(qsTr("Username"), 	-1, Qt.AlignLeft, false, 	"buhead_username"); 	
+_list.addColumn(qsTr("BackupDate"), 		-1, Qt.AlignLeft, true, 	"buhead_date"); 		
+_list.addColumn(qsTr("Status"), 		-1, Qt.AlignLeft, true, 	"buhead_status"); 		
+_list.addColumn(qsTr("Valid"), 		-1, Qt.AlignLeft, true, 	"buhead_valid"); 		
+_list.addColumn(qsTr("LastEntry"), 		-1, Qt.AlignLeft, true, 	"buhead_lastgl"); 	  
+_list.addColumn(qsTr("Size"), 		-1, Qt.AlignLeft, true, 	"buhead_dbsize"); 	  
+_list.addColumn(qsTr("HasExt"), 		-1, Qt.AlignLeft, true, 	"buhead_hasext"); 		
+_list.addColumn(qsTr("Filename"), 	-1, Qt.AlignLeft, true, 	"buhead_filename"); 	
+
+_list.addColumn(qsTr("BuStart"), 	-1, Qt.AlignLeft, true, 	"buhead_bustart"); 	  
+_list.addColumn(qsTr("BuStop"), 		-1, Qt.AlignLeft, true, 	"buhead_bustop"); 	  
+_list.addColumn(qsTr("XferStart"), 	-1, Qt.AlignLeft, true, 	"buhead_xfstart"); 	  
+_list.addColumn(qsTr("XferStop"), 		-1, Qt.AlignLeft, true, 	"buhead_xfstop"); 	  
+
+_list.addColumn(qsTr("App"), 		-1, Qt.AlignLeft, true,     "buhead_appver");     
+_list.addColumn(qsTr("Pkgs"), 		-1, Qt.AlignLeft, false,     "buhead_pkgs");       
+_list.addColumn(qsTr("Exts"), 		-1, Qt.AlignLeft, false,     "buhead_exts");       
+_list.addColumn(qsTr("Edition"), 	-1, Qt.AlignLeft, true,     "buhead_edition");    
+_list.addColumn(qsTr("StorURL"), 	-1, Qt.AlignLeft, true,     "buhead_storurl");    
+_list.addColumn(qsTr("RegKey"), 		-1, Qt.AlignLeft, false,     "buhead_regkey");     
+_list.addColumn(qsTr("Remit-To"), 	-1, Qt.AlignLeft, true,     "buhead_remitto");    
+_list.addColumn(qsTr("PgVersion"), 	-1, Qt.AlignLeft, false,   	"buhead_pgversion");  
+
+
+_list["populateMenu(QMenu *, XTreeWidgetItem *)"].connect(sPopulateMenu);
+
+function sPopulateMenu(pMenu, pItem)
+{
+  QMessageBox.information(_list, qsTr("Right Click"),
+                          qsTr("Right button clicked on %1: %2 Host: %3")
+                              .arg(pItem.id())
+                              .arg(pItem.text("buhead_dbname"))
+                              .arg(pItem.text("buhead_host"))
+  );
+  // the real function contents look a lot like an initmenu script
+  // add the actions to pMenu instead of whatever menu object initmenu grabbed
+}
