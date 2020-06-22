@@ -1,4 +1,4 @@
-CREATE SCHEMA xtadmin;
+--CREATE SCHEMA xtadmin;
 GRANT ALL ON SCHEMA xtadmin TO PUBLIC;
 
 SELECT xt.create_table('buhead', 'xtadmin');
